@@ -1,0 +1,60 @@
+{
+  "name": "Storelly — Business OS & Digital Storefront",
+  "short_name": "Storelly",
+  "description": "Multi-business digital commerce, storefront & business management operating system. Instant WhatsApp checkout, catalog management, bookings, and operations dashboard.",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "background_color": "#020617",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "shopping",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard Overview",
+      "short_name": "Dashboard",
+      "description": "Open merchant store metrics and overview",
+      "url": "/?tab=overview",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Manage Orders",
+      "short_name": "Orders",
+      "description": "View and manage incoming customer orders",
+      "url": "/?tab=orders",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Catalog & Items",
+      "short_name": "Catalog",
+      "description": "Add and update products, menu items and services",
+      "url": "/?tab=catalog",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix Storelly Business OS",
+  "description": "Multi-business digital commerce, storefront \u0026 business management operating system powered by Firebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

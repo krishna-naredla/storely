@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "BusinessProfile": {
+      "title": "BusinessProfile",
+      "description": "A merchant's digital business profile and storefront settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "type": { "type": "string" },
+        "tagline": { "type": "string" },
+        "description": { "type": "string" },
+        "logo": { "type": "string" },
+        "coverImage": { "type": "string" },
+        "banner": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "currencySymbol": { "type": "string" },
+        "deliveryFee": { "type": "number" },
+        "minOrderValue": { "type": "number" },
+        "taxRate": { "type": "number" },
+        "enableCod": { "type": "boolean" },
+        "enableOnlinePayment": { "type": "boolean" },
+        "upiId": { "type": "string" },
+        "modules": { "type": "object" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "ownerId", "name", "slug", "type", "phone", "whatsapp"]
+    },
+    "CatalogItem": {
+      "title": "CatalogItem",
+      "description": "A product, menu item, service, room, or rental vehicle in the merchant catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "detailedDescription": { "type": "string" },
+        "price": { "type": "number" },
+        "salePrice": { "type": "number" },
+        "unit": { "type": "string" },
+        "sku": { "type": "string" },
+        "images": { "type": "array" },
+        "inStock": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "isOffer": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "businessId", "name", "type", "price"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Category for organizing catalog items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "order": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "businessId", "name", "slug"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order placed on the digital storefront",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "orderType": { "type": "string" },
+        "status": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "businessId", "orderNumber", "customerName", "customerPhone", "total", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A service appointment, room reservation, or rental booking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "bookingNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "bookingType": { "type": "string" },
+        "status": { "type": "string" },
+        "itemId": { "type": "string" },
+        "itemName": { "type": "string" },
+        "totalPrice": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "businessId", "bookingNumber", "customerName", "customerPhone", "bookingType", "status"]
+    }
+  },
+  "firestore": {
+    "/businesses/{businessId}": {
+      "schema": "BusinessProfile",
+      "description": "Public and private profile of a business"
+    },
+    "/businesses/{businessId}/catalog/{itemId}": {
+      "schema": "CatalogItem",
+      "description": "Products, services, menu items, rooms, or vehicles"
+    },
+    "/businesses/{businessId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Business categories"
+    },
+    "/businesses/{businessId}/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Store customer orders"
+    },
+    "/businesses/{businessId}/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Customer bookings and appointments"
+    }
+  }
+}

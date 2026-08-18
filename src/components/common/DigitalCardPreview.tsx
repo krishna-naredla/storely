@@ -1,0 +1,228 @@
+import React, { useEffect, useState, useRef } from 'react';
+import QRCode from 'qrcode';
+import {
+  Share2,
+  Copy,
+  Check,
+  Download,
+  ExternalLink,
+  MessageCircle,
+  Phone,
+  MapPin,
+  Sparkles,
+  Store,
+  Printer
+} from 'lucide-react';
+import { BusinessProfile } from '../../types';
+import { getStorefrontUrl } from '../../services/firebaseService';
+import { BUSINESS_TYPES } from '../../services/businessConfig';
+
+interface DigitalCardPreviewProps {
+  business: BusinessProfile;
+  onOpenStore?: () => void;
+}
+
+export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business, onOpenStore }) => {
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [copied, setCopied] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const storeUrl = getStorefrontUrl(business.slug);
+  const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
+
+  useEffect(() => {
+    QRCode.toDataURL(storeUrl, {
+      width: 320,
+      margin: 1.5,
+      color: {
+        dark: '#0F172A',
+        light: '#FFFFFF',
+      },
+    })
+      .then((url) => setQrCodeUrl(url))
+      .catch((err) => console.error('QR code generation error:', err));
+  }, [storeUrl]);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(storeUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = encodeURIComponent(
+      `👋 Hello! Welcome to *${business.name}*!\n\n` +
+      `Explore our digital ${bizMeta.itemPlural.toLowerCase()}, browse latest offers and place orders or bookings directly from your phone — no app download needed:\n\n` +
+      `🔗 ${storeUrl}\n\n` +
+      `📞 Contact: ${business.phone || business.whatsapp}\n` +
+      `Powered by Storelly Digital Business OS`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const handleDownloadQR = () => {
+    if (!qrCodeUrl) return;
+    const a = document.createElement('a');
+    a.href = qrCodeUrl;
+    a.download = `${business.slug}-store-qr.png`;
+    a.click();
+  };
+
+  const handlePrintCard = () => {
+    window.print();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Digital Visiting Card Frame */}
+      <div
+        ref={cardRef}
+        className="relative max-w-md mx-auto bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 overflow-hidden"
+      >
+        {/* Banner */}
+        <div className="relative h-32 bg-linear-to-r from-emerald-600 to-teal-700 overflow-hidden">
+          {business.banner ? (
+            <img
+              src={business.banner}
+              alt="Banner"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-radial from-teal-700 to-emerald-900 opacity-90">
+              <Store className="w-12 h-12 text-white/30" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
+          
+          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-xs text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-amber-500" />
+            Verified Store
+          </div>
+        </div>
+
+        {/* Content Body */}
+        <div className="px-6 pt-0 pb-6">
+          {/* Logo overlapping banner */}
+          <div className="flex justify-between items-end -mt-12 mb-4">
+            <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-md border border-slate-100 overflow-hidden">
+              {business.logo ? (
+                <img
+                  src={business.logo}
+                  alt={business.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : (
+                <div className="w-full h-full bg-emerald-50 text-emerald-700 font-bold text-2xl flex items-center justify-center rounded-xl">
+                  {business.name.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              {bizMeta.label}
+            </span>
+          </div>
+
+          {/* Business Info */}
+          <div className="space-y-1 mb-4">
+            <h2 className="text-xl font-bold text-slate-900 leading-tight">{business.name}</h2>
+            {business.tagline && (
+              <p className="text-xs font-medium text-emerald-700">{business.tagline}</p>
+            )}
+            {business.description && (
+              <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed pt-1">
+                {business.description}
+              </p>
+            )}
+          </div>
+
+          {/* Contact Badges */}
+          <div className="grid grid-cols-2 gap-2 py-3 border-y border-slate-100 mb-4 text-xs text-slate-600">
+            <div className="flex items-center gap-2 truncate">
+              <div className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <MessageCircle className="w-3.5 h-3.5" />
+              </div>
+              <span className="truncate font-medium text-slate-700">{business.whatsapp || business.phone}</span>
+            </div>
+            {business.address && (
+              <div className="flex items-center gap-2 truncate">
+                <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <span className="truncate">{business.city || business.address}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Centered QR Code Box */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center mb-5">
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Scan with camera to visit instant storefront
+            </p>
+            <div className="inline-block bg-white p-2 rounded-xl border border-slate-200 shadow-xs">
+              {qrCodeUrl ? (
+                <img src={qrCodeUrl} alt="Store QR Code" className="w-36 h-36 mx-auto" />
+              ) : (
+                <div className="w-36 h-36 bg-slate-100 animate-pulse rounded-lg" />
+              )}
+            </div>
+            <div className="mt-2 text-[11px] text-slate-600 font-mono break-all px-2">
+              {storeUrl}
+            </div>
+          </div>
+
+          {/* Primary Action Button */}
+          <button
+            type="button"
+            onClick={onOpenStore}
+            className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 group cursor-pointer"
+          >
+            <span>Visit Public Storefront</span>
+            <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
+      </div>
+
+      {/* Sharing & Distribution Controls */}
+      <div className="max-w-md mx-auto grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button
+          type="button"
+          onClick={handleWhatsAppShare}
+          className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          <MessageCircle className="w-4 h-4 text-emerald-600" />
+          <span>WhatsApp</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCopyLink}
+          className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-600" />}
+          <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDownloadQR}
+          className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          <Download className="w-4 h-4 text-slate-600" />
+          <span>Save QR</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handlePrintCard}
+          className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          <Printer className="w-4 h-4 text-slate-600" />
+          <span>Print Card</span>
+        </button>
+      </div>
+    </div>
+  );
+};

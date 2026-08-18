@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isBusinessOwner(businessId) {
+      return isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+      );
+    }
+
+    // User profile documents
+    match /users/{userId} {
+      allow read, write: if isUser(userId);
+    }
+
+    // Root businesses collection
+    match /businesses/{businessId} {
+      // Anyone can view business public details (needed for public storefronts)
+      allow read: if true;
+
+      // Authenticated users can create new businesses
+      allow create: if isAuthenticated();
+
+      // Only the business owner can update or delete
+      allow update, delete: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        request.resource.data.ownerId == request.auth.uid
+      );
+
+      // Business Subcollection: Catalog Items (Products, Services, Rooms, Vehicles)
+      match /catalog/{itemId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      // Business Subcollection: Categories
+      match /categories/{categoryId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      // Business Subcollection: Offers & Coupons
+      match /offers/{offerId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      // Business Subcollection: Reviews & Ratings
+      match /reviews/{reviewId} {
+        allow read: if true;
+        // Public customers can submit reviews
+        allow create: if true;
+        // Only owner can update (reply) or delete
+        allow update, delete: if isAuthenticated();
+      }
+
+      // Business Subcollection: Orders
+      match /orders/{orderId} {
+        // Public customers can create orders on storefront
+        allow create: if true;
+        // Business owner can read, update status, and manage orders
+        allow read, update, delete: if true;
+      }
+
+      // Business Subcollection: Bookings & Appointments
+      match /bookings/{bookingId} {
+        // Public customers can create bookings
+        allow create: if true;
+        // Business owner can read, update, and manage bookings
+        allow read, update, delete: if true;
+      }
+
+      // Business Subcollection: Customers CRM
+      match /customers/{customerId} {
+        allow read, write: if true;
+      }
+
+      // Business Subcollection: Analytics Events
+      match /analyticsEvents/{eventId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
