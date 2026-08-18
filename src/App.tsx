@@ -40,7 +40,8 @@ import {
   subscribeToBookings,
 } from './services/firebaseService';
 import { showMerchantNotification } from './services/fcmPushService';
-import { testFirestoreConnection } from './config/firebase';
+import { testFirestoreConnection, db } from './config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { BUSINESS_TYPES } from './services/businessConfig';
 import { Sidebar, DashboardTab } from './components/dashboard/Sidebar';
 import { Header } from './components/dashboard/Header';
@@ -61,6 +62,9 @@ import { OnboardingWizard } from './components/auth/OnboardingWizard';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
+import { MasterAdminDashboard } from './components/admin/MasterAdminDashboard';
+import { MasterAdminLogin } from './components/admin/MasterAdminLogin';
+import { isUserAuthorizedAdmin } from './services/adminService';
 
 /**
  * Extract store slug from current URL query parameters or pathname
@@ -111,6 +115,50 @@ function MainContent() {
   const [publicBusiness, setPublicBusiness] = useState<BusinessProfile | null>(null);
   const [isLoadingPublicStore, setIsLoadingPublicStore] = useState(false);
   const [publicStoreNotFound, setPublicStoreNotFound] = useState(false);
+  const [isMasterAdminMode, setIsMasterAdminMode] = useState<boolean>(false);
+
+  // Check user custom claims, dedicated 'admin-settings' document in Firestore, or email whitelist upon login
+  useEffect(() => {
+    let isMounted = true;
+    async function verifyAdminAuth() {
+      if (!currentUser || !currentUser.email) {
+        if (isMounted) setIsMasterAdminMode(false);
+        return;
+      }
+
+      // 1. Check whitelisted super admin email
+      if (isUserAuthorizedAdmin(currentUser.email)) {
+        if (isMounted) setIsMasterAdminMode(true);
+        return;
+      }
+
+      try {
+        // 2. Check Firebase Auth custom claims
+        const tokenResult = await currentUser.getIdTokenResult();
+        if (tokenResult.claims.admin || tokenResult.claims.masterAdmin) {
+          if (isMounted) setIsMasterAdminMode(true);
+          return;
+        }
+
+        // 3. Check dedicated 'admin-settings' document in Firestore
+        const adminDocRef = doc(db, 'admin_settings', currentUser.uid);
+        const adminSnap = await getDoc(adminDocRef);
+        if (adminSnap.exists() && adminSnap.data()?.isActive) {
+          if (isMounted) setIsMasterAdminMode(true);
+          return;
+        }
+      } catch (err) {
+        console.warn('Error verifying admin authorization:', err);
+      }
+
+      if (isMounted) setIsMasterAdminMode(false);
+    }
+
+    verifyAdminAuth();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
 
   // Initialize Firestore connection test on mount
   useEffect(() => {
@@ -285,6 +333,30 @@ function MainContent() {
   };
 
   // ==========================================
+  // ROUTE 0: MASTER ADMIN CONTROL CENTER MODE
+  // ==========================================
+  if (isMasterAdminMode) {
+    if (currentUser && isUserAuthorizedAdmin(currentUser.email)) {
+      return (
+        <MasterAdminDashboard
+          adminEmail={currentUser.email!}
+          onLogout={async () => {
+            await logout();
+            setIsMasterAdminMode(false);
+          }}
+          onBackToApp={() => setIsMasterAdminMode(false)}
+        />
+      );
+    }
+    return (
+      <MasterAdminLogin
+        onLoginSuccess={() => setIsMasterAdminMode(true)}
+        onBackToApp={() => setIsMasterAdminMode(false)}
+      />
+    );
+  }
+
+  // ==========================================
   // ROUTE 1: PUBLIC STOREFRONT RESOLUTION
   // ==========================================
   if (publicStoreSlug || (viewMode === 'storefront' && (publicBusiness || selectedBusiness))) {
@@ -403,6 +475,7 @@ function MainContent() {
           onExploreDemoStore={(demoSlug) => {
             navigateToStorefront(demoSlug);
           }}
+          onOpenMasterAdmin={() => setIsMasterAdminMode(true)}
         />
 
         {/* Auth Modal */}
@@ -462,6 +535,7 @@ function MainContent() {
         onClose={() => setIsSidebarOpen(false)}
         onOpenStorefront={() => navigateToStorefront(biz.slug)}
         onLogout={logout}
+        onOpenMasterAdmin={() => setIsMasterAdminMode(true)}
       />
 
       {/* Main Workspace Area: lg:pl-64 guarantees zero overlap with fixed sidebar on desktop */}

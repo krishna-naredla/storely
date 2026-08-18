@@ -93,9 +93,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </span>
             </div>
             
-            <h1 className="text-xl sm:text-2xl font-bold font-heading leading-tight text-white">
-              {business.name} is Live & Ready to Sell
-            </h1>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 backdrop-blur-md">
+                {business.logo ? (
+                  <img src={business.logo} alt={business.name} referrerPolicy="no-referrer" className="w-10 h-10 object-contain rounded-xl" />
+                ) : (
+                  <Store className="w-6 h-6 text-emerald-200" />
+                )}
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold font-heading leading-tight text-white">
+                {business.name} is Live & Ready to Sell
+              </h1>
+            </div>
             
             <div className="flex items-center gap-2 pt-1">
               <div className="px-3 py-1.5 rounded-xl bg-black/30 backdrop-blur-xs text-xs font-mono text-emerald-200 truncate border border-emerald-500/20 max-w-sm sm:max-w-md">

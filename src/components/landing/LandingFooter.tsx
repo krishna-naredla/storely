@@ -1,7 +1,11 @@
 import React from 'react';
-import { Store, Facebook, Instagram, Twitter, Linkedin, Youtube, Mail } from 'lucide-react';
+import { Store, Facebook, Instagram, Twitter, Linkedin, Youtube, Mail, ShieldCheck } from 'lucide-react';
 
-export const LandingFooter: React.FC = () => {
+interface LandingFooterProps {
+  onOpenMasterAdmin?: () => void;
+}
+
+export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenMasterAdmin }) => {
   return (
     <footer className="bg-slate-950 text-slate-300 py-16 sm:py-24 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -63,8 +67,17 @@ export const LandingFooter: React.FC = () => {
 
         <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} Storelly. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 flex-wrap justify-center">
             <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> support@storelly.com</span>
+            {onOpenMasterAdmin && (
+              <button
+                type="button"
+                onClick={onOpenMasterAdmin}
+                className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 transition cursor-pointer bg-emerald-950/40 border border-emerald-800/40 px-2.5 py-1 rounded-lg"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" /> Master Admin Portal
+              </button>
+            )}
             <span>Made with ❤️ for Local Businesses</span>
           </div>
         </div>

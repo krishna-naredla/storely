@@ -17,6 +17,7 @@ import {
   X,
   Store,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
@@ -45,6 +46,7 @@ interface SidebarProps {
   onClose: () => void;
   onOpenStorefront: () => void;
   onLogout: () => void;
+  onOpenMasterAdmin?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -55,6 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   onOpenStorefront,
   onLogout,
+  onOpenMasterAdmin,
 }) => {
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
@@ -242,12 +245,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Icon
-                        className={`w-4 h-4 ${
-                          isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'
-                        }`}
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/30'
+                          : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                      }`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
@@ -263,6 +268,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer Actions */}
         <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/50">
+          {onOpenMasterAdmin && (
+            <button
+              type="button"
+              onClick={onOpenMasterAdmin}
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition shadow-xs"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Master Admin Portal</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onOpenStorefront}

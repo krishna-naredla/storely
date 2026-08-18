@@ -118,7 +118,7 @@ export interface BusinessProfile {
   seoMetaTitle?: string;
   seoMetaDescription?: string;
   modules: BusinessModuleConfig;
-  status: 'active' | 'inactive' | 'draft';
+  status: 'active' | 'inactive' | 'draft' | 'suspended';
   themeColor?: string;
   createdAt: number;
   updatedAt: number;

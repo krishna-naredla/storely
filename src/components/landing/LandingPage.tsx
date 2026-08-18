@@ -11,9 +11,10 @@ import { LandingFooter } from './LandingFooter';
 interface LandingPageProps {
   onOpenAuth: (mode: 'login' | 'signup') => void;
   onExploreDemoStore: (slug: string) => void;
+  onOpenMasterAdmin?: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenMasterAdmin }) => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -58,7 +59,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
         </section>
       </main>
 
-      <LandingFooter />
+      <LandingFooter onOpenMasterAdmin={onOpenMasterAdmin} />
     </div>
   );
 };

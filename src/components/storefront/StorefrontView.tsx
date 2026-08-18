@@ -106,16 +106,82 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
+  // Dynamic Browser Title, Favicon & Open Graph Meta Tags Injection for Rich WhatsApp Cards
+  useEffect(() => {
+    if (business.name) {
+      document.title = `${business.name} - Official Store | Storelly`;
+      
+      const updateMetaTag = (property: string, content: string, isProperty = true) => {
+        const selector = isProperty ? `meta[property='${property}']` : `meta[name='${property}']`;
+        let meta = document.querySelector(selector);
+        if (!meta) {
+          meta = document.createElement('meta');
+          if (isProperty) {
+            meta.setAttribute('property', property);
+          } else {
+            meta.setAttribute('name', property);
+          }
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+      };
+
+      const storeDesc = business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`;
+      const storeImage = business.logo || business.banner || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80';
+      const storeUrl = window.location.href;
+
+      updateMetaTag('og:title', business.name);
+      updateMetaTag('og:description', storeDesc);
+      updateMetaTag('og:image', storeImage);
+      updateMetaTag('og:url', storeUrl);
+      updateMetaTag('og:type', 'website');
+      
+      updateMetaTag('twitter:card', 'summary_large_image', false);
+      updateMetaTag('twitter:title', business.name, false);
+      updateMetaTag('twitter:description', storeDesc, false);
+      updateMetaTag('twitter:image', storeImage, false);
+    }
+    if (business.logo) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = business.logo;
+    }
+  }, [business]);
+
   // Initialize cart business ID & record telemetry
   useEffect(() => {
     setStorefrontBusinessId(business.id);
     recordAnalyticsEvent(business.id, 'store_view', { slug: business.slug });
   }, [business.id, business.slug]);
 
-  // Load all public store data from Firestore
+  // Load all public store data from Firestore with Instant LocalStorage Caching
   const loadStoreData = async () => {
+    const cacheKey = `storelly_store_cache_${business.id}`;
+    
+    // 1. Instantly load from cache if available for 0ms load time
+    const cachedData = localStorage.getItem(cacheKey);
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        setCatalogItems(parsed.items || []);
+        setCategories(parsed.categories || []);
+        setOffers(parsed.offers || []);
+        setReviews(parsed.reviews || []);
+        setIsLoading(false);
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
+
     try {
-      setIsLoading(true);
+      if (!cachedData) {
+        setIsLoading(true);
+      }
       const [fetchedItems, fetchedCategories, fetchedOffers, fetchedReviews] = await Promise.all([
         getCatalogItems(business.id, true),
         getCategories(business.id),
@@ -123,10 +189,26 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         getReviews(business.id),
       ]);
 
+      const activeCategories = fetchedCategories.filter((c) => c.isActive !== false);
+      const activeOffers = fetchedOffers.filter((o) => o.isActive);
+      const publishedReviews = fetchedReviews.filter((r) => r.status === 'published');
+
       setCatalogItems(fetchedItems);
-      setCategories(fetchedCategories.filter((c) => c.isActive !== false));
-      setOffers(fetchedOffers.filter((o) => o.isActive));
-      setReviews(fetchedReviews.filter((r) => r.status === 'published'));
+      setCategories(activeCategories);
+      setOffers(activeOffers);
+      setReviews(publishedReviews);
+
+      // Save to cache for next instant load
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          items: fetchedItems,
+          categories: activeCategories,
+          offers: activeOffers,
+          reviews: publishedReviews,
+          timestamp: Date.now(),
+        })
+      );
     } catch (err) {
       console.error('Error loading storefront data:', err);
     } finally {
@@ -238,6 +320,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               src={business.banner || business.coverImage}
               alt={business.name}
               referrerPolicy="no-referrer"
+              loading="lazy"
               className="w-full h-full object-cover object-center"
             />
           ) : (
@@ -260,6 +343,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     src={business.logo}
                     alt={business.name}
                     referrerPolicy="no-referrer"
+                    loading="lazy"
                     className="w-full h-full object-contain rounded-xl"
                   />
                 ) : (
@@ -278,6 +362,19 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     Verified
                   </span>
+                  {(() => {
+                    const isStoreOpen = business.status !== 'inactive' && business.status !== 'closed';
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border ${
+                        isStoreOpen 
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isStoreOpen ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
+                        {isStoreOpen ? 'Open Now' : 'Offline / Closed'}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {business.tagline && (
@@ -524,14 +621,20 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         <div>
           {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 py-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div
                   key={i}
-                  className="rounded-2xl bg-white border border-slate-200 p-3 space-y-3 animate-pulse"
+                  className="rounded-2xl bg-white border border-slate-200 p-3 space-y-3 shadow-xs animate-pulse"
                 >
-                  <div className="h-36 bg-slate-200 rounded-xl" />
-                  <div className="h-4 bg-slate-200 rounded w-3/4" />
-                  <div className="h-4 bg-slate-200 rounded w-1/2" />
+                  <div className="h-36 sm:h-44 bg-slate-200 rounded-xl w-full" />
+                  <div className="space-y-1.5 pt-1">
+                    <div className="h-4 bg-slate-200 rounded-md w-4/5" />
+                    <div className="h-3 bg-slate-200 rounded-md w-3/5" />
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div className="h-5 bg-slate-200 rounded w-1/3" />
+                    <div className="h-8 bg-slate-200 rounded-xl w-2/5" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -586,6 +689,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                           src={item.images[0]}
                           alt={item.name}
                           referrerPolicy="no-referrer"
+                          loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
