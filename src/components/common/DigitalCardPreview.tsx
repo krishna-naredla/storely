@@ -27,6 +27,8 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
   const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  const [copiedRich, setCopiedRich] = useState(false);
+
   const storeUrl = getStorefrontUrl(business.slug);
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
@@ -49,14 +51,25 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const richShareText = 
+    `🌟 *${business.name.toUpperCase()}* 🌟\n` +
+    `${business.tagline || `Verified ${bizMeta.label} Storefront`}\n\n` +
+    `🛒 *Explore Catalog & Place Orders / Bookings Instantly!*\n` +
+    `${business.description ? `📝 _"${business.description}"_\n\n` : ''}` +
+    `📍 Location: ${business.city || business.address || 'Online Store'}\n` +
+    `📞 WhatsApp/Phone: ${business.whatsapp || business.phone}\n\n` +
+    `👇 *VISIT STORE NOW (100% Secure & Fast)*:\n` +
+    `🔗 ${storeUrl}\n\n` +
+    `✨ _Tap the link above to browse products, check special offers, and order directly!_`;
+
+  const handleCopyRichCard = () => {
+    navigator.clipboard.writeText(richShareText);
+    setCopiedRich(true);
+    setTimeout(() => setCopiedRich(false), 2000);
+  };
+
   const handleWhatsAppShare = () => {
-    const text = encodeURIComponent(
-      `👋 Hello! Welcome to *${business.name}*!\n\n` +
-      `Explore our digital ${bizMeta.itemPlural.toLowerCase()}, browse latest offers and place orders or bookings directly from your phone — no app download needed:\n\n` +
-      `🔗 ${storeUrl}\n\n` +
-      `📞 Contact: ${business.phone || business.whatsapp}\n` +
-      `Powered by Storelly Digital Business OS`
-    );
+    const text = encodeURIComponent(richShareText);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -186,42 +199,75 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
       </div>
 
       {/* Sharing & Distribution Controls */}
-      <div className="max-w-md mx-auto grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <button
-          type="button"
-          onClick={handleWhatsAppShare}
-          className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
-        >
-          <MessageCircle className="w-4 h-4 text-emerald-600" />
-          <span>WhatsApp</span>
-        </button>
+      <div className="max-w-md mx-auto space-y-3">
+        <div className="p-4 bg-linear-to-r from-emerald-900 to-teal-900 text-white rounded-2xl shadow-md space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold uppercase tracking-wider">Rich WhatsApp Store Card</span>
+            </div>
+            <span className="text-[10px] bg-emerald-800 text-emerald-200 px-2 py-0.5 rounded-full">High Trust</span>
+          </div>
+          <p className="text-[11px] text-emerald-100 leading-relaxed">
+            Share a rich store card message including your store logo preview, tagline, description, and "VISIT STORE NOW" CTA to build instant customer trust on WhatsApp!
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleWhatsAppShare}
+              className="flex-1 py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              <MessageCircle className="w-4 h-4 text-slate-950" />
+              <span>Share Rich Card on WhatsApp</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyRichCard}
+              className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            >
+              {copiedRich ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedRich ? 'Copied Rich Text' : 'Copy'}</span>
+            </button>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
-        >
-          {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-600" />}
-          <span>{copied ? 'Copied!' : 'Copy Link'}</span>
-        </button>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button
+            type="button"
+            onClick={handleWhatsAppShare}
+            className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-600" />
+            <span>WhatsApp</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={handleDownloadQR}
-          className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
-        >
-          <Download className="w-4 h-4 text-slate-600" />
-          <span>Save QR</span>
-        </button>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-600" />}
+            <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={handlePrintCard}
-          className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
-        >
-          <Printer className="w-4 h-4 text-slate-600" />
-          <span>Print Card</span>
-        </button>
+          <button
+            type="button"
+            onClick={handleDownloadQR}
+            className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-slate-600" />
+            <span>Save QR</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrintCard}
+            className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <Printer className="w-4 h-4 text-slate-600" />
+            <span>Print Card</span>
+          </button>
+        </div>
       </div>
     </div>
   );
