@@ -247,16 +247,15 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
       {/* Backdrop */}
       <div
         onClick={onClose}
         className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
       />
 
-      {/* Drawer Panel */}
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col">
+      {/* Drawer / Modal Panel */}
+      <div className="relative w-full sm:max-w-xl h-[92vh] sm:h-[88vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 z-10">
           {/* Drawer Header */}
           <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
             <div className="flex items-center gap-2.5">
@@ -284,19 +283,19 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
 
           {/* Success View when Order Placed */}
           {placedOrder ? (
-            <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center text-center space-y-4 min-h-[420px]">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
 
               <div>
-                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shadow-2xs">
                   Order Received
                 </span>
                 <h3 className="text-xl font-bold text-slate-900 mt-2 font-heading">
                   Thank You for Your Order!
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                   Order #{placedOrder.orderNumber} has been logged and sent to {business.name}.
                 </p>
               </div>
@@ -355,13 +354,13 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
             /* Active Cart & Checkout Form */
             <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-6">
               {items.length === 0 ? (
-                <div className="py-16 text-center space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                <div className="min-h-[380px] flex flex-col items-center justify-center p-6 text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
                     <ShoppingBag className="w-7 h-7" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-800">Your cart is empty</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <h4 className="text-sm font-bold text-slate-900 font-heading">Your cart is empty</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 max-w-xs mx-auto">
                       Explore our catalog and add items to your cart.
                     </p>
                   </div>
@@ -792,6 +791,5 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
           )}
         </div>
       </div>
-    </div>
-  );
+    );
 };

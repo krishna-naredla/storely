@@ -16,6 +16,7 @@ import { BusinessProfile } from '../../types';
 import { getStorefrontUrl, subscribeToOrders } from '../../services/firebaseService';
 import { requestFcmNotificationPermission } from '../../services/fcmPushService';
 import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
+import { LanguageSwitcher } from '../common/LanguageSwitcher';
 
 interface HeaderProps {
   business: BusinessProfile | null;
@@ -139,6 +140,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right side quick actions */}
       <div className="flex items-center gap-2">
+        <LanguageSwitcher />
+
         {/* Notifications */}
         <button
           type="button"

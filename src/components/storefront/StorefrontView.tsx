@@ -38,6 +38,7 @@ import {
   getOffers,
   getReviews,
   recordAnalyticsEvent,
+  incrementShareCount,
 } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
@@ -103,6 +104,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [selectedItemForBooking, setSelectedItemForBooking] = useState<CatalogItem | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
@@ -255,6 +258,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     });
 
   const handleShareStore = () => {
+    incrementShareCount(business.id);
     const url = window.location.href;
     if (navigator.share) {
       navigator
@@ -314,18 +318,21 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       {/* Main Store Banner & Profile Header */}
       <header className="relative bg-white border-b border-slate-200 shadow-xs">
         {/* Banner Cover */}
-        <div className="relative h-44 sm:h-60 w-full bg-slate-900 overflow-hidden">
-          {business.banner || business.coverImage ? (
+        <div className="relative aspect-[16/5] sm:aspect-[21/6] w-full bg-slate-900 overflow-hidden">
+          {(business.banner || business.coverImage) && !bannerError ? (
             <img
               src={business.banner || business.coverImage}
               alt={business.name}
               referrerPolicy="no-referrer"
-              loading="lazy"
+              loading="eager"
+              fetchPriority="high"
+              onError={() => setBannerError(true)}
               className="w-full h-full object-cover object-center"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-emerald-800">
-              <Store className="w-12 h-12 text-white/20" />
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white/50">
+              <Store className="w-12 h-12 mb-2 text-emerald-400" />
+              <span className="text-xs font-semibold text-slate-200">{business.name}</span>
             </div>
           )}
           <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
@@ -337,13 +344,15 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             {/* Logo and Primary Info */}
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white p-1.5 shadow-xl border-2 border-slate-100 overflow-hidden shrink-0 -mt-12 sm:-mt-16 relative z-20 flex items-center justify-center">
-                {business.logo ? (
+              <div className="w-24 h-24 sm:w-28 sm:h-28 aspect-square rounded-2xl bg-white p-1.5 shadow-xl border-2 border-slate-100 overflow-hidden shrink-0 -mt-12 sm:-mt-16 relative z-20 flex items-center justify-center">
+                {business.logo && !logoError ? (
                   <img
                     src={business.logo}
                     alt={business.name}
                     referrerPolicy="no-referrer"
-                    loading="lazy"
+                    loading="eager"
+                    fetchPriority="high"
+                    onError={() => setLogoError(true)}
                     className="w-full h-full object-contain rounded-xl"
                   />
                 ) : (

@@ -17,6 +17,7 @@ export type MasterAdminTab =
   | 'support'
   | 'announcements'
   | 'audit_logs'
+  | 'system_logs'
   | 'system_health'
   | 'settings';
 

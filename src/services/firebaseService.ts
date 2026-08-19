@@ -102,6 +102,55 @@ function removeLocalBusiness(bizId: string) {
   }
 }
 
+const BLOCKED_SLUGS = new Set([
+  'admin',
+  'api',
+  'login',
+  'auth',
+  'dashboard',
+  'master-admin',
+  'settings',
+  'checkout',
+  'cart',
+  'support',
+  'terms',
+  'privacy',
+  'static',
+  'assets',
+  'public',
+  'store',
+  'sitemap.xml'
+]);
+
+export async function isSlugBlocked(slug: string): Promise<boolean> {
+  if (!slug) return true;
+  const clean = slug.trim().toLowerCase();
+  if (BLOCKED_SLUGS.has(clean)) return true;
+
+  try {
+    const docRef = doc(db, 'blocked_slugs', clean);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) return true;
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+export async function incrementShareCount(businessId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'businesses', businessId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data() as BusinessProfile;
+      const current = data.shareCount || 0;
+      await updateDoc(docRef, sanitizeForFirestore({ shareCount: current + 1, updatedAt: Date.now() }));
+    }
+  } catch (e) {
+    console.warn('Share count increment note:', e);
+  }
+}
+
 /**
  * Business CRUD & Queries
  */
@@ -171,6 +220,12 @@ export async function forceSyncLocalToFirestore() {
 }
 
 export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfile | null> {
+  if (!rawSlug) return null;
+  if (await isSlugBlocked(rawSlug)) {
+    console.warn('Blocked slug access attempt:', rawSlug);
+    return null;
+  }
+
   // Always attempt a quick background sync when looking up a store
   // in case the creator is viewing their own store link right after creation
   forceSyncLocalToFirestore();
@@ -585,6 +640,15 @@ export async function updateOrderStatus(businessId: string, orderId: string, sta
   }
 }
 
+export async function deleteOrder(businessId: string, orderId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'businesses', businessId, 'orders', orderId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Firestore deleteOrder warning:', err);
+  }
+}
+
 /**
  * Bookings Management
  */
@@ -690,7 +754,7 @@ export async function upsertCustomerFromOrder(businessId: string, order: Order):
     const now = Date.now();
     if (snap.exists()) {
       const existing = snap.data() as Customer;
-      await updateDoc(docRef, {
+      const updatePayload = sanitizeForFirestore({
         name: order.customerName || existing.name,
         whatsapp: order.customerWhatsApp || existing.whatsapp || order.customerPhone,
         email: order.customerEmail || existing.email,
@@ -699,6 +763,7 @@ export async function upsertCustomerFromOrder(businessId: string, order: Order):
         totalSpent: (existing.totalSpent || 0) + order.total,
         lastInteractionAt: now,
       });
+      await updateDoc(docRef, updatePayload);
     } else {
       const newCust: Customer = {
         id: custId,
@@ -714,7 +779,7 @@ export async function upsertCustomerFromOrder(businessId: string, order: Order):
         firstInteractionAt: now,
         lastInteractionAt: now,
       };
-      await setDoc(docRef, newCust);
+      await setDoc(docRef, sanitizeForFirestore(newCust));
     }
   } catch (e) {
     console.error('Customer upsert error:', e);
@@ -732,13 +797,14 @@ export async function upsertCustomerFromBooking(businessId: string, booking: Boo
     const now = Date.now();
     if (snap.exists()) {
       const existing = snap.data() as Customer;
-      await updateDoc(docRef, {
+      const updatePayload = sanitizeForFirestore({
         name: booking.customerName || existing.name,
         email: booking.customerEmail || existing.email,
         totalBookings: (existing.totalBookings || 0) + 1,
         totalSpent: (existing.totalSpent || 0) + (booking.totalAmount || 0),
         lastInteractionAt: now,
       });
+      await updateDoc(docRef, updatePayload);
     } else {
       const newCust: Customer = {
         id: custId,
@@ -753,7 +819,7 @@ export async function upsertCustomerFromBooking(businessId: string, booking: Boo
         firstInteractionAt: now,
         lastInteractionAt: now,
       };
-      await setDoc(docRef, newCust);
+      await setDoc(docRef, sanitizeForFirestore(newCust));
     }
   } catch (e) {
     console.error('Customer booking upsert error:', e);

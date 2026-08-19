@@ -19,7 +19,8 @@ import {
   Send,
 } from 'lucide-react';
 import { BusinessProfile, Order, OrderStatus } from '../../types';
-import { getOrders, updateOrderStatus, subscribeToOrders } from '../../services/firebaseService';
+import { getOrders, updateOrderStatus, subscribeToOrders, deleteOrder } from '../../services/firebaseService';
+import { SwipeToDelete } from '../common/SwipeToDelete';
 
 interface OrderManagerProps {
   business: BusinessProfile;
@@ -183,10 +184,10 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ business }) => {
       ) : filteredOrders.length > 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
           {filteredOrders.map((order) => (
-            <div
-              key={order.id}
-              className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition"
-            >
+            <SwipeToDelete key={order.id} onDelete={() => deleteOrder(business.id, order.id)} deleteLabel="Remove">
+              <div
+                className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition bg-white"
+              >
               {/* Order Info & Customer */}
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -260,7 +261,8 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ business }) => {
                 </div>
               </div>
             </div>
-          ))}
+          </SwipeToDelete>
+        ))}
         </div>
       ) : (
         <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">

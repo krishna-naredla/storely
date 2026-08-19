@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StorefrontCartProvider } from './context/StorefrontCartContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { BusinessProfile } from './types';
 import {
   getUserBusinesses,
@@ -89,6 +90,83 @@ function parseStoreSlugFromUrl(): string | null {
   return null;
 }
 
+function generateFallbackOgImage(name: string): string {
+  const safeName = (name || 'Storelly Business').replace(/[<>&'"]/g, '');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#065f46" />
+        <stop offset="100%" stop-color="#022c22" />
+      </linearGradient>
+    </defs>
+    <rect width="1200" height="630" fill="url(#bg)" />
+    <circle cx="1050" cy="150" r="250" fill="#10b981" opacity="0.15" />
+    <circle cx="150" cy="500" r="200" fill="#059669" opacity="0.1" />
+    <text x="100" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#34d399" letter-spacing="4">STORELLY DIGITAL STORE</text>
+    <text x="100" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="#ffffff">${safeName}</text>
+    <text x="100" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="500" fill="#a7f3d0">Catalog, Instant Orders &amp; Direct WhatsApp Checkout</text>
+    <rect x="100" y="490" width="220" height="50" rx="25" fill="#10b981" />
+    <text x="210" y="523" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">Shop Now</text>
+  </svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
+/**
+ * Helper function to update document head with charset, viewport, and vendor-specific og:title, og:description, and og:image
+ */
+function injectStoreMetadata(business: BusinessProfile) {
+  if (!business) return;
+
+  // Ensure charset and viewport tags exist for social crawlers and mobile previews
+  let charsetMeta = document.querySelector('meta[charset]');
+  if (!charsetMeta) {
+    charsetMeta = document.createElement('meta');
+    charsetMeta.setAttribute('charset', 'UTF-8');
+    document.head.insertBefore(charsetMeta, document.head.firstChild);
+  }
+
+  let viewportMeta = document.querySelector('meta[name="viewport"]');
+  if (!viewportMeta) {
+    viewportMeta = document.createElement('meta');
+    viewportMeta.setAttribute('name', 'viewport');
+    document.head.appendChild(viewportMeta);
+  }
+  viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+
+  const title = `${business.name} - Official Store | Storelly`;
+  document.title = title;
+
+  const updateMeta = (property: string, content: string, isProperty = true) => {
+    const selector = isProperty ? `meta[property='${property}']` : `meta[name='${property}']`;
+    let meta = document.querySelector(selector);
+    if (!meta) {
+      meta = document.createElement('meta');
+      if (isProperty) {
+        meta.setAttribute('property', property);
+      } else {
+        meta.setAttribute('name', property);
+      }
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', content);
+  };
+
+  const desc = business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`;
+  const img = business.banner || business.logo || generateFallbackOgImage(business.name);
+  const url = window.location.href;
+
+  updateMeta('og:title', business.name);
+  updateMeta('og:description', desc);
+  updateMeta('og:image', img);
+  updateMeta('og:url', url);
+  updateMeta('og:type', 'website');
+
+  updateMeta('twitter:card', 'summary_large_image', false);
+  updateMeta('twitter:title', business.name, false);
+  updateMeta('twitter:description', desc, false);
+  updateMeta('twitter:image', img, false);
+}
+
 // Main App Container
 function MainContent() {
   const { currentUser, logout, loading: authLoading } = useAuth();
@@ -109,12 +187,51 @@ function MainContent() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [activeNewOrderNotification, setActiveNewOrderNotification] = useState<{
+    id: string;
+    title: string;
+    body: string;
+    type: 'order' | 'booking';
+  } | null>(null);
+
+  const playNotificationChime = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.15); // A5
+
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.6);
+    } catch (err) {
+      console.warn('Audio chime note:', err);
+    }
+  };
 
   // Public Storefront Resolution States
   const [publicStoreSlug, setPublicStoreSlug] = useState<string | null>(parseStoreSlugFromUrl);
   const [publicBusiness, setPublicBusiness] = useState<BusinessProfile | null>(null);
   const [isLoadingPublicStore, setIsLoadingPublicStore] = useState(false);
   const [publicStoreNotFound, setPublicStoreNotFound] = useState(false);
+
+  // Invoke injectStoreMetadata whenever publicBusiness changes
+  useEffect(() => {
+    if (publicBusiness) {
+      injectStoreMetadata(publicBusiness);
+    }
+  }, [publicBusiness]);
   const [isMasterAdminMode, setIsMasterAdminMode] = useState<boolean>(false);
 
   // Check user custom claims, dedicated 'admin-settings' document in Firestore, or email whitelist upon login
@@ -261,10 +378,17 @@ function MainContent() {
         return;
       }
       const latest = orders[0];
-      if (latest && latest.status === 'pending' && (Date.now() - (latest.createdAt || 0) < 30000)) {
+      if (latest && latest.status === 'pending') {
+        playNotificationChime();
+        setActiveNewOrderNotification({
+          id: latest.id,
+          title: `New Order #${latest.orderNumber || latest.id.slice(-5)}`,
+          body: `${latest.customerName} placed an order for ${selectedBusiness.currencySymbol || '₹'}${latest.total}`,
+          type: 'order',
+        });
         showMerchantNotification(
-          `📦 New Order #${latest.orderNumber}!`,
-          `${latest.customerName} placed an order for ${selectedBusiness.currencySymbol}${latest.total}`
+          `📦 New Order #${latest.orderNumber || latest.id.slice(-5)}!`,
+          `${latest.customerName} placed an order`
         );
       }
     });
@@ -276,10 +400,17 @@ function MainContent() {
         return;
       }
       const latestBooking = bookings[0];
-      if (latestBooking && latestBooking.status === 'pending' && (Date.now() - (latestBooking.createdAt || 0) < 30000)) {
+      if (latestBooking && latestBooking.status === 'pending') {
+        playNotificationChime();
+        setActiveNewOrderNotification({
+          id: latestBooking.id,
+          title: `New Appointment Request`,
+          body: `${latestBooking.customerName} requested a booking`,
+          type: 'booking',
+        });
         showMerchantNotification(
           `📅 New Appointment / Booking!`,
-          `${latestBooking.customerName} requested a booking for ${latestBooking.bookingDate} ${latestBooking.bookingTimeSlot ? `at ${latestBooking.bookingTimeSlot}` : ''}`
+          `${latestBooking.customerName} requested a booking`
         );
       }
     });
@@ -363,15 +494,43 @@ function MainContent() {
     // 1A. Loading Storefront Screen
     if (isLoadingPublicStore) {
       return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4 px-4">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center animate-pulse">
-            <Store className="w-7 h-7 text-emerald-400" />
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-6 px-4 selection:bg-emerald-500 selection:text-slate-950">
+          <div className="max-w-sm w-full bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
+            {/* Vendor Logo or 2D Vector Clipart Illustration */}
+            <div className="relative">
+              <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-3xl blur-md opacity-30 animate-pulse" />
+              <div className="relative w-20 h-20 rounded-2xl bg-slate-950 border border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-inner">
+                {publicBusiness?.logoUrl ? (
+                  <img
+                    src={publicBusiness.logoUrl}
+                    alt={publicBusiness.name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <svg className="w-10 h-10 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <path d="M16 10a4 4 0 0 1-8 0"></path>
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base font-black text-white font-heading tracking-tight">
+                {publicBusiness ? publicBusiness.name : 'Opening Digital Storefront...'}
+              </h3>
+              <p className="text-xs text-slate-400">
+                Preparing secure catalog for <span className="font-mono text-emerald-400 font-bold">@{publicStoreSlug}</span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
+              <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Loading Store...</span>
+            </div>
           </div>
-          <div className="text-center space-y-1">
-            <h3 className="text-sm font-bold text-slate-200">Opening Digital Storefront...</h3>
-            <p className="text-xs text-slate-500 font-mono">@{publicStoreSlug}</p>
-          </div>
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-400 mt-2" />
         </div>
       );
     }
@@ -719,6 +878,41 @@ function MainContent() {
           )}
         </button>
       </div>
+
+      {/* Real-time Order & Booking Pop-up Alert Banner for Vendors */}
+      {activeNewOrderNotification && (
+        <div className="fixed bottom-6 left-6 z-50 max-w-sm w-full bg-slate-900 border border-emerald-500/50 text-white rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+            <ShoppingBag className="w-6 h-6 animate-bounce" />
+          </div>
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">🔔 New Order Alert</span>
+              <button
+                type="button"
+                onClick={() => setActiveNewOrderNotification(null)}
+                className="text-slate-400 hover:text-white text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <h4 className="font-extrabold text-sm text-white">{activeNewOrderNotification.title}</h4>
+            <p className="text-xs text-slate-300">{activeNewOrderNotification.body}</p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab(activeNewOrderNotification.type === 'order' ? 'orders' : 'bookings');
+                  setActiveNewOrderNotification(null);
+                }}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+              >
+                View in Orders <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -727,8 +921,10 @@ export default function App() {
   return (
     <AuthProvider>
       <StorefrontCartProvider>
-        <MainContent />
-        <PWAInstallPrompt />
+        <LanguageProvider>
+          <MainContent />
+          <PWAInstallPrompt />
+        </LanguageProvider>
       </StorefrontCartProvider>
     </AuthProvider>
   );

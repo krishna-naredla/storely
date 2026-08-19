@@ -37,6 +37,7 @@ import {
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { SwipeToDelete } from '../common/SwipeToDelete';
 import { deleteImageFromStorage } from '../../services/cloudinary';
 
 interface CatalogManagerProps {
@@ -420,12 +421,12 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
             const cat = categories.find((c) => c.id === item.categoryId);
             const image = item.images && item.images.length > 0 ? item.images[0] : '';
             return (
-              <div
-                key={item.id}
-                className={`bg-white rounded-2xl border transition-all p-4 flex flex-col justify-between gap-3 relative shadow-2xs hover:shadow-md ${
-                  !item.isActive ? 'opacity-60 border-slate-200' : 'border-slate-200/90 hover:border-emerald-300'
-                }`}
-              >
+              <SwipeToDelete key={item.id} onDelete={() => setItemToDelete(item)}>
+                <div
+                  className={`bg-white rounded-2xl border transition-all p-4 flex flex-col justify-between gap-3 relative shadow-2xs hover:shadow-md ${
+                    !item.isActive ? 'opacity-60 border-slate-200' : 'border-slate-200/90 hover:border-emerald-300'
+                  }`}
+                >
                 {/* Top Badge & Status */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex gap-3">
@@ -549,7 +550,8 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   </div>
                 </div>
               </div>
-            );
+            </SwipeToDelete>
+          );
           })}
         </div>
       ) : (

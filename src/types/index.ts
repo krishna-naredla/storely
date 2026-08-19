@@ -120,6 +120,7 @@ export interface BusinessProfile {
   modules: BusinessModuleConfig;
   status: 'active' | 'inactive' | 'draft' | 'suspended';
   themeColor?: string;
+  shareCount?: number;
   createdAt: number;
   updatedAt: number;
 }
