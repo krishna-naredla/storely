@@ -53,7 +53,7 @@ export const FeaturesSection: React.FC = () => {
           </div>
           <div className="relative flex items-center justify-center">
              <div className="w-full max-w-md transform hover:scale-105 transition-transform duration-500">
-               <img src="/illustration.png" alt="Digital Storefront Illustration" className="w-full h-auto object-contain" />
+               <img src="/storelly2.jpg.jpeg" alt="Digital Storefront Showcase" className="w-full h-80 object-cover rounded-2xl shadow-xl border border-slate-200" />
              </div>
           </div>
         </div>

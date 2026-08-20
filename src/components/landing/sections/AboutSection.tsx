@@ -1,0 +1,108 @@
+import React from 'react';
+import { CheckCircle2, TrendingUp, ShieldCheck } from 'lucide-react';
+
+export const AboutSection: React.FC = () => {
+  return (
+    <section id="about" className="py-24 bg-[#faf9f5] border-b border-[#e7e5df]">
+      <div className="max-w-[1180px] mx-auto px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+          
+          {/* Column 1: Heading, description, 3 mini feature blocks */}
+          <div className="space-y-6">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#2f9e5c]">About Storelly</span>
+              <h2 className="text-[32px] font-extrabold text-[#14201a] mt-2 leading-tight">
+                Empowering Local Businesses Digitally
+              </h2>
+            </div>
+            
+            <p className="text-[#5c6b63] text-[15px] leading-relaxed">
+              Storelly provides an all-in-one platform built specifically for local shops, boutiques, and creators to establish their online presence, manage inventory, and accept orders instantly.
+            </p>
+
+            <div className="space-y-4 pt-2">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#eaf6ee] flex items-center justify-center text-[#155330] shrink-0 font-bold">1</div>
+                <div>
+                  <h4 className="font-bold text-[#14201a] text-sm">Easy to Use</h4>
+                  <p className="text-xs text-[#5c6b63]">Set up your store in minutes without writing a single line of code.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#eaf6ee] flex items-center justify-center text-[#155330] shrink-0 font-bold">2</div>
+                <div>
+                  <h4 className="font-bold text-[#14201a] text-sm">All-in-One</h4>
+                  <p className="text-xs text-[#5c6b63]">Catalog, orders, customers, and payments in one unified dashboard.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#eaf6ee] flex items-center justify-center text-[#155330] shrink-0 font-bold">3</div>
+                <div>
+                  <h4 className="font-bold text-[#14201a] text-sm">Grow Faster</h4>
+                  <p className="text-xs text-[#5c6b63]">Built-in marketing tools, analytics, and custom digital visiting cards.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: Center photo with floating Sales Growth +45% and Total Revenue ₹2,45,000 cards */}
+          <div className="relative flex items-center justify-center p-4">
+            <div className="relative w-full rounded-2xl overflow-hidden shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] border border-[#e7e5df] bg-white p-4">
+              <img 
+                src="/storelly1.jpg.jpeg" 
+                alt="Store Owner Managing Business" 
+                className="w-full h-[340px] object-cover rounded-xl"
+              />
+              
+              {/* Floating Sales Growth Card */}
+              <div className="absolute top-8 left-8 bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border border-[#e7e5df] flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#eaf6ee] text-[#155330] flex items-center justify-center font-bold">
+                  <TrendingUp className="w-5 h-5 text-[#2f9e5c]" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-[#5c6b63]">Sales Growth</p>
+                  <p className="text-sm font-extrabold text-[#14201a]">+45% this month</p>
+                </div>
+              </div>
+
+              {/* Floating Total Revenue Card */}
+              <div className="absolute bottom-8 right-8 bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border border-[#e7e5df] flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#155330] text-white flex items-center justify-center font-black text-sm">
+                  ₹
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-[#5c6b63]">Total Revenue</p>
+                  <p className="text-sm font-extrabold text-[#14201a]">₹2,45,000</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 3: Testimonial quote card */}
+          <div className="bg-white rounded-2xl p-8 border border-[#e7e5df] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex gap-1 text-[#f5a623]">
+                {'★'.repeat(5)}
+              </div>
+              <p className="text-[#14201a] font-medium text-sm leading-relaxed italic">
+                "Storelly completely transformed how we sell our homemade pickles and snacks. Customers love ordering directly through our WhatsApp store link. Our revenue doubled in 3 months!"
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-4 border-t border-[#e7e5df]">
+              <div className="w-12 h-12 rounded-full bg-[#155330] text-white flex items-center justify-center font-bold text-base">
+                NK
+              </div>
+              <div>
+                <h4 className="font-bold text-[#14201a] text-sm">Naredla Krishna</h4>
+                <p className="text-xs text-[#5c6b63]">Founder, Krishna Pickles</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+};

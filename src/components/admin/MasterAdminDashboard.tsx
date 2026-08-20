@@ -90,6 +90,36 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     onConfirm: () => Promise<void> | void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  // CMS & SEO & Branding State
+  const [landingBrands, setLandingBrands] = useState(() => {
+    try {
+      const saved = localStorage.getItem('storelly_admin_brands');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { name: 'Organic Store', icon: 'Store' },
+      { name: 'Fashion Hub', icon: 'ShoppingBag' },
+      { name: 'Tech World', icon: 'Cpu' },
+      { name: 'Home Decor', icon: 'Home' },
+      { name: 'Fresh Basket', icon: 'PackageCheck' },
+      { name: 'Beauty Bliss', icon: 'Sparkles' },
+      { name: 'Krishna Pickles', icon: 'Store' },
+      { name: 'Artisan Crafts', icon: 'ShoppingBag' }
+    ];
+  });
+  const [newBrandName, setNewBrandName] = useState('');
+  const [seoConfig, setSeoConfig] = useState(() => ({
+    googleVerification: localStorage.getItem('storelly_seo_gsc') || '',
+    metaTitle: localStorage.getItem('storelly_seo_title') || 'Storelly — Digital Business OS & Instant Public Storefront',
+    metaDescription: localStorage.getItem('storelly_seo_desc') || 'Turn your local business into a digital storefront in minutes.',
+    keywords: localStorage.getItem('storelly_seo_keywords') || 'digital store, whatsapp store, business os, storelly',
+  }));
+  const [brandingConfig, setBrandingConfig] = useState(() => ({
+    siteName: localStorage.getItem('storelly_branding_name') || 'Storelly',
+    logoUrl: localStorage.getItem('storelly_branding_logo') || '/storelly3.jpg.jpeg',
+    faviconUrl: localStorage.getItem('storelly_branding_favicon') || '/icons/icon.svg',
+  }));
+
   const exportToCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) {
       alert('No data available to export.');
@@ -908,8 +938,190 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                 </div>
               )}
 
+              {/* LANDING PAGE CMS TAB */}
+              {activeTab === 'landing_cms' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Landing Page CMS & Marquee Brands</h3>
+                    <p className="text-xs text-slate-500 mt-1">Manage the brands displayed in the "Trusted by Top-Performing Local Brands" section.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <input 
+                        type="text" 
+                        placeholder="Add new brand name (e.g. Hyderabad Spices)" 
+                        value={newBrandName}
+                        onChange={(e) => setNewBrandName(e.target.value)}
+                        className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newBrandName.trim()) return;
+                          const updated = [...landingBrands, { name: newBrandName.trim(), icon: 'Store' }];
+                          setLandingBrands(updated);
+                          localStorage.setItem('storelly_admin_brands', JSON.stringify(updated));
+                          setNewBrandName('');
+                          alert('New brand added successfully to marquee!');
+                        }}
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" /> Add Brand
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                      {landingBrands.map((b: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                              {b.name.charAt(0)}
+                            </div>
+                            <span className="font-bold text-sm text-slate-900">{b.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = landingBrands.filter((_, i) => i !== idx);
+                              setLandingBrands(updated);
+                              localStorage.setItem('storelly_admin_brands', JSON.stringify(updated));
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* GLOBAL BRANDING TAB */}
+              {activeTab === 'branding' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Global Branding & Logo Management</h3>
+                    <p className="text-xs text-slate-500 mt-1">Update platform name, logo, and favicon icon.</p>
+                  </div>
+
+                  <div className="space-y-4 max-w-xl">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Platform Brand Name</label>
+                      <input 
+                        type="text" 
+                        value={brandingConfig.siteName}
+                        onChange={(e) => setBrandingConfig({ ...brandingConfig, siteName: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Logo Image URL</label>
+                      <input 
+                        type="text" 
+                        value={brandingConfig.logoUrl}
+                        onChange={(e) => setBrandingConfig({ ...brandingConfig, logoUrl: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Favicon Icon URL</label>
+                      <input 
+                        type="text" 
+                        value={brandingConfig.faviconUrl}
+                        onChange={(e) => setBrandingConfig({ ...brandingConfig, faviconUrl: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('storelly_branding_name', brandingConfig.siteName);
+                        localStorage.setItem('storelly_branding_logo', brandingConfig.logoUrl);
+                        localStorage.setItem('storelly_branding_favicon', brandingConfig.faviconUrl);
+                        alert('Branding settings saved successfully!');
+                      }}
+                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
+                    >
+                      Save Branding Settings
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SEO & SEARCH CONSOLE TAB */}
+              {activeTab === 'seo' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">SEO & Google Search Console Integration</h3>
+                    <p className="text-xs text-slate-500 mt-1">Manage search engine optimization meta tags, titles, descriptions, and verification tokens.</p>
+                  </div>
+
+                  <div className="space-y-4 max-w-xl">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Google Search Console Verification Tag</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. google-site-verification=abc123xyz"
+                        value={seoConfig.googleVerification}
+                        onChange={(e) => setSeoConfig({ ...seoConfig, googleVerification: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Meta Title</label>
+                      <input 
+                        type="text" 
+                        value={seoConfig.metaTitle}
+                        onChange={(e) => setSeoConfig({ ...seoConfig, metaTitle: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Meta Description</label>
+                      <textarea 
+                        rows={3}
+                        value={seoConfig.metaDescription}
+                        onChange={(e) => setSeoConfig({ ...seoConfig, metaDescription: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700">Meta Keywords</label>
+                      <input 
+                        type="text" 
+                        value={seoConfig.keywords}
+                        onChange={(e) => setSeoConfig({ ...seoConfig, keywords: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('storelly_seo_gsc', seoConfig.googleVerification);
+                        localStorage.setItem('storelly_seo_title', seoConfig.metaTitle);
+                        localStorage.setItem('storelly_seo_desc', seoConfig.metaDescription);
+                        localStorage.setItem('storelly_seo_keywords', seoConfig.keywords);
+                        alert('SEO & Search Console settings synchronized successfully!');
+                      }}
+                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
+                    >
+                      Save SEO & Search Settings
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* OTHER PLACEHOLDER TABS FOR COMPREHENSIVE COVERAGE */}
-              {['customers', 'subscriptions', 'payments', 'reviews', 'landing_cms', 'branding', 'seo', 'faqs', 'features', 'business_types', 'support', 'announcements', 'system_health', 'settings', 'urls'].includes(activeTab) && (
+              {['customers', 'subscriptions', 'payments', 'reviews', 'faqs', 'features', 'business_types', 'support', 'announcements', 'system_health', 'settings', 'urls'].includes(activeTab) && (
                 <div className="bg-white rounded-3xl border border-slate-200 p-8 space-y-4 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
                     <Layers className="w-8 h-8" />

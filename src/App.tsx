@@ -195,29 +195,36 @@ function MainContent() {
   } | null>(null);
 
   const playNotificationChime = () => {
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const now = ctx.currentTime;
+    const playSingle = () => {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const now = ctx.currentTime;
 
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, now); // D5
-      osc.frequency.setValueAtTime(880, now + 0.15); // A5
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.setValueAtTime(880, now + 0.15); // A5
 
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
 
-      osc.start(now);
-      osc.stop(now + 0.6);
-    } catch (err) {
-      console.warn('Audio chime note:', err);
-    }
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } catch (err) {
+        console.warn('Audio chime note:', err);
+      }
+    };
+
+    // Play 3 times sequentially
+    playSingle();
+    setTimeout(playSingle, 400);
+    setTimeout(playSingle, 800);
   };
 
   // Public Storefront Resolution States
@@ -494,12 +501,12 @@ function MainContent() {
     // 1A. Loading Storefront Screen
     if (isLoadingPublicStore) {
       return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-6 px-4 selection:bg-emerald-500 selection:text-slate-950">
-          <div className="max-w-sm w-full bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex flex-col items-center justify-center text-slate-900 space-y-6 px-4 selection:bg-emerald-500 selection:text-white">
+          <div className="max-w-sm w-full bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
             {/* Vendor Logo or 2D Vector Clipart Illustration */}
             <div className="relative">
-              <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-3xl blur-md opacity-30 animate-pulse" />
-              <div className="relative w-20 h-20 rounded-2xl bg-slate-950 border border-emerald-500/30 flex items-center justify-center overflow-hidden shadow-inner">
+              <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-3xl blur-md opacity-20 animate-pulse" />
+              <div className="relative w-20 h-20 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center overflow-hidden shadow-sm">
                 {publicBusiness?.logoUrl ? (
                   <img
                     src={publicBusiness.logoUrl}
@@ -508,27 +515,23 @@ function MainContent() {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <svg className="w-10 h-10 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <path d="M16 10a4 4 0 0 1-8 0"></path>
-                  </svg>
+                  <img src="/storelly3.jpg.jpeg" alt="Storelly Logo" className="w-full h-full object-cover" />
                 )}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-black text-white font-heading tracking-tight">
+              <h3 className="text-base font-black text-slate-900 font-heading tracking-tight">
                 {publicBusiness ? publicBusiness.name : 'Opening Digital Storefront...'}
               </h3>
-              <p className="text-xs text-slate-400">
-                Preparing secure catalog for <span className="font-mono text-emerald-400 font-bold">@{publicStoreSlug}</span>
+              <p className="text-xs text-slate-500">
+                Preparing secure catalog for <span className="font-mono text-emerald-600 font-bold">@{publicStoreSlug}</span>
               </p>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
-              <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
-              <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Loading Store...</span>
+              <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+              <span className="text-xs font-bold text-slate-600 tracking-wider uppercase">Loading Store...</span>
             </div>
           </div>
         </div>
@@ -607,14 +610,14 @@ function MainContent() {
   // ==========================================
   if (authLoading || (currentUser && isLoadingBusinesses)) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/10 animate-pulse">
-          <Store className="w-7 h-7 text-emerald-400" />
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex flex-col items-center justify-center text-slate-900 space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center shadow-md shadow-emerald-500/10 animate-pulse overflow-hidden p-1">
+          <img src="/storelly3.jpg.jpeg" alt="Storelly Logo" className="w-full h-full object-cover rounded-xl" />
         </div>
         <div className="text-center space-y-1">
-          <h2 className="text-sm font-bold text-slate-200">Storelly Business OS</h2>
-          <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+          <h2 className="text-sm font-bold text-slate-900">Storelly Business OS</h2>
+          <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
             Loading merchant workspace...
           </p>
         </div>
@@ -881,9 +884,13 @@ function MainContent() {
 
       {/* Real-time Order & Booking Pop-up Alert Banner for Vendors */}
       {activeNewOrderNotification && (
-        <div className="fixed bottom-6 left-6 z-50 max-w-sm w-full bg-slate-900 border border-emerald-500/50 text-white rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-            <ShoppingBag className="w-6 h-6 animate-bounce" />
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-full bg-slate-900 border border-emerald-500/50 text-white rounded-3xl p-5 shadow-2xl animate-in slide-in-from-top-5 duration-300 flex items-start gap-4 mx-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 overflow-hidden">
+            {biz.logo ? (
+              <img src={biz.logo} alt={biz.name} className="w-full h-full object-cover" />
+            ) : (
+              <ShoppingBag className="w-6 h-6 animate-bounce" />
+            )}
           </div>
           <div className="flex-1 space-y-1">
             <div className="flex items-center justify-between">

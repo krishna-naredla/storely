@@ -90,10 +90,20 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
       {/* Digital Visiting Card Frame */}
       <div
         ref={cardRef}
-        className="relative max-w-md mx-auto bg-white rounded-3xl shadow-xl shadow-slate-200/70 border border-slate-200/80 overflow-hidden"
+        className="relative max-w-md mx-auto bg-white/95 backdrop-blur-md rounded-3xl shadow-xl shadow-slate-900/10 border border-emerald-500/30 overflow-hidden"
       >
+        {/* Dynamic Background Image Layer (Storelly4) */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <img 
+            src="/storelly4.jpg.jpeg" 
+            alt="Storelly Background Showcase" 
+            className="w-full h-full object-cover object-center opacity-25 scale-105" 
+          />
+          <div className="absolute inset-0 bg-white/85 backdrop-blur-[2px]"></div>
+        </div>
+
         {/* Banner */}
-        <div className="relative h-32 bg-linear-to-r from-emerald-600 to-teal-700 overflow-hidden">
+        <div className="relative z-10 h-32 bg-linear-to-r from-emerald-600 to-teal-700 overflow-hidden">
           {business.banner ? (
             <img
               src={business.banner}
@@ -115,7 +125,7 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
         </div>
 
         {/* Content Body */}
-        <div className="px-6 pt-0 pb-6">
+        <div className="relative z-10 px-6 pt-0 pb-6">
           {/* Logo overlapping banner */}
           <div className="flex justify-between items-end -mt-12 mb-4">
             <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-md border border-slate-100 overflow-hidden">

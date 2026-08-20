@@ -2,9 +2,12 @@ import React, { useEffect } from 'react';
 import { LandingNavbar } from './LandingNavbar';
 import { HeroSection } from './sections/HeroSection';
 import { TrustSection } from './sections/TrustSection';
+import { ClientLogosSection } from './sections/ClientLogosSection';
+import { AboutSection } from './sections/AboutSection';
 import { FeaturesSection } from './sections/FeaturesSection';
+import { ZigzagGallerySection } from './sections/ZigzagGallerySection';
 import { PricingSection } from './sections/PricingSection';
-import { TestimonialSection } from './sections/TestimonialSection';
+import { VendorGallerySection } from './sections/VendorGallerySection';
 import { FAQSection } from './sections/FAQSection';
 import { LandingFooter } from './LandingFooter';
 
@@ -20,46 +23,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth, onOpenMast
   }, []);
 
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#faf9f5] font-sans text-[#14201a] selection:bg-[#eaf6ee] selection:text-[#155330]">
+      {/* 1. STICKY HEADER */}
       <LandingNavbar onOpenAuth={onOpenAuth} />
       
       <main>
+        {/* 2. HERO + TRUST STRIP CARD */}
         <HeroSection onOpenAuth={onOpenAuth} />
         <TrustSection />
+
+        {/* 3. CLIENT LOGOS MARQUEE TICKER (Trusted by Top-Performing Local Brands) */}
+        <ClientLogosSection />
+
+        {/* 4. ABOUT (3-column) */}
+        <AboutSection />
+
+        {/* 5. ZIGZAG FULL-VISIBILITY SHOWCASE OF ALL UPLOADED IMAGES */}
+        <ZigzagGallerySection onOpenAuth={onOpenAuth} />
+
+        {/* 6. FEATURES GRID */}
         <FeaturesSection />
-        <TestimonialSection />
+
+        {/* 7. PRICING + 3 STACKED TESTIMONIALS */}
         <PricingSection onOpenAuth={onOpenAuth} />
+
+        {/* VENDOR GALLERY SHOWCASE (All user uploaded storelly images) */}
+        <VendorGallerySection />
+
+        {/* 8. FAQ + CONTACT + NEWSLETTER */}
         <FAQSection />
-        
-        {/* Final CTA */}
-        <section className="py-24 bg-slate-900 relative overflow-hidden">
-           <div className="absolute inset-0 z-0">
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/20 blur-[120px] rounded-full pointer-events-none"></div>
-           </div>
-           <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-              <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">Ready to Take Your Business Online?</h2>
-              <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-                Create your Storelly business and start building your digital presence today. No coding required.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                 <button 
-                   onClick={() => onOpenAuth('signup')}
-                   className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-10 py-4 rounded-full font-black text-lg shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
-                 >
-                   Get Started For Free
-                 </button>
-                 <button 
-                   onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-                   className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm border border-white/20 px-10 py-4 rounded-full font-bold text-lg transition-all"
-                 >
-                   View Pricing Plans
-                 </button>
-              </div>
-           </div>
-        </section>
       </main>
 
+      {/* 9. FOOTER */}
       <LandingFooter onOpenMasterAdmin={onOpenMasterAdmin} />
     </div>
   );
 };
+

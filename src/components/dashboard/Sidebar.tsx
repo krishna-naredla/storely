@@ -176,8 +176,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div>
           <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 font-extrabold text-base tracking-tighter">
-                S
+              <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shadow-xs">
+                <img 
+                  src={business?.logo || "/storelly3.jpg.jpeg"} 
+                  alt="Storelly Logo" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover" 
+                />
               </div>
               <div>
                 <span className="font-heading font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-1">

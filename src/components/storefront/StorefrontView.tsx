@@ -968,6 +968,19 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             </div>
           </div>
         </section>
+
+        {/* Storelly Powered Showcase Banner with storelly7.jpg.jpeg */}
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-900 to-teal-900 p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="absolute right-0 top-0 w-80 h-full opacity-15 bg-cover bg-center pointer-events-none" style={{ backgroundImage: `url('/storelly7.jpg.jpeg')` }}></div>
+          <div className="space-y-2 z-10">
+            <span className="bg-emerald-500/30 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Verified Storefront</span>
+            <h3 className="text-xl font-bold font-heading">{business.name} — Powered by Storelly</h3>
+            <p className="text-emerald-100 text-xs sm:text-sm max-w-xl">
+              Order securely, chat on WhatsApp instantly, and enjoy fast home delivery or pickup services.
+            </p>
+          </div>
+          <img src="/storelly7.jpg.jpeg" alt="Store Showroom" className="w-40 h-24 object-cover rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:block" />
+        </div>
       </main>
 
       {/* Floating Bottom Cart Bar (if items in cart) */}

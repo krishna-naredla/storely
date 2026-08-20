@@ -77,9 +77,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Store URL & Marketing Banner */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-linear-to-r from-emerald-700 via-emerald-800 to-teal-900 text-white shadow-xl shadow-emerald-900/10 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-emerald-500/20 to-transparent pointer-events-none" />
+      {/* Store URL & Marketing Banner with Storelly4 background cover */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-linear-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white shadow-xl shadow-emerald-900/15 relative overflow-hidden border border-emerald-500/30">
+        {/* Background image overlay with perfect cover fit and blend mode */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <img 
+            src="/storelly4.jpg.jpeg" 
+            alt="Storelly Showcase" 
+            className="w-full h-full object-cover object-center opacity-30 transform scale-105 hover:scale-100 transition duration-700" 
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-emerald-900/85 to-teal-950/90 backdrop-blur-[2px]"></div>
+        </div>
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
@@ -141,6 +149,20 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <QrCode className="w-3.5 h-3.5 text-emerald-700" />
               <span>Digital Card & QR</span>
             </button>
+          </div>
+        </div>
+
+        {/* Right side image showcase matching the dark emerald theme */}
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 w-64 h-36 hidden xl:block rounded-2xl overflow-hidden border border-emerald-400/30 shadow-2xl group pointer-events-none">
+          <img 
+            src="/storelly4.jpg.jpeg" 
+            alt="Storelly Digital Showcase" 
+            className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition duration-500" 
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-transparent to-transparent flex items-end p-3">
+            <span className="text-[11px] font-bold text-emerald-200 bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-full border border-emerald-500/30">
+              ⚡ Storelly Live QR & Card
+            </span>
           </div>
         </div>
       </div>
@@ -430,6 +452,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <span>Customer orders & you receive notification directly.</span>
                 </li>
               </ul>
+            </div>
+
+            {/* Showcase Image Banner */}
+            <div className="relative rounded-xl overflow-hidden border border-emerald-500/30 shadow-sm group mt-3">
+              <img src="/storelly6.jpg.jpeg" alt="Storelly Commerce Showcase" className="w-full h-32 object-cover group-hover:scale-105 transition duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex items-end p-2.5">
+                <span className="text-[11px] font-bold text-white flex items-center gap-1">
+                  ✨ Storelly Commerce Engine
+                </span>
+              </div>
             </div>
           </div>
         </div>

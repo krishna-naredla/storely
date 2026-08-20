@@ -64,9 +64,9 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           <div className="lg:col-span-5 relative">
             <div className="relative rounded-3xl bg-linear-to-b from-emerald-50 to-teal-100/50 shadow-2xl shadow-emerald-900/10 border border-emerald-200/60 p-4 overflow-hidden flex items-center justify-center">
               <img 
-                src="https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80" 
-                alt="Storelly 2D Business Illustration" 
-                className="w-full h-[380px] sm:h-[420px] object-cover rounded-2xl mix-blend-multiply opacity-95"
+                src="/storelly6.jpg.jpeg" 
+                alt="Storelly Business Showcase" 
+                className="w-full h-[380px] sm:h-[420px] object-cover rounded-2xl shadow-lg"
               />
               <div className="absolute inset-0 bg-linear-to-t from-emerald-950/40 via-transparent to-transparent rounded-3xl pointer-events-none"></div>
               
