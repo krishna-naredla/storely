@@ -166,8 +166,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200 p-6 sm:p-8">
+    <div className="w-full space-y-6">
         {/* Progress Bar & Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
@@ -626,6 +625,5 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           </div>
         )}
       </div>
-    </div>
   );
 };

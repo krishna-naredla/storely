@@ -530,8 +530,8 @@ export async function duplicateCatalogItem(businessId: string, originalItem: Cat
   const { id, createdAt, updatedAt, ...rest } = originalItem;
   return createCatalogItem(businessId, {
     ...rest,
-    name: `${rest.name} (Copy)`,
-    slug: generateSlug(`${rest.name}-copy-${Date.now().toString().slice(-4)}`),
+    name: rest.name,
+    slug: generateSlug(`${rest.name}-${Date.now().toString().slice(-4)}`),
   });
 }
 

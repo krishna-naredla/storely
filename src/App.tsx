@@ -650,30 +650,53 @@ function MainContent() {
     );
   }
 
-  // If user is Logged In, but has NO businesses yet -> Prompt Onboarding
+  // If user is Logged In, but has NO businesses yet -> Prompt Onboarding as Full Page
   if (!selectedBusiness && businesses.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-3xl">
-          <div className="text-center space-y-3 mb-8">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
-              <Store className="w-8 h-8 text-emerald-400" />
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+        {/* Top Header */}
+        <header className="bg-white border-b border-slate-200 py-4 px-6 sm:px-10 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/20">
+              <Store className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-heading">
-              Welcome to Storelly, {currentUser.displayName || 'Merchant'}!
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-              Let's create your first business profile in less than 2 minutes.
-            </p>
+            <div>
+              <span className="font-extrabold text-lg tracking-tight text-slate-900">Storelly</span>
+              <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Merchant Onboarding Portal</span>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+          >
+            Sign Out
+          </button>
+        </header>
 
-          <div className="bg-white rounded-3xl p-6 sm:p-8 text-slate-900 shadow-2xl">
+        {/* Full Page Content Container */}
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-8 max-w-4xl mx-auto w-full my-6">
+          <div className="w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 p-6 sm:p-10 space-y-6">
+            <div className="pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                  Welcome to Storelly, {currentUser.displayName || currentUser.email || 'Merchant'}!
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                  Let's create your digital business profile & public storefront in 4 simple steps.
+                </p>
+              </div>
+              <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 font-bold text-xs self-start sm:self-auto border border-emerald-200">
+                Step-by-Step Setup
+              </div>
+            </div>
+
             <OnboardingWizard
               onComplete={handleOnboardingComplete}
               createBusinessFn={handleCreateBusiness}
             />
           </div>
-        </div>
+        </main>
       </div>
     );
   }

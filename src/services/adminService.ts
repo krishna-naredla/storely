@@ -23,6 +23,7 @@ import {
 
 // Whitelisted default Super Admin emails for secure authorization
 export const AUTHORIZED_ADMIN_EMAILS = [
+  'localride369@gmail.com',
   'maninaredla218@gmail.com',
   'admin@storelly.com',
   'superadmin@storelly.com',
@@ -32,6 +33,31 @@ export function isUserAuthorizedAdmin(email: string | null | undefined): boolean
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
   return AUTHORIZED_ADMIN_EMAILS.includes(normalized);
+}
+
+export async function verifyAdminInFirestore(email: string | null | undefined): Promise<boolean> {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+
+  // First check hardcoded whitelisted super admins for instant access
+  if (isUserAuthorizedAdmin(normalized)) {
+    return true;
+  }
+  
+  try {
+    const adminDocRef = doc(db, 'admins', normalized);
+    const snap = await getDoc(adminDocRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data?.isActive !== false) {
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('Firestore admin verification warning:', err);
+  }
+
+  return false;
 }
 
 // Fetch all businesses across platform

@@ -66,7 +66,7 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
               <img 
                 src="/storelly6.jpg.jpeg" 
                 alt="Storelly Business Showcase" 
-                className="w-full h-[380px] sm:h-[420px] object-cover rounded-2xl shadow-lg"
+                className="w-full max-h-[460px] object-contain rounded-2xl shadow-lg mx-auto"
               />
               <div className="absolute inset-0 bg-linear-to-t from-emerald-950/40 via-transparent to-transparent rounded-3xl pointer-events-none"></div>
               

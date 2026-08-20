@@ -276,10 +276,11 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   };
 
   const isOrderable =
-    business.modules.cart_ordering ||
-    business.modules.products ||
-    business.modules.menu ||
-    business.modules.table_delivery;
+    business.status !== 'maintenance' &&
+    (business.modules.cart_ordering ||
+     business.modules.products ||
+     business.modules.menu ||
+     business.modules.table_delivery);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 font-sans selection:bg-emerald-100 selection:text-emerald-900">
@@ -372,15 +373,18 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     Verified
                   </span>
                   {(() => {
-                    const isStoreOpen = business.status !== 'inactive' && business.status !== 'closed';
+                    const isMaintenance = business.status === 'maintenance';
+                    const isStoreOpen = !isMaintenance && business.status !== 'inactive' && business.status !== 'closed';
                     return (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border ${
-                        isStoreOpen 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                        isMaintenance
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : isStoreOpen 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isStoreOpen ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
-                        {isStoreOpen ? 'Open Now' : 'Offline / Closed'}
+                        <span className={`w-1.5 h-1.5 rounded-full ${isMaintenance ? 'bg-amber-600' : isStoreOpen ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
+                        {isMaintenance ? 'Closed (Maintenance Mode)' : isStoreOpen ? 'Open Now' : 'Offline / Closed'}
                       </span>
                     );
                   })()}
@@ -469,7 +473,60 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         </div>
       </header>
 
-      {/* Main Store Content Area */}
+      {/* Main Store Content Area / Maintenance Mode View */}
+      {business.status === 'maintenance' ? (
+        <main className="max-w-3xl mx-auto px-4 py-12 sm:py-16 text-center space-y-6">
+          <div className="p-8 sm:p-12 bg-white rounded-3xl border border-amber-200 shadow-xl space-y-6">
+            <div className="w-full max-w-sm h-52 mx-auto bg-amber-50/50 rounded-2xl flex items-center justify-center border-2 border-amber-200/60 shadow-inner overflow-hidden p-2">
+              {business.maintenanceImage ? (
+                <img
+                  src={business.maintenanceImage}
+                  alt="Closed for maintenance"
+                  className="w-full h-full object-contain rounded-xl"
+                />
+              ) : (
+                <Store className="w-16 h-16 text-amber-600 animate-pulse" />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[11px] uppercase tracking-wider inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                Shop Temporarily Closed
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading">
+                We'll Be Back Soon!
+              </h2>
+              <p className="text-sm text-slate-600 max-w-lg mx-auto leading-relaxed pt-2">
+                {business.maintenanceMessage || 'We are currently taking a short break or restocking fresh items. Please check back later or contact us on WhatsApp below!'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <a
+                href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(
+                  `Hi ${business.name}, I see your store is in maintenance mode. When will you reopen?`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Contact Owner on WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={handleShareStore}
+                className="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center gap-2 cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share Store</span>
+              </button>
+            </div>
+          </div>
+        </main>
+      ) : (
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
         {/* Active Promotional Offers Ribbon */}
         {offers.length > 0 && (
@@ -982,6 +1039,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           <img src="/storelly7.jpg.jpeg" alt="Store Showroom" className="w-40 h-24 object-cover rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:block" />
         </div>
       </main>
+      )}
 
       {/* Floating Bottom Cart Bar (if items in cart) */}
       {totalItemsCount > 0 && isOrderable && (

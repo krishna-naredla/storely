@@ -118,6 +118,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               ? 'Start managing your digital store, instant WhatsApp checkout & bookings.'
               : 'Enter your email to receive a password reset link.'}
           </p>
+          {mode === 'login' && (
+            <div className="mt-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Master Admin Note:</span> If you are logging in with <span className="font-mono font-bold">localride369@gmail.com</span> (or maninaredla218@gmail.com) for the first time, click <button type="button" onClick={() => setMode('signup')} className="underline font-bold text-emerald-700 hover:text-emerald-800">Sign up free</button> to create your password, or use <span className="font-bold">Continue with Google</span> above!
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (

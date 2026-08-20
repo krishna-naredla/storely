@@ -51,6 +51,9 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
   const [socialFacebook, setSocialFacebook] = useState(business.socials?.facebook || '');
   const [seoMetaTitle, setSeoMetaTitle] = useState(business.seoMetaTitle || '');
   const [seoMetaDescription, setSeoMetaDescription] = useState(business.seoMetaDescription || '');
+  const [status, setStatus] = useState<any>(business.status || 'active');
+  const [maintenanceMessage, setMaintenanceMessage] = useState(business.maintenanceMessage || 'We are currently undergoing scheduled maintenance or taking a short break. We will be back online shortly!');
+  const [maintenanceImage, setMaintenanceImage] = useState(business.maintenanceImage || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800');
 
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -97,6 +100,9 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
         },
         seoMetaTitle: seoMetaTitle.trim() || undefined,
         seoMetaDescription: seoMetaDescription.trim() || undefined,
+        status,
+        maintenanceMessage: maintenanceMessage.trim() || undefined,
+        maintenanceImage: maintenanceImage.trim() || undefined,
       };
 
       // Clean up old images from storage if they were removed or replaced
@@ -457,6 +463,66 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
               />
             </div>
           </div>
+        </div>
+
+        {/* Maintenance Mode Section */}
+        <div className="p-6 bg-amber-50/40 rounded-3xl border border-amber-200/60 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-amber-100">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Shop Maintenance & Closed Mode</h3>
+                <p className="text-[11px] text-slate-600">Temporarily pause orders when closed for days, restocking, or holidays.</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={status === 'maintenance'}
+                onChange={(e) => setStatus(e.target.checked ? 'maintenance' : 'active')}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+              <span className="ml-2 text-xs font-bold text-slate-700">
+                {status === 'maintenance' ? 'Maintenance ON' : 'Store Open'}
+              </span>
+            </label>
+          </div>
+
+          {status === 'maintenance' && (
+            <div className="space-y-4 pt-2 animate-in fade-in duration-200">
+              <div className="p-3.5 rounded-2xl bg-amber-100/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>When Maintenance Mode is active, visitors to your storefront will see your custom closed message with a friendly 2D illustration and cannot place new orders, preventing order cancellations.</span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Custom Closed / Maintenance Message
+                </label>
+                <textarea
+                  value={maintenanceMessage}
+                  onChange={(e) => setMaintenanceMessage(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. We are currently closed for 2 days restocking fresh ingredients! Back on Friday."
+                  className="w-full px-3 py-2 text-xs border border-amber-200 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-amber-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <ImageUploadInput
+                  label="Maintenance / Closed Illustration Image (Optional)"
+                  value={maintenanceImage}
+                  onChange={setMaintenanceImage}
+                  aspectRatio="banner"
+                  suggestedPresetType="banner"
+                  helperText="Friendly 2D illustration or photo shown on your closed storefront."
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Save CTA */}

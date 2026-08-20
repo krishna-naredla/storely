@@ -120,6 +120,47 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     faviconUrl: localStorage.getItem('storelly_branding_favicon') || '/icons/icon.svg',
   }));
 
+  // Custom Domains State
+  const [customDomains, setCustomDomains] = useState(() => {
+    try {
+      const saved = localStorage.getItem('storelly_admin_custom_domains');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      { domain: 'store.organicbazaar.in', slug: 'organic-bazaar', status: 'Active' },
+      { domain: 'shop.fashionhub.com', slug: 'fashion-hub', status: 'Pending DNS' },
+    ];
+  });
+  const [domainInput, setDomainInput] = useState('');
+  const [domainSlugInput, setDomainSlugInput] = useState('');
+
+  // Global Settings Form State
+  const [settingsForm, setSettingsForm] = useState({
+    siteTitle: 'Storelly — Digital Business OS & Instant Public Storefront',
+    siteDescription: 'Turn your local business into a digital storefront in minutes with WhatsApp checkout.',
+    supportEmail: 'support@storelly.com',
+    supportPhone: '+91 98765 43210',
+    maintenanceMode: false,
+    allowNewRegistrations: true,
+    defaultCurrency: 'INR',
+    taxRatePercent: 5,
+  });
+
+  useEffect(() => {
+    if (globalSettings) {
+      setSettingsForm({
+        siteTitle: globalSettings.siteTitle || 'Storelly — Digital Business OS & Instant Public Storefront',
+        siteDescription: globalSettings.siteDescription || 'Turn your local business into a digital storefront in minutes with WhatsApp checkout.',
+        supportEmail: globalSettings.supportEmail || 'support@storelly.com',
+        supportPhone: globalSettings.supportPhone || '+91 98765 43210',
+        maintenanceMode: globalSettings.maintenanceMode || false,
+        allowNewRegistrations: globalSettings.allowNewRegistrations ?? true,
+        defaultCurrency: globalSettings.defaultCurrency || 'INR',
+        taxRatePercent: globalSettings.taxRatePercent || 5,
+      });
+    }
+  }, [globalSettings]);
+
   const exportToCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) {
       alert('No data available to export.');
@@ -1120,8 +1161,253 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                 </div>
               )}
 
+              {/* URLS & DOMAINS TAB */}
+              {activeTab === 'urls' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Custom Domains & Subdomain Routing</h3>
+                    <p className="text-xs text-slate-500 mt-1">Map custom merchant domains (e.g. shop.mybrand.com) to store slugs and verify CNAME records.</p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                    <h4 className="text-xs font-bold uppercase text-slate-700">Add Custom Domain Mapping</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Custom Domain (e.g. shop.mybrand.com)"
+                        value={domainInput}
+                        onChange={(e) => setDomainInput(e.target.value)}
+                        className="px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                      <select
+                        value={domainSlugInput}
+                        onChange={(e) => setDomainSlugInput(e.target.value)}
+                        className="px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 bg-white"
+                      >
+                        <option value="">Select Target Store Slug</option>
+                        {businesses.map((b) => (
+                          <option key={b.id} value={b.slug}>/store/{b.slug} ({b.name})</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!domainInput.trim() || !domainSlugInput) {
+                            alert('Please enter a domain and select a store slug.');
+                            return;
+                          }
+                          const updated = [...customDomains, { domain: domainInput.trim(), slug: domainSlugInput, status: 'Active' }];
+                          setCustomDomains(updated);
+                          localStorage.setItem('storelly_admin_custom_domains', JSON.stringify(updated));
+                          setDomainInput('');
+                          setDomainSlugInput('');
+                          alert('Custom domain mapping added successfully!');
+                        }}
+                        className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" /> Map Domain
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                        <tr>
+                          <th className="p-4">Custom Domain</th>
+                          <th className="p-4">Mapped Storefront Slug</th>
+                          <th className="p-4">DNS Status</th>
+                          <th className="p-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {customDomains.map((cd: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-4 font-bold text-slate-900 font-mono">{cd.domain}</td>
+                            <td className="p-4 font-mono text-emerald-700">/store/{cd.slug}</td>
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800">
+                                {cd.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = customDomains.filter((_: any, i: number) => i !== idx);
+                                  setCustomDomains(updated);
+                                  localStorage.setItem('storelly_admin_custom_domains', JSON.stringify(updated));
+                                }}
+                                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg transition cursor-pointer"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* GLOBAL SETTINGS TAB */}
+              {activeTab === 'settings' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Global Platform Settings</h3>
+                    <p className="text-xs text-slate-500 mt-1">Configure global platform defaults, tax rates, currency, and maintenance mode.</p>
+                  </div>
+
+                  <div className="space-y-4 max-w-2xl">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Platform Title</label>
+                      <input
+                        type="text"
+                        value={settingsForm.siteTitle}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, siteTitle: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Platform Description</label>
+                      <textarea
+                        rows={2}
+                        value={settingsForm.siteDescription}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, siteDescription: e.target.value })}
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Support Email</label>
+                        <input
+                          type="email"
+                          value={settingsForm.supportEmail}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, supportEmail: e.target.value })}
+                          className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Support Phone</label>
+                        <input
+                          type="text"
+                          value={settingsForm.supportPhone}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, supportPhone: e.target.value })}
+                          className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Default Currency</label>
+                        <input
+                          type="text"
+                          value={settingsForm.defaultCurrency}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, defaultCurrency: e.target.value })}
+                          className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Default Tax Rate (%)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.taxRatePercent}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, taxRatePercent: parseFloat(e.target.value) || 0 })}
+                          className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-xs">Allow New Vendor Registrations</h4>
+                        <p className="text-[11px] text-slate-500">Enable or disable new merchant sign-ups on the platform landing page.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.allowNewRegistrations}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allowNewRegistrations: e.target.checked })}
+                        className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-red-50/50 rounded-2xl border border-red-200">
+                      <div>
+                        <h4 className="font-bold text-red-900 text-xs">Platform Maintenance Mode</h4>
+                        <p className="text-[11px] text-red-700">Take platform offline temporarily for system maintenance.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.maintenanceMode}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, maintenanceMode: e.target.checked })}
+                        className="w-5 h-5 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await adminSaveGlobalSettings(settingsForm);
+                          alert('Global platform settings saved and synchronized successfully!');
+                        } catch (err: any) {
+                          alert('Error saving settings: ' + err.message);
+                        }
+                      }}
+                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
+                    >
+                      Save Global Settings
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* CUSTOMERS TAB */}
+              {activeTab === 'customers' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900">Platform Customers Directory</h3>
+                      <p className="text-xs text-slate-500 mt-1">All customers registered across merchant storefronts.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => exportToCSV(customers, 'platform_customers.csv')}
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-emerald-400" /> Export CSV
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
+                        <tr>
+                          <th className="p-4">Customer Name</th>
+                          <th className="p-4">Phone / Email</th>
+                          <th className="p-4">Store / Merchant</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {customers.map((c: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-4 font-bold text-slate-900">{c.customer?.name || 'Customer'}</td>
+                            <td className="p-4 text-slate-600 font-mono">{c.customer?.phone || c.customer?.email || 'N/A'}</td>
+                            <td className="p-4 font-semibold text-emerald-700">{c.businessName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* OTHER PLACEHOLDER TABS FOR COMPREHENSIVE COVERAGE */}
-              {['customers', 'subscriptions', 'payments', 'reviews', 'faqs', 'features', 'business_types', 'support', 'announcements', 'system_health', 'settings', 'urls'].includes(activeTab) && (
+              {['subscriptions', 'payments', 'reviews', 'faqs', 'features', 'business_types', 'support', 'announcements', 'system_health'].includes(activeTab) && (
                 <div className="bg-white rounded-3xl border border-slate-200 p-8 space-y-4 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
                     <Layers className="w-8 h-8" />
