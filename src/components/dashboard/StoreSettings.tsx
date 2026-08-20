@@ -101,6 +101,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
         seoMetaTitle: seoMetaTitle.trim() || undefined,
         seoMetaDescription: seoMetaDescription.trim() || undefined,
         status,
+        maintenanceMode: status === 'maintenance',
         maintenanceMessage: maintenanceMessage.trim() || undefined,
         maintenanceImage: maintenanceImage.trim() || undefined,
       };

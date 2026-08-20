@@ -107,6 +107,18 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
       { name: 'Artisan Crafts', icon: 'ShoppingBag' }
     ];
   });
+  const [landingHero, setLandingHero] = useState(() => {
+    try {
+      const saved = localStorage.getItem('storelly_landing_hero_config');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      badge: "India's #1 Digital Business Operating System",
+      headline: "Launch Your Online Store & Grow With Storelly",
+      subtitle: "Empower your local shop, boutique, homemade brand, or service business with a professional storefront, product catalog, instant orders, and custom digital cards — in minutes, no coding needed.",
+      heroImageUrl: "/storelly6.jpg.jpeg"
+    };
+  });
   const [newBrandName, setNewBrandName] = useState('');
   const [seoConfig, setSeoConfig] = useState(() => ({
     googleVerification: localStorage.getItem('storelly_seo_gsc') || '',
@@ -981,13 +993,66 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
 
               {/* LANDING PAGE CMS TAB */}
               {activeTab === 'landing_cms' && (
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-8">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">Landing Page CMS & Marquee Brands</h3>
-                    <p className="text-xs text-slate-500 mt-1">Manage the brands displayed in the "Trusted by Top-Performing Local Brands" section.</p>
+                    <h3 className="text-xl font-black text-slate-900">Landing Page CMS & Hero Section</h3>
+                    <p className="text-xs text-slate-500 mt-1">Configure the public landing page hero banner, headings, and marquee brands.</p>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                    <h4 className="text-sm font-bold text-slate-900">Hero Section Content Editor</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Hero Badge Text</label>
+                        <input
+                          type="text"
+                          value={landingHero.badge}
+                          onChange={(e) => setLandingHero({ ...landingHero, badge: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Hero Headline</label>
+                        <input
+                          type="text"
+                          value={landingHero.headline}
+                          onChange={(e) => setLandingHero({ ...landingHero, headline: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500 font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Hero Subtitle / Description</label>
+                        <textarea
+                          value={landingHero.subtitle}
+                          onChange={(e) => setLandingHero({ ...landingHero, subtitle: e.target.value })}
+                          rows={3}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Hero Image URL</label>
+                        <input
+                          type="text"
+                          value={landingHero.heroImageUrl}
+                          onChange={(e) => setLandingHero({ ...landingHero, heroImageUrl: e.target.value })}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          localStorage.setItem('storelly_landing_hero_config', JSON.stringify(landingHero));
+                          alert('Landing hero settings saved successfully!');
+                        }}
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                      >
+                        Save Hero Section Settings
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-slate-900">Marquee Brand Logos</h4>
                     <div className="flex gap-3">
                       <input 
                         type="text" 

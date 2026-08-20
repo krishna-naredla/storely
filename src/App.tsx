@@ -56,6 +56,7 @@ import { ReviewsManager } from './components/dashboard/ReviewsManager';
 import { OffersManager } from './components/dashboard/OffersManager';
 import { AnalyticsView } from './components/dashboard/AnalyticsView';
 import { ModuleManager } from './components/dashboard/ModuleManager';
+import { StorePaymentsManager } from './components/dashboard/StorePaymentsManager';
 import { StoreSettings } from './components/dashboard/StoreSettings';
 import { DigitalCardPreview } from './components/common/DigitalCardPreview';
 import { AuthModal } from './components/auth/AuthModal';
@@ -766,6 +767,18 @@ function MainContent() {
 
           {activeTab === 'modules' && (
             <ModuleManager
+              business={biz}
+              onBusinessUpdated={(updated) => {
+                setSelectedBusiness(updated);
+                setBusinesses((prev) =>
+                  prev.map((b) => (b.id === updated.id ? updated : b))
+                );
+              }}
+            />
+          )}
+
+          {activeTab === 'payments' && (
+            <StorePaymentsManager
               business={biz}
               onBusinessUpdated={(updated) => {
                 setSelectedBusiness(updated);

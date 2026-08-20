@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   QrCode,
   SlidersHorizontal,
+  Wrench,
 } from 'lucide-react';
 import {
   BusinessProfile,
@@ -76,6 +77,67 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       metaDesc.setAttribute('content', business.seoMetaDescription);
     }
   }, [business]);
+
+  if (business.maintenanceMode || business.status === 'maintenance') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl border border-slate-200 space-y-6 animate-in fade-in zoom-in duration-300">
+          <div className="w-20 h-20 bg-amber-100 text-amber-700 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
+            <Wrench className="w-10 h-10 animate-bounce" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-widest bg-amber-100 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+              Store Under Maintenance
+            </span>
+            <h1 className="text-2xl font-black text-slate-900 font-heading">
+              {business.name} is Temporarily Offline
+            </h1>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {business.maintenanceMessage || 'We are currently performing scheduled system upgrades or taking a short break. Please check back shortly!'}
+            </p>
+          </div>
+
+          {business.maintenanceImage && (
+            <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm max-h-48">
+              <img
+                src={business.maintenanceImage}
+                alt="Maintenance"
+                className="w-full h-48 object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-slate-100 space-y-3">
+            {business.whatsapp || business.phone ? (
+              <a
+                href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${business.name}, I wanted to inquire when your store will be back online.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span>Contact Store on WhatsApp</span>
+              </a>
+            ) : null}
+
+            {onBackToDashboard && (
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-2xl transition cursor-pointer"
+              >
+                Return to Dashboard
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
   const {
     setStorefrontBusinessId,
     items: cartItems,
@@ -354,7 +416,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     loading="eager"
                     fetchPriority="high"
                     onError={() => setLogoError(true)}
-                    className="w-full h-full object-contain rounded-xl"
+                    className="w-full h-full object-cover aspect-square rounded-xl"
                   />
                 ) : (
                   <div className="w-full h-full bg-emerald-600 text-white font-extrabold text-3xl flex items-center justify-center rounded-xl shadow-inner">

@@ -16,10 +16,11 @@ import {
   Store,
   UtensilsCrossed,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { BusinessProfile, Offer, Order } from '../../types';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
-import { createOrder, getOffers } from '../../services/firebaseService';
+import { createOrder, getOffers, updateOrderStatus } from '../../services/firebaseService';
 
 interface StorefrontCartDrawerProps {
   business: BusinessProfile;
@@ -50,7 +51,8 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerPincode, setCustomerPincode] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi_on_delivery' | 'cash_at_counter'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi_on_delivery' | 'online' | 'cash_at_counter'>('online');
+  const [upiReferenceId, setUpiReferenceId] = useState('');
 
   // Coupon / Discount State
   const [couponCode, setCouponCode] = useState('');
@@ -152,6 +154,18 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
       return;
     }
 
+    if (paymentMethod === 'online') {
+      if (!upiReferenceId.trim()) {
+        setOrderError('Please enter your UPI Transaction Reference / UTR ID to confirm your online order.');
+        return;
+      }
+      const utrRegex = /^[a-zA-Z0-9]{8,24}$/;
+      if (!utrRegex.test(upiReferenceId.trim())) {
+        setOrderError('Invalid UPI UTR format. Please enter a valid 8 to 24 character alphanumeric transaction reference number (e.g., 423561829301).');
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -189,10 +203,10 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
         discount,
         tax,
         total,
-        status: 'pending' as const,
+        status: paymentMethod === 'online' ? 'pending-verification' as const : 'pending' as const,
         paymentMethod,
-        paymentStatus: 'pending' as const,
-        notes: orderNotes.trim() || undefined,
+        paymentStatus: paymentMethod === 'online' ? 'paid' as const : 'pending' as const,
+        notes: [orderNotes.trim(), upiReferenceId ? `UPI UTR: ${upiReferenceId}` : ''].filter(Boolean).join(' | ') || undefined,
       };
 
       // Write order to Firestore
@@ -230,7 +244,9 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
         (discount > 0 ? `Discount: -${business.currencySymbol}${discount}\n` : '') +
         (deliveryFee > 0 ? `Delivery: +${business.currencySymbol}${deliveryFee}\n` : '') +
         `*Total Amount:* *${business.currencySymbol}${total}*\n` +
-        `Payment: ${paymentMethod.toUpperCase().replace(/_/g, ' ')}\n\n` +
+        `💳 *Payment:* ${paymentMethod === 'online' ? 'Online UPI (PAID)' : paymentMethod.toUpperCase().replace(/_/g, ' ')}\n` +
+        (paymentMethod === 'online' && business.upiId ? `🏦 *Store UPI ID:* ${business.upiId}\n` : '') +
+        (upiReferenceId ? `🆔 *UPI Ref/UTR:* ${upiReferenceId}\n\n` : '\n') +
         `Please confirm this order. Thank you!`
       );
 
@@ -281,44 +297,54 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
             </button>
           </div>
 
-          {/* Success View when Order Placed */}
+          {/* Success / Tracking View when Order Placed */}
           {placedOrder ? (
             <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center text-center space-y-4 min-h-[420px]">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-inner animate-pulse">
+                <Clock className="w-8 h-8" />
               </div>
 
               <div>
-                <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shadow-2xs">
-                  Order Received
+                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-2xs">
+                  ⏳ Pending Vendor Confirmation
                 </span>
                 <h3 className="text-xl font-bold text-slate-900 mt-2 font-heading">
-                  Thank You for Your Order!
+                  Order Successfully Placed!
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  Order #{placedOrder.orderNumber} has been logged and sent to {business.name}.
+                  Order <strong className="text-slate-800">#{placedOrder.orderNumber}</strong> has been logged. Waiting for merchant to review and confirm.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 w-full text-left text-xs space-y-2">
-                <div className="flex justify-between text-slate-600">
-                  <span>Order Total:</span>
-                  <span className="font-bold text-slate-900">
-                    {business.currencySymbol}
-                    {placedOrder.total}
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Status:</span>
-                  <span className="font-semibold text-emerald-700 uppercase">
+              {/* Order Status Timeline */}
+              <div className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-left space-y-3 text-xs">
+                <div className="font-bold text-slate-800 flex items-center justify-between border-b pb-2">
+                  <span>Order Tracking Status</span>
+                  <span className="text-amber-700 font-extrabold uppercase bg-amber-100/70 px-2 py-0.5 rounded">
                     {placedOrder.status}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>Payment:</span>
-                  <span className="font-medium text-slate-800 uppercase">
-                    {placedOrder.paymentMethod.replace(/_/g, ' ')}
-                  </span>
+
+                <div className="space-y-2 pt-1 text-[11px] text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                    <span className="font-semibold text-slate-900">1. Order Placed & Sent to Merchant</span>
+                  </div>
+                  <div className={`flex items-center gap-2 ${placedOrder.status !== 'pending' ? 'text-slate-900' : 'text-slate-400'}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${placedOrder.status !== 'pending' ? 'bg-emerald-600 text-white' : 'bg-amber-200 text-amber-800 animate-pulse'}`}>
+                      {placedOrder.status !== 'pending' ? '✓' : '⌛'}
+                    </span>
+                    <span>2. Vendor Acceptance & Confirmation</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">3</span>
+                    <span>3. Preparation & Out for Delivery / Ready</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t flex justify-between font-bold text-slate-900 text-xs">
+                  <span>Total Amount:</span>
+                  <span className="text-emerald-700">{business.currencySymbol}{placedOrder.total}</span>
                 </div>
               </div>
 
@@ -328,15 +354,31 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                   onClick={() => {
                     const merchantPhone = (business.whatsapp || business.phone).replace(/\D/g, '');
                     const waUrl = `https://wa.me/${merchantPhone}?text=${encodeURIComponent(
-                      `Hi ${business.name}, I am checking the status of my order #${placedOrder.orderNumber}.`
+                      `Hi ${business.name}, I placed order #${placedOrder.orderNumber} and would like to confirm its status.`
                     )}`;
                     window.open(waUrl, '_blank');
                   }}
                   className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Chat on WhatsApp</span>
+                  <span>Chat with Merchant on WhatsApp</span>
                 </button>
+
+                {placedOrder.status === 'pending' && (
+                  <button
+                    type="button"
+                    async
+                    onClick={async () => {
+                      if (window.confirm('Are you sure you want to cancel this pending order?')) {
+                        await updateOrderStatus(business.id, placedOrder.id, 'cancelled');
+                        setPlacedOrder({ ...placedOrder, status: 'cancelled' });
+                      }
+                    }}
+                    className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition cursor-pointer"
+                  >
+                    Cancel Order
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -346,7 +388,7 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                   }}
                   className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
                 >
-                  Continue Shopping
+                  Close & Continue Shopping
                 </button>
               </div>
             </div>
@@ -668,6 +710,26 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                     </span>
                     <div className="space-y-1.5">
                       <label
+                        onClick={() => setPaymentMethod('online')}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                          paymentMethod === 'online'
+                            ? 'bg-emerald-50/70 border-emerald-500 text-slate-900 font-semibold'
+                            : 'bg-white border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        <span>⚡ Pay Online via UPI (GPay, PhonePe, Paytm)</span>
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                            paymentMethod === 'online'
+                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                              : 'border-slate-300'
+                          }`}
+                        >
+                          {paymentMethod === 'online' && '✓'}
+                        </div>
+                      </label>
+
+                      <label
                         onClick={() => setPaymentMethod('cod')}
                         className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                           paymentMethod === 'cod'
@@ -707,6 +769,60 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                         </div>
                       </label>
                     </div>
+
+                    {/* Online UPI Payment Interactive Widget */}
+                    {paymentMethod === 'online' && (
+                      <div className="mt-3 p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
+                            Instant UPI Payment
+                          </span>
+                          <span className="text-xs font-black text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-emerald-300">
+                            {business.currencySymbol}{total}
+                          </span>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-2 text-center">
+                          <p className="text-[11px] font-medium text-slate-600">
+                            Scan QR with any UPI App or click Pay Now below:
+                          </p>
+                          <div className="flex justify-center my-1">
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                                `upi://pay?pa=${business.upiId || 'maninaredla218@oksbi'}&pn=${encodeURIComponent(business.name)}&am=${total}&cu=INR&tn=OrderPayment`
+                              )}`}
+                              alt="Store UPI QR Code"
+                              className="w-32 h-32 rounded-lg border p-1 bg-white shadow-xs mx-auto"
+                            />
+                          </div>
+                          <div className="text-xs font-mono font-bold text-slate-800 bg-slate-100 py-1 px-2 rounded-lg select-all">
+                            UPI ID: {business.upiId || 'maninaredla218@oksbi'}
+                          </div>
+                          <a
+                            href={`upi://pay?pa=${business.upiId || 'maninaredla218@oksbi'}&pn=${encodeURIComponent(business.name)}&am=${total}&cu=INR&tn=OrderPayment`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm text-center transition"
+                          >
+                            🚀 Open GPay / PhonePe / Paytm to Pay {business.currencySymbol}{total}
+                          </a>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-emerald-900 uppercase tracking-wider flex items-center justify-between">
+                            <span>UPI Transaction Ref / UTR (Required)</span>
+                            <span className="text-[9px] text-emerald-600 font-normal">8-24 Alphanumeric</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={upiReferenceId}
+                            onChange={(e) => setUpiReferenceId(e.target.value)}
+                            placeholder="e.g. 423561829301"
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Price Calculation Bill Breakdown */}

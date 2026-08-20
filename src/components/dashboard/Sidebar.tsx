@@ -12,6 +12,7 @@ import {
   Sliders,
   Settings,
   Share2,
+  CreditCard,
   ExternalLink,
   LogOut,
   X,
@@ -34,6 +35,7 @@ export type DashboardTab =
   | 'offers'
   | 'analytics'
   | 'modules'
+  | 'payments'
   | 'share'
   | 'settings'
   | 'profile';
@@ -146,6 +148,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'modules',
       label: 'Module Manager',
       icon: Sliders,
+      visible: true,
+    },
+    {
+      id: 'payments',
+      label: 'Payments & UPI',
+      icon: CreditCard,
       visible: true,
     },
     {

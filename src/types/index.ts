@@ -119,6 +119,7 @@ export interface BusinessProfile {
   seoMetaDescription?: string;
   modules: BusinessModuleConfig;
   status: 'active' | 'inactive' | 'draft' | 'suspended' | 'maintenance';
+  maintenanceMode?: boolean;
   maintenanceMessage?: string;
   maintenanceImage?: string;
   themeColor?: string;
@@ -217,6 +218,7 @@ export interface CatalogItem {
 
 export type OrderStatus =
   | 'pending'
+  | 'pending-verification'
   | 'confirmed'
   | 'processing'
   | 'ready'

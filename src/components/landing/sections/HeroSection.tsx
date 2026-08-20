@@ -6,6 +6,19 @@ interface Props {
 }
 
 export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
+  const heroConfig = (() => {
+    try {
+      const saved = localStorage.getItem('storelly_landing_hero_config');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      badge: "India's #1 Digital Business Operating System",
+      headline: "Launch Your Online Store & Grow With Storelly",
+      subtitle: "Empower your local shop, boutique, homemade brand, or service business with a professional storefront, product catalog, instant orders, and custom digital cards — in minutes, no coding needed.",
+      heroImageUrl: "/storelly6.jpg.jpeg"
+    };
+  })();
+
   return (
     <div className="relative pt-32 pb-20 lg:pt-44 lg:pb-32 overflow-hidden bg-slate-50 border-b border-slate-100">
       {/* Background decoration */}
@@ -21,15 +34,15 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           <div className="lg:col-span-7 space-y-8">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-200/80 text-emerald-800 text-xs font-bold uppercase tracking-wider">
               <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-              India's #1 Digital Business Operating System
+              {heroConfig.badge}
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 leading-[1.12] tracking-tight">
-              Launch Your Online Store & Grow With <span className="text-emerald-600">Storelly</span>
+              {heroConfig.headline.split('Storelly')[0]} <span className="text-emerald-600">Storelly</span> {heroConfig.headline.split('Storelly')[1] || ''}
             </h1>
             
             <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl font-normal">
-              Empower your local shop, boutique, homemade brand, or service business with a professional storefront, product catalog, instant orders, and custom digital cards — in minutes, no coding needed.
+              {heroConfig.subtitle}
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
@@ -64,9 +77,9 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           <div className="lg:col-span-5 relative">
             <div className="relative rounded-3xl bg-linear-to-b from-emerald-50 to-teal-100/50 shadow-2xl shadow-emerald-900/10 border border-emerald-200/60 p-4 overflow-hidden flex items-center justify-center">
               <img 
-                src="/storelly6.jpg.jpeg" 
+                src={heroConfig.heroImageUrl} 
                 alt="Storelly Business Showcase" 
-                className="w-full max-h-[460px] object-contain rounded-2xl shadow-lg mx-auto"
+                className="w-full max-h-[460px] object-cover rounded-2xl shadow-lg mx-auto"
               />
               <div className="absolute inset-0 bg-linear-to-t from-emerald-950/40 via-transparent to-transparent rounded-3xl pointer-events-none"></div>
               
