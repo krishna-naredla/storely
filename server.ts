@@ -136,6 +136,95 @@ async function startServer() {
     }
   });
 
+  // Dedicated OpenGraph Image Generation Service Route (High-resolution 1200x630 pre-cached for WhatsApp)
+  app.get("/api/og-image/:slug", async (req, res) => {
+    const { slug } = req.params;
+    try {
+      const vendor = await fetchVendorMetadata(slug);
+      const name = vendor?.name || slug || 'Storelly Business';
+      const tagline = vendor?.tagline || vendor?.description || 'Catalog, Instant Orders & Direct WhatsApp Checkout';
+      const city = vendor?.city || vendor?.address || 'Verified Digital Store';
+
+      const safeName = name.replace(/[<>&'"]/g, '');
+      const safeTagline = tagline.replace(/[<>&'"]/g, '').slice(0, 75);
+      const safeCity = city.replace(/[<>&'"]/g, '');
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+        <defs>
+          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#065f46" />
+            <stop offset="50%" stop-color="#047857" />
+            <stop offset="100%" stop-color="#022c22" />
+          </linearGradient>
+          <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98" />
+            <stop offset="100%" stop-color="#f0fdf4" stop-opacity="0.95" />
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="630" fill="url(#bg)" />
+        <circle cx="1050" cy="120" r="280" fill="#10b981" opacity="0.18" />
+        <circle cx="150" cy="520" r="220" fill="#34d399" opacity="0.1" />
+        
+        <!-- Main Card Frame -->
+        <rect x="80" y="70" width="1040" height="490" rx="32" fill="url(#cardBg)" stroke="#10b981" stroke-width="3" opacity="0.98" filter="drop-shadow(0 20px 30px rgba(0,0,0,0.25))" />
+        
+        <!-- Header Badge -->
+        <rect x="130" y="120" width="230" height="42" rx="21" fill="#d1fae5" />
+        <text x="245" y="147" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="800" fill="#065f46" text-anchor="middle" letter-spacing="2">✓ VERIFIED STORE</text>
+
+        <!-- Business Name -->
+        <text x="130" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="900" fill="#0f172a">${safeName}</text>
+        
+        <!-- Tagline -->
+        <text x="130" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#047857">${safeTagline}</text>
+
+        <!-- Location / Info -->
+        <text x="130" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#64748b">📍 ${safeCity} • Instant WhatsApp Checkout &amp; Catalog</text>
+
+        <!-- CTA Button Box -->
+        <rect x="130" y="425" width="310" height="70" rx="20" fill="#059669" />
+        <text x="285" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#ffffff" text-anchor="middle">VISIT STORE NOW →</text>
+        
+        <!-- Brand Footer -->
+        <text x="1040" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="#94a3b8" text-anchor="end">Powered by Storelly</text>
+      </svg>`;
+
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800');
+      return res.send(svg);
+    } catch (e) {
+      console.error("OG Image generation error:", e);
+      res.status(500).send("Error generating OG image");
+    }
+  });
+
+  // Dedicated Social Meta-Tag Generation Route (JSON / Metadata API)
+  app.get("/api/social-meta/:slug", async (req, res) => {
+    const { slug } = req.params;
+    try {
+      const vendor = await fetchVendorMetadata(slug);
+      if (!vendor) {
+        return res.status(404).json({ error: "Store not found" });
+      }
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const storeUrl = `${protocol}://${host}/store/${slug}`;
+      const ogImageUrl = `${protocol}://${host}/api/og-image/${slug}`;
+
+      return res.json({
+        slug,
+        name: vendor.name,
+        title: `${vendor.name} - Official Store | Storelly`,
+        description: vendor.tagline || vendor.description || `Explore catalog and order instantly from ${vendor.name} on Storelly.`,
+        storeUrl,
+        ogImageUrl,
+        whatsappShareText: `🌟 *${(vendor.name || '').toUpperCase()}* 🌟\n${vendor.tagline || 'Verified Digital Storefront'}\n\n🛒 *Explore Catalog & Place Orders Instantly!*\n\n📍 Location: ${vendor.city || vendor.address || 'Online Store'}\n📞 WhatsApp: ${vendor.whatsapp || vendor.phone}\n\n👇 *VISIT STORE NOW (100% Secure & Fast)*:\n🔗 ${storeUrl}\n\n✨ _Tap the link above to browse products and order directly!_`
+      });
+    } catch (e) {
+      res.status(500).json({ error: "Internal error" });
+    }
+  });
+
   // Server-side Social Link Preview handler for /store/:slug
   app.get("/store/:slug", async (req, res, next) => {
     const { slug } = req.params;
@@ -151,8 +240,10 @@ async function startServer() {
           let html = fs.readFileSync(indexPath, 'utf8');
           const title = `${vendor.name} - Official Store | Storelly`;
           const description = vendor.tagline || vendor.description || `Explore catalog, special offers, and order instantly from ${vendor.name} on Storelly.`;
-          const image = vendor.banner || vendor.logo || generateFallbackOgImage(vendor.name);
-          const url = `${req.protocol}://${req.get('host')}/store/${slug}`;
+          const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+          const host = req.get('host');
+          const image = `${protocol}://${host}/api/og-image/${slug}`;
+          const url = `${protocol}://${host}/store/${slug}`;
 
           const ogTags = `
             <meta charset="UTF-8" />
@@ -162,6 +253,8 @@ async function startServer() {
             <meta property="og:title" content="${vendor.name} | Storelly" />
             <meta property="og:description" content="${description}" />
             <meta property="og:image" content="${image}" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
             <meta property="og:url" content="${url}" />
             <meta property="og:type" content="website" />
             <meta name="twitter:card" content="summary_large_image" />
