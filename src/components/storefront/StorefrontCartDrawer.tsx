@@ -214,6 +214,20 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
       setPlacedOrder(created);
       clearCart();
 
+      // Save to local device order history for customer tracking
+      try {
+        const existingIds: string[] = JSON.parse(
+          localStorage.getItem(`storelly_my_order_ids_${business.id}`) || '[]'
+        );
+        if (!existingIds.includes(created.id)) {
+          existingIds.unshift(created.id);
+          localStorage.setItem(`storelly_my_order_ids_${business.id}`, JSON.stringify(existingIds));
+        }
+        localStorage.setItem(`storelly_customer_phone_${business.id}`, customerPhone.trim());
+      } catch (e) {
+        // ignore localStorage errors
+      }
+
       // Format WhatsApp receipt message
       const itemsListText = items
         .map((it, idx) => {

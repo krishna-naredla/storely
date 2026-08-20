@@ -47,14 +47,23 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ business }) => {
     return () => unsubscribe();
   }, [business.id]);
 
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  const handleStatusChange = async (order: Order, newStatus: OrderStatus) => {
+    // If attempting to confirm an online payment order, check if UTR exists in notes or order
+    if (newStatus === 'confirmed' && order.paymentMethod === 'online') {
+      const hasUtr = order.notes && (order.notes.toLowerCase().includes('utr') || order.notes.length >= 8);
+      if (!hasUtr) {
+        alert('Cannot confirm this online order yet! A valid UPI UTR (Transaction Reference) must be verified first.');
+        return;
+      }
+    }
+
     try {
       setIsUpdatingStatus(true);
-      await updateOrderStatus(business.id, orderId, newStatus);
+      await updateOrderStatus(business.id, order.id, newStatus);
       setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+        prev.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o))
       );
-      if (selectedOrder && selectedOrder.id === orderId) {
+      if (selectedOrder && selectedOrder.id === order.id) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
     } catch (err) {
@@ -316,20 +325,20 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ business }) => {
                   Update Fulfilment Status
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                  {(['pending', 'confirmed', 'processing', 'delivered', 'cancelled'] as OrderStatus[]).map(
+                  {(['pending', 'pending-verification', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'] as OrderStatus[]).map(
                     (st) => (
                       <button
                         key={st}
                         type="button"
                         disabled={isUpdatingStatus}
-                        onClick={() => handleStatusChange(selectedOrder.id, st)}
+                        onClick={() => handleStatusChange(selectedOrder, st)}
                         className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition ${
                           selectedOrder.status === st
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                         }`}
                       >
-                        {st}
+                        {st.replace('-', ' ')}
                       </button>
                     )
                   )}

@@ -48,6 +48,7 @@ import { StorefrontCartDrawer } from './StorefrontCartDrawer';
 import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
 import { BookingModal } from './BookingModal';
 import { ReviewSubmitModal } from './ReviewSubmitModal';
+import { CustomerOrdersModal } from './CustomerOrdersModal';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -165,6 +166,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<CatalogItem | null>(null);
   const [selectedItemForBooking, setSelectedItemForBooking] = useState<CatalogItem | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isCustomerOrdersOpen, setIsCustomerOrdersOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [bannerError, setBannerError] = useState(false);
   const [logoError, setLogoError] = useState(false);
@@ -494,6 +496,16 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 <MessageCircle className="w-4 h-4" />
                 <span>WhatsApp</span>
               </a>
+
+              <button
+                type="button"
+                onClick={() => setIsCustomerOrdersOpen(true)}
+                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="View My Orders & Track Status"
+              >
+                <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                <span className="hidden sm:inline">My Orders</span>
+              </button>
 
               <a
                 href={`tel:${business.phone || business.whatsapp}`}
@@ -1165,6 +1177,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
         onReviewSubmitted={loadStoreData}
+      />
+
+      {/* Customer Orders & Tracking Modal */}
+      <CustomerOrdersModal
+        business={business}
+        isOpen={isCustomerOrdersOpen}
+        onClose={() => setIsCustomerOrdersOpen(false)}
       />
     </div>
   );
