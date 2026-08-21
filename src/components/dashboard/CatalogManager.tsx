@@ -36,6 +36,7 @@ import {
 } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
+import { ImageSizeWarning } from '../common/ImageSizeWarning';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { SwipeToDelete } from '../common/SwipeToDelete';
 import { deleteImageFromStorage } from '../../services/cloudinary';
@@ -72,6 +73,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   const [unit, setUnit] = useState('pcs');
   const [sku, setSku] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageFileSize, setImageFileSize] = useState<number | undefined>(undefined);
   const [inStock, setInStock] = useState(true);
   const [stockQuantity, setStockQuantity] = useState<number | undefined>(undefined);
   const [isFeatured, setIsFeatured] = useState(false);
@@ -711,14 +713,16 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
               </div>
 
               {/* Photos with Cloudinary */}
-              <div>
+              <div className="space-y-2">
                 <ImageUploadInput
                   label="Item Photo (Cloudinary CDN or Image URL)"
                   value={imageUrls[0] || ''}
                   onChange={(url) => setImageUrls(url ? [url] : [])}
                   aspectRatio="square"
                   helperText="Primary photo displayed across your storefront catalog."
+                  onFileSizeChange={(size) => setImageFileSize(size)}
                 />
+                <ImageSizeWarning fileSize={imageFileSize} />
               </div>
 
               {/* Short & Detailed Descriptions */}

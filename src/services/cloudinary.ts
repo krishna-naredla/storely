@@ -4,9 +4,10 @@
  * Upload Preset: ml_default
  */
 
-export const CLOUDINARY_CLOUD_NAME = 'o2pfmu7m';
+export const CLOUDINARY_CLOUD_NAME = 'dxbkgx6tl';
 export const CLOUDINARY_UPLOAD_PRESET = 'ml_default';
-export const CLOUDINARY_API_KEY = '649723787253551';
+export const CLOUDINARY_API_KEY = '618932888682632';
+export const CLOUDINARY_API_SECRET = 'NwVtyH9n3GJDgeTXivGga1O6diY';
 
 export interface CloudinaryUploadResult {
   secure_url: string;

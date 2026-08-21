@@ -47,36 +47,14 @@ export const AboutSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Column 2: Center photo with floating Sales Growth +45% and Total Revenue ₹2,45,000 cards */}
-          <div className="relative flex items-center justify-center p-4">
-            <div className="relative w-full rounded-2xl overflow-hidden shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] border border-[#e7e5df] bg-white p-4">
+          {/* Column 2: Center photo */}
+          <div className="relative flex items-center justify-center p-2 sm:p-4">
+            <div className="relative w-full rounded-2xl bg-white p-3 sm:p-4 shadow-xl border border-[#e7e5df] flex items-center justify-center overflow-hidden">
               <img 
                 src="/storelly1.jpg.jpeg" 
                 alt="Store Owner Managing Business" 
-                className="w-full h-[340px] object-cover rounded-xl"
+                className="w-full h-auto max-h-[420px] object-contain rounded-xl mx-auto"
               />
-              
-              {/* Floating Sales Growth Card */}
-              <div className="absolute top-8 left-8 bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border border-[#e7e5df] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#eaf6ee] text-[#155330] flex items-center justify-center font-bold">
-                  <TrendingUp className="w-5 h-5 text-[#2f9e5c]" />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-[#5c6b63]">Sales Growth</p>
-                  <p className="text-sm font-extrabold text-[#14201a]">+45% this month</p>
-                </div>
-              </div>
-
-              {/* Floating Total Revenue Card */}
-              <div className="absolute bottom-8 right-8 bg-white/95 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border border-[#e7e5df] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#155330] text-white flex items-center justify-center font-black text-sm">
-                  ₹
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-[#5c6b63]">Total Revenue</p>
-                  <p className="text-sm font-extrabold text-[#14201a]">₹2,45,000</p>
-                </div>
-              </div>
             </div>
           </div>
 

@@ -74,31 +74,13 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           </div>
 
           {/* Right Image/Illustration */}
-          <div className="lg:col-span-5 relative">
-            <div className="relative rounded-3xl bg-linear-to-b from-emerald-50 to-teal-100/50 shadow-2xl shadow-emerald-900/10 border border-emerald-200/60 p-4 overflow-hidden flex items-center justify-center">
+          <div className="lg:col-span-5 relative flex items-center justify-center">
+            <div className="relative w-full rounded-3xl bg-linear-to-b from-emerald-50 to-teal-100/50 shadow-2xl shadow-emerald-900/10 border border-emerald-200/60 p-5 overflow-hidden flex items-center justify-center transform hover:scale-[1.01] transition-transform duration-300">
               <img 
                 src={heroConfig.heroImageUrl} 
                 alt="Storelly Business Showcase" 
-                className="w-full max-h-[460px] object-cover rounded-2xl shadow-lg mx-auto"
+                className="w-full h-auto max-h-[580px] lg:max-h-[640px] object-cover rounded-2xl shadow-xl mx-auto"
               />
-              <div className="absolute inset-0 bg-linear-to-t from-emerald-950/40 via-transparent to-transparent rounded-3xl pointer-events-none"></div>
-              
-              {/* Floating Sales Card */}
-              <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-emerald-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-emerald-600/30">
-                    ₹
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Live Store Revenue</p>
-                    <p className="text-lg font-black text-slate-900">₹2,45,000</p>
-                    <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">↑ +18.5% this week</p>
-                  </div>
-                </div>
-                <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
-                  Active
-                </div>
-              </div>
             </div>
           </div>
 

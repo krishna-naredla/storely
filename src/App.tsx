@@ -58,6 +58,7 @@ import { AnalyticsView } from './components/dashboard/AnalyticsView';
 import { ModuleManager } from './components/dashboard/ModuleManager';
 import { StorePaymentsManager } from './components/dashboard/StorePaymentsManager';
 import { StoreSettings } from './components/dashboard/StoreSettings';
+import { NotificationHistoryView } from './components/dashboard/NotificationHistoryView';
 import { DigitalCardPreview } from './components/common/DigitalCardPreview';
 import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingWizard } from './components/auth/OnboardingWizard';
@@ -195,8 +196,19 @@ function MainContent() {
     type: 'order' | 'booking';
   } | null>(null);
 
-  const playNotificationChime = () => {
-    const playSingle = () => {
+  // Register Service Worker for PWA Web Push background alerts
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('Storelly PWA ServiceWorker registered with scope:', reg.scope);
+      }).catch((err) => {
+        console.warn('ServiceWorker registration failed:', err);
+      });
+    }
+  }, []);
+
+  const playNotificationChime = (volumeMultiplier = 1.0) => {
+    const playSingle = (vol: number) => {
       try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return;
@@ -209,7 +221,7 @@ function MainContent() {
         osc.frequency.setValueAtTime(587.33, now); // D5
         osc.frequency.setValueAtTime(880, now + 0.15); // A5
 
-        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.setValueAtTime(vol, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
 
         osc.connect(gain);
@@ -222,11 +234,29 @@ function MainContent() {
       }
     };
 
-    // Play 3 times sequentially
-    playSingle();
-    setTimeout(playSingle, 400);
-    setTimeout(playSingle, 800);
+    // Play 3 times sequentially with volume scaling
+    playSingle(0.3 * volumeMultiplier);
+    setTimeout(() => playSingle(0.5 * volumeMultiplier), 400);
+    setTimeout(() => playSingle(0.8 * volumeMultiplier), 800);
   };
+
+  // Attention Seek Mode: if notification popup is not acknowledged within 15 seconds, repeat chime with increasing volume sequence
+  useEffect(() => {
+    if (!activeNewOrderNotification) return;
+
+    const timer1 = setTimeout(() => {
+      playNotificationChime(1.5);
+    }, 15000);
+
+    const timer2 = setTimeout(() => {
+      playNotificationChime(2.0);
+    }, 30000);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [activeNewOrderNotification]);
 
   // Public Storefront Resolution States
   const [publicStoreSlug, setPublicStoreSlug] = useState<string | null>(parseStoreSlugFromUrl);
@@ -375,59 +405,66 @@ function MainContent() {
     }
   }, [currentUser, authLoading]);
 
-  // Real-time FCM Push Notification Listener for New Orders & Bookings
+  // Real-time FCM Push Notification Listener for New Orders & Bookings across ALL user businesses
   useEffect(() => {
-    if (!selectedBusiness) return;
+    if (!businesses || businesses.length === 0) return;
 
-    let ordersInitialized = false;
-    const unsubOrders = subscribeToOrders(selectedBusiness.id, (orders) => {
-      if (!ordersInitialized) {
-        ordersInitialized = true;
-        return;
-      }
-      const latest = orders[0];
-      if (latest && latest.status === 'pending') {
-        playNotificationChime();
-        setActiveNewOrderNotification({
-          id: latest.id,
-          title: `New Order #${latest.orderNumber || latest.id.slice(-5)}`,
-          body: `${latest.customerName} placed an order for ${selectedBusiness.currencySymbol || '₹'}${latest.total}`,
-          type: 'order',
-        });
-        showMerchantNotification(
-          `📦 New Order #${latest.orderNumber || latest.id.slice(-5)}!`,
-          `${latest.customerName} placed an order`
-        );
-      }
-    });
+    const unsubs: (() => void)[] = [];
 
-    let bookingsInitialized = false;
-    const unsubBookings = subscribeToBookings(selectedBusiness.id, (bookings) => {
-      if (!bookingsInitialized) {
-        bookingsInitialized = true;
-        return;
-      }
-      const latestBooking = bookings[0];
-      if (latestBooking && latestBooking.status === 'pending') {
-        playNotificationChime();
-        setActiveNewOrderNotification({
-          id: latestBooking.id,
-          title: `New Appointment Request`,
-          body: `${latestBooking.customerName} requested a booking`,
-          type: 'booking',
-        });
-        showMerchantNotification(
-          `📅 New Appointment / Booking!`,
-          `${latestBooking.customerName} requested a booking`
-        );
-      }
+    businesses.forEach((biz) => {
+      let ordersInitialized = false;
+      const unsubOrders = subscribeToOrders(biz.id, (orders) => {
+        if (!ordersInitialized) {
+          ordersInitialized = true;
+          return;
+        }
+        const latest = orders[0];
+        if (latest && latest.status === 'pending') {
+          playNotificationChime();
+          setActiveNewOrderNotification({
+            id: latest.id,
+            title: `New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})`,
+            body: `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
+            type: 'order',
+          });
+          showMerchantNotification(
+            `📦 New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})!`,
+            `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
+            biz
+          );
+        }
+      });
+      unsubs.push(unsubOrders);
+
+      let bookingsInitialized = false;
+      const unsubBookings = subscribeToBookings(biz.id, (bookings) => {
+        if (!bookingsInitialized) {
+          bookingsInitialized = true;
+          return;
+        }
+        const latestBooking = bookings[0];
+        if (latestBooking && latestBooking.status === 'pending') {
+          playNotificationChime();
+          setActiveNewOrderNotification({
+            id: latestBooking.id,
+            title: `New Appointment (${biz.name})`,
+            body: `${latestBooking.customerName} requested a booking`,
+            type: 'booking',
+          });
+          showMerchantNotification(
+            `📅 New Appointment / Booking (${biz.name})!`,
+            `${latestBooking.customerName} requested a booking`,
+            biz
+          );
+        }
+      });
+      unsubs.push(unsubBookings);
     });
 
     return () => {
-      unsubOrders();
-      unsubBookings();
+      unsubs.forEach((unsub) => unsub());
     };
-  }, [selectedBusiness]);
+  }, [businesses]);
 
   // Business Selector Handler
   const handleSelectBusiness = (biz: BusinessProfile) => {
@@ -786,6 +823,13 @@ function MainContent() {
                   prev.map((b) => (b.id === updated.id ? updated : b))
                 );
               }}
+            />
+          )}
+
+          {activeTab === 'notifications' && (
+            <NotificationHistoryView
+              business={biz}
+              setActiveTab={setActiveTab}
             />
           )}
 

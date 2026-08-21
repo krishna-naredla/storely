@@ -9,7 +9,7 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react';
-import { uploadToCloudinary, isValidImageUrl } from '../../services/cloudinary';
+import { uploadToCloudinary, compressImageToDataUrl, isValidImageUrl } from '../../services/cloudinary';
 
 // Curated high quality royalty-free presets
 const SAMPLE_PRESETS: { title: string; category: string; url: string }[] = [
@@ -93,6 +93,7 @@ interface ImageUploadInputProps {
   aspectRatio?: 'square' | 'banner' | 'auto';
   helperText?: string;
   suggestedPresetType?: 'banner' | 'logo' | 'item';
+  onFileSizeChange?: (size: number) => void;
 }
 
 export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
@@ -103,6 +104,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
   aspectRatio = 'square',
   helperText,
   suggestedPresetType,
+  onFileSizeChange,
 }) => {
   const [tab, setTab] = useState<'upload' | 'url' | 'presets'>('upload');
   const [urlInput, setUrlInput] = useState(value || '');
@@ -130,17 +132,31 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
       return;
     }
 
+    if (onFileSizeChange) {
+      onFileSizeChange(file.size);
+    }
+
     try {
       setIsUploading(true);
       setError(null);
       setUploadProgress(15);
 
-      const secureUrl = await uploadToCloudinary(file, (percent) => {
-        setUploadProgress(percent);
-      });
+      const isLogoOrBanner = suggestedPresetType === 'logo' || suggestedPresetType === 'banner';
+      let finalUrl = '';
 
-      onChange(secureUrl);
-      setUrlInput(secureUrl);
+      if (isLogoOrBanner) {
+        // Upload to Cloudinary CDN specifically for vendor logo and banner
+        finalUrl = await uploadToCloudinary(file, (percent) => {
+          setUploadProgress(percent);
+        });
+      } else {
+        // For catalog items, services and other assets, store as compressed Base64 data URL
+        finalUrl = await compressImageToDataUrl(file, 800, 800, 0.8);
+        setUploadProgress(100);
+      }
+
+      onChange(finalUrl);
+      setUrlInput(finalUrl);
     } catch (err: any) {
       console.warn('Upload error handled:', err);
       setError(err.message || 'Image upload failed. Please try another file or enter an image URL.');
@@ -150,6 +166,27 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleConvertToCloudinary = async () => {
+    if (!value || !value.startsWith('data:image/')) return;
+    try {
+      setIsUploading(true);
+      setError(null);
+      setUploadProgress(25);
+      const res = await fetch(value);
+      const blob = await res.blob();
+      const file = new File([blob], 'store-brand.jpg', { type: blob.type || 'image/jpeg' });
+      setUploadProgress(50);
+      const secureUrl = await uploadToCloudinary(file, (p) => setUploadProgress(p));
+      onChange(secureUrl);
+      setUrlInput(secureUrl);
+    } catch (err: any) {
+      setError('Failed to upload to Cloudinary: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -265,37 +302,52 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
 
       {/* Preview Card if image exists */}
       {value ? (
-        <div className={`relative ${aspectClass} rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 group shadow-xs`}>
-          <img
-            src={value}
-            alt="Preview"
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop&q=80';
-            }}
-          />
-          <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <div className="space-y-2">
+          <div className={`relative ${aspectClass} rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 group shadow-xs`}>
+            <img
+              src={value}
+              alt="Preview"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop&q=80';
+              }}
+            />
+            <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => (tab === 'upload' ? fileInputRef.current?.click() : setTab('url'))}
+                className="px-3 py-1.5 bg-white text-xs font-bold text-slate-900 rounded-lg shadow-sm hover:bg-slate-100 transition cursor-pointer"
+              >
+                Replace
+              </button>
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition cursor-pointer"
+                title="Remove image"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="absolute bottom-2 left-2 bg-emerald-600/95 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+              <Check className="w-3 h-3" /> Image Active
+            </div>
+          </div>
+
+          {/* One-click upload to Cloudinary for base64 logos and banners */}
+          {value.startsWith('data:image/') && (suggestedPresetType === 'logo' || suggestedPresetType === 'banner') && (
             <button
               type="button"
-              onClick={() => (tab === 'upload' ? fileInputRef.current?.click() : setTab('url'))}
-              className="px-3 py-1.5 bg-white text-xs font-bold text-slate-900 rounded-lg shadow-sm hover:bg-slate-100 transition cursor-pointer"
+              onClick={handleConvertToCloudinary}
+              disabled={isUploading}
+              className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              Replace
+              {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              <span>{isUploading ? `Uploading to Cloudinary... ${uploadProgress}%` : 'Upload to Cloudinary CDN for Rich WhatsApp Previews'}</span>
             </button>
-            <button
-              type="button"
-              onClick={handleRemove}
-              className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition cursor-pointer"
-              title="Remove image"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="absolute bottom-2 left-2 bg-emerald-600/95 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-            <Check className="w-3 h-3" /> Image Active
-          </div>
+          )}
         </div>
       ) : tab === 'upload' ? (
         /* Upload Area */
@@ -404,6 +456,12 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
 
       {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
       {helperText && !error && <p className="text-[11px] text-slate-600">{helperText}</p>}
+      
+      {/* Optimized Image Benefit Tip */}
+      <div className="flex items-center gap-1.5 text-[10px] text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+        <Sparkles className="w-3 h-3 text-emerald-600 shrink-0" />
+        <span>Tip: Using optimized images under 1MB ensures lightning-fast storefront loading and crisp WhatsApp preview cards.</span>
+      </div>
     </div>
   );
 };

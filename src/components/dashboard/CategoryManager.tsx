@@ -22,6 +22,8 @@ import {
   generateSlug,
 } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
+import { ImageUploadInput } from '../common/ImageUploadInput';
+import { ImageSizeWarning } from '../common/ImageSizeWarning';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface CategoryManagerProps {
@@ -37,6 +39,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ business }) =>
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [catName, setCatName] = useState('');
   const [catDesc, setCatDesc] = useState('');
+  const [catImage, setCatImage] = useState('');
+  const [catImageFileSize, setCatImageFileSize] = useState<number | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +70,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ business }) =>
     setEditingCat(null);
     setCatName('');
     setCatDesc('');
+    setCatImage('');
+    setCatImageFileSize(undefined);
     setError(null);
     setIsModalOpen(true);
   };
@@ -74,6 +80,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ business }) =>
     setEditingCat(cat);
     setCatName(cat.name);
     setCatDesc(cat.description || '');
+    setCatImage(cat.image || '');
+    setCatImageFileSize(undefined);
     setError(null);
     setIsModalOpen(true);
   };
@@ -93,12 +101,14 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ business }) =>
         await updateCategory(business.id, editingCat.id, {
           name: catName.trim(),
           description: catDesc.trim() || undefined,
+          image: catImage.trim() || undefined,
         });
       } else {
         await createCategory(business.id, {
           name: catName.trim(),
           slug: generateSlug(catName),
           description: catDesc.trim() || undefined,
+          image: catImage.trim() || undefined,
           sortOrder: categories.length,
           isActive: true,
         });
@@ -386,6 +396,18 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ business }) =>
                   rows={2}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <ImageUploadInput
+                  label="Category Banner / Photo"
+                  value={catImage}
+                  onChange={setCatImage}
+                  aspectRatio="banner"
+                  helperText="Optional banner displayed for this category."
+                  onFileSizeChange={setCatImageFileSize}
+                />
+                <ImageSizeWarning fileSize={catImageFileSize} />
               </div>
 
               <div className="pt-4 flex items-center justify-end gap-2 border-t border-slate-100">

@@ -19,6 +19,7 @@ import {
   Store,
   Sparkles,
   ShieldCheck,
+  Bell,
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
@@ -36,6 +37,7 @@ export type DashboardTab =
   | 'analytics'
   | 'modules'
   | 'payments'
+  | 'notifications'
   | 'share'
   | 'settings'
   | 'profile';
@@ -154,6 +156,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'payments',
       label: 'Payments & UPI',
       icon: CreditCard,
+      visible: true,
+    },
+    {
+      id: 'notifications',
+      label: 'Notification History',
+      icon: Bell,
       visible: true,
     },
     {

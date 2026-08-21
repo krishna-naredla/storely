@@ -11,12 +11,15 @@ import {
   CheckCircle2,
   Globe,
   Sparkles,
+  Bell,
+  ShieldAlert,
 } from 'lucide-react';
 import { BusinessProfile, BusinessType } from '../../types';
 import { updateBusinessProfile } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { deleteImageFromStorage } from '../../services/cloudinary';
+import { requestFcmNotificationPermission, showMerchantNotification } from '../../services/fcmPushService';
 
 interface StoreSettingsProps {
   business: BusinessProfile;
@@ -159,10 +162,43 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
 
         {/* Branding & Visuals */}
         <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-emerald-600" />
-            Brand Visuals (Cloudinary CDN)
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-emerald-600" />
+              Brand Visuals (Cloudinary CDN)
+            </h3>
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              CDN Optimized
+            </span>
+          </div>
+
+          {/* Image Size & Performance Guidance Helper Component */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-slate-50 border border-emerald-100/80 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm shadow-emerald-600/30">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-extrabold text-slate-900">
+                  Image Size & Performance Guidelines
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Upload photos under <strong className="text-emerald-700 font-bold">1MB</strong> for faster storefront loading and buttery-smooth customer experiences on mobile and desktop.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-[11px] text-slate-600 border-t border-emerald-100/60 mt-2">
+              <div className="flex items-center gap-2 bg-white/80 px-3 py-2 rounded-xl border border-emerald-100/50">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                <span><strong>Logo:</strong> 500×500px (1:1 Square)</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/80 px-3 py-2 rounded-xl border border-emerald-100/50">
+                <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
+                <span><strong>Cover Banner:</strong> 1200×400px (16:5 Wide)</span>
+              </div>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ImageUploadInput
@@ -171,7 +207,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
               onChange={setLogo}
               aspectRatio="square"
               suggestedPresetType="logo"
-              helperText="Square icon (1:1) shown on cards, headers, and receipts."
+              helperText="Square icon (1:1) shown on cards, headers, and receipts. < 1MB recommended."
             />
 
             <ImageUploadInput
@@ -180,7 +216,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
               onChange={(val) => setCoverImage(val)}
               aspectRatio="banner"
               suggestedPresetType="banner"
-              helperText="Wide hero banner displayed on the top of your public storefront."
+              helperText="Wide hero banner displayed on the top of your public storefront. < 1MB recommended."
             />
           </div>
         </div>
@@ -464,6 +500,104 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
               />
             </div>
           </div>
+        </div>
+
+        {/* Browser & Push Notifications Permission Status */}
+        <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 font-heading">Browser & Push Notifications</h3>
+                <p className="text-[11px] text-slate-500">Real-time alerts for new orders and bookings even when your app is in background.</p>
+              </div>
+            </div>
+            <div>
+              {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Notifications Enabled</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Action Required</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' ? (
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
+                <span>Your browser is configured correctly to receive system push notifications for new orders and bookings.</span>
+                <button
+                  type="button"
+                  onClick={() => showMerchantNotification(`🧪 Test Order #${Math.floor(1000 + Math.random() * 9000)}`, `Test order placed for ${business.name}`, business, 'order')}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0 cursor-pointer"
+                >
+                  Send Test Alert
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
+                <p className="font-bold flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Browser notifications are currently blocked or not enabled.</span>
+                </p>
+                <p className="text-amber-800">
+                  To ensure you never miss customer orders or appointment bookings when your dashboard is closed, please enable notifications using the guide below:
+                </p>
+              </div>
+
+              {/* Browser Guides */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <h4 className="text-xs font-bold text-slate-900">Google Chrome / Edge</h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Click the lock icon (🔒) or site settings icon next to the address bar &rarr; Find <strong>Notifications</strong> &rarr; Change from Block to <strong>Allow</strong>.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <h4 className="text-xs font-bold text-slate-900">Apple Safari (Mac/iOS)</h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Open Safari Settings &rarr; Websites &rarr; Notifications &rarr; Locate this app and select <strong>Allow</strong>.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <h4 className="text-xs font-bold text-slate-900">Mobile PWA (Android/iOS)</h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Open device App Info / Notification Settings for Storelly &rarr; Ensure <strong>Allow Notifications</strong> is enabled.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const granted = await requestFcmNotificationPermission();
+                    if (granted) {
+                      alert('Notifications successfully enabled!');
+                      window.location.reload();
+                    } else {
+                      alert('Permission was denied or blocked by your browser settings. Please follow the instructions above to unblock.');
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer"
+                >
+                  <Bell className="w-4 h-4" />
+                  <span>Enable Browser Notifications Now</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Maintenance Mode Section */}
