@@ -13,6 +13,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { deleteImageFromStorage } from './cloudinary';
 import {
   BusinessProfile,
   Category,
@@ -979,5 +980,54 @@ export async function getAnalyticsSummary(businessId: string): Promise<Analytics
       recentOrders: [],
       recentBookings: [],
     };
+  }
+}
+
+/**
+ * Permanently delete store account, all items, categories, orders, offers, and wipe all storage bucket images (Cloudinary / Firebase) to save storage costs.
+ */
+export async function permanentlyDeleteStoreAccount(business: BusinessProfile): Promise<void> {
+  const businessId = business.id;
+  try {
+    // 1. Delete all storage images (logo, cover, banner, maintenance image)
+    if (business.logo) await deleteImageFromStorage(business.logo);
+    if (business.coverImage) await deleteImageFromStorage(business.coverImage);
+    if (business.banner) await deleteImageFromStorage(business.banner);
+    if (business.maintenanceImage) await deleteImageFromStorage(business.maintenanceImage);
+
+    // 2. Fetch and delete catalog items & their images
+    const items = await getCatalogItems(businessId);
+    for (const item of items) {
+      if (item.images && Array.isArray(item.images)) {
+        for (const img of item.images) {
+          await deleteImageFromStorage(img);
+        }
+      }
+      await deleteCatalogItem(businessId, item.id);
+    }
+
+    // 3. Fetch and delete categories
+    const categories = await getCategories(businessId);
+    for (const cat of categories) {
+      await deleteCategory(businessId, cat.id);
+    }
+
+    // 4. Fetch and delete orders
+    const orders = await getOrders(businessId);
+    for (const order of orders) {
+      await deleteOrder(businessId, order.id);
+    }
+
+    // 5. Fetch and delete offers
+    const offers = await getOffers(businessId);
+    for (const offer of offers) {
+      await deleteOffer(businessId, offer.id);
+    }
+
+    // 6. Finally delete business doc & local storage
+    await deleteBusiness(businessId);
+  } catch (err) {
+    console.error('Error permanently deleting store account:', err);
+    throw err;
   }
 }

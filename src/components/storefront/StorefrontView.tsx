@@ -49,6 +49,7 @@ import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
 import { BookingModal } from './BookingModal';
 import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
+import { VerifiedBadge } from '../common/VerifiedBadge';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -62,21 +63,34 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   onOpenDigitalCard,
 }) => {
   useEffect(() => {
-    if (business.seoMetaTitle) {
-      document.title = business.seoMetaTitle;
-    } else {
-      document.title = `${business.name} - Official Store`;
-    }
-    
-    if (business.seoMetaDescription) {
-      let metaDesc = document.querySelector('meta[name="description"]');
-      if (!metaDesc) {
-        metaDesc = document.createElement('meta');
-        metaDesc.setAttribute('name', 'description');
-        document.head.appendChild(metaDesc);
+    const storeTitle = business.seoMetaTitle || `${business.name} - Official Digital Store`;
+    const storeDesc = business.seoMetaDescription || business.tagline || business.description || 'Explore catalog, instant WhatsApp checkout & direct bookings.';
+    const currentUrl = window.location.href;
+    const ogImage = `${window.location.origin}/api/og-image/${business.slug || business.id}`;
+
+    document.title = storeTitle;
+
+    // Helper to set or create meta tags
+    const setMetaTag = (propertyOrName: string, attr: 'property' | 'name', content: string) => {
+      let el = document.querySelector(`meta[${attr}="${propertyOrName}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attr, propertyOrName);
+        document.head.appendChild(el);
       }
-      metaDesc.setAttribute('content', business.seoMetaDescription);
-    }
+      el.setAttribute('content', content);
+    };
+
+    setMetaTag('description', 'name', storeDesc);
+    setMetaTag('og:title', 'property', storeTitle);
+    setMetaTag('og:description', 'property', storeDesc);
+    setMetaTag('og:image', 'property', ogImage);
+    setMetaTag('og:url', 'property', currentUrl);
+    setMetaTag('og:type', 'property', 'website');
+    setMetaTag('twitter:card', 'name', 'summary_large_image');
+    setMetaTag('twitter:title', 'name', storeTitle);
+    setMetaTag('twitter:description', 'name', storeDesc);
+    setMetaTag('twitter:image', 'name', ogImage);
   }, [business]);
 
   if (business.maintenanceMode || business.status === 'maintenance') {
@@ -433,10 +447,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     {business.name}
                   </h1>
                   {Boolean(business.name && (business.whatsapp || business.phone)) && (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs" title="Verified Business - Profile Complete & Contact Verified">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      Verified Business
-                    </span>
+                    <VerifiedBadge verified={true} size="sm" />
                   )}
                   {(() => {
                     const isMaintenance = business.status === 'maintenance';
