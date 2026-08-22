@@ -118,10 +118,12 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
           )}
           <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
           
-          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-xs text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            Verified Store
-          </div>
+          {Boolean(business.name && (business.whatsapp || business.phone)) && (
+            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-xs text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1" title="Verified Business - Profile Complete">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              Verified Business
+            </div>
+          )}
         </div>
 
         {/* Content Body */}

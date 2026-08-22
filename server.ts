@@ -144,11 +144,14 @@ async function startServer() {
       const name = vendor?.name || slug || 'Storelly Business';
       const tagline = vendor?.tagline || vendor?.description || 'Catalog, Instant Orders & Direct WhatsApp Checkout';
       const city = vendor?.city || vendor?.address || 'Verified Digital Store';
+      const logoUrl = vendor?.logo || '';
+      const bannerUrl = vendor?.bannerUrl || '';
 
       const safeName = name.replace(/[<>&'"]/g, '');
       const safeTagline = tagline.replace(/[<>&'"]/g, '').slice(0, 75);
       const safeCity = city.replace(/[<>&'"]/g, '');
 
+      // Build SVG incorporating vendor banner/logo if available
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
         <defs>
           <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -157,40 +160,54 @@ async function startServer() {
             <stop offset="100%" stop-color="#022c22" />
           </linearGradient>
           <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98" />
-            <stop offset="100%" stop-color="#f0fdf4" stop-opacity="0.95" />
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.99" />
+            <stop offset="100%" stop-color="#f0fdf4" stop-opacity="0.97" />
           </linearGradient>
+          <clipPath id="logoClip">
+            <circle cx="185" cy="235" r="50" />
+          </clipPath>
+          <clipPath id="bannerClip">
+            <rect x="80" y="70" width="1040" height="150" rx="32" />
+          </clipPath>
         </defs>
         <rect width="1200" height="630" fill="url(#bg)" />
         <circle cx="1050" cy="120" r="280" fill="#10b981" opacity="0.18" />
         <circle cx="150" cy="520" r="220" fill="#34d399" opacity="0.1" />
         
         <!-- Main Card Frame -->
-        <rect x="80" y="70" width="1040" height="490" rx="32" fill="url(#cardBg)" stroke="#10b981" stroke-width="3" opacity="0.98" filter="drop-shadow(0 20px 30px rgba(0,0,0,0.25))" />
+        <rect x="80" y="70" width="1040" height="490" rx="32" fill="url(#cardBg)" stroke="#10b981" stroke-width="3" opacity="0.99" filter="drop-shadow(0 20px 30px rgba(0,0,0,0.25))" />
         
+        ${bannerUrl ? `<image href="${bannerUrl}" x="80" y="70" width="1040" height="180" preserveAspectRatio="xMidYMid slice" clip-path="url(#bannerClip)" opacity="0.85" />` : ''}
+
         <!-- Header Badge -->
-        <rect x="130" y="120" width="230" height="42" rx="21" fill="#d1fae5" />
-        <text x="245" y="147" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="800" fill="#065f46" text-anchor="middle" letter-spacing="2">✓ VERIFIED STORE</text>
+        <rect x="${logoUrl ? '260' : '130'}" y="${bannerUrl ? '200' : '120'}" width="200" height="38" rx="19" fill="#d1fae5" />
+        <text x="${logoUrl ? '360' : '230'}" y="${bannerUrl ? '225' : '145'}" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="800" fill="#065f46" text-anchor="middle" letter-spacing="2">✓ VERIFIED STORE</text>
+
+        <!-- Vendor Logo if exists -->
+        ${logoUrl ? `
+          <circle cx="185" cy="235" r="55" fill="#ffffff" stroke="#10b981" stroke-width="4" />
+          <image href="${logoUrl}" x="135" y="185" width="100" height="100" preserveAspectRatio="xMidYMid slice" clip-path="url(#logoClip)" />
+        ` : ''}
 
         <!-- Business Name -->
-        <text x="130" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="900" fill="#0f172a">${safeName}</text>
+        <text x="${logoUrl ? '260' : '130'}" y="${bannerUrl ? '290' : '230'}" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="900" fill="#0f172a">${safeName}</text>
         
         <!-- Tagline -->
-        <text x="130" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#047857">${safeTagline}</text>
+        <text x="${logoUrl ? '260' : '130'}" y="${bannerUrl ? '340' : '285'}" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="600" fill="#047857">${safeTagline}</text>
 
         <!-- Location / Info -->
-        <text x="130" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#64748b">📍 ${safeCity} • Instant WhatsApp Checkout &amp; Catalog</text>
+        <text x="130" y="405" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#64748b">📍 ${safeCity} • Instant WhatsApp Catalog &amp; Secure Checkout</text>
 
         <!-- CTA Button Box -->
-        <rect x="130" y="425" width="310" height="70" rx="20" fill="#059669" />
-        <text x="285" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#ffffff" text-anchor="middle">VISIT STORE NOW →</text>
+        <rect x="130" y="445" width="310" height="64" rx="18" fill="#059669" />
+        <text x="285" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="800" fill="#ffffff" text-anchor="middle">VISIT STORE &amp; ORDER →</text>
         
         <!-- Brand Footer -->
         <text x="1040" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="#94a3b8" text-anchor="end">Powered by Storelly</text>
       </svg>`;
 
       res.setHeader('Content-Type', 'image/svg+xml');
-      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800');
+      res.setHeader('Cache-Control', 'public, max-age=60');
       return res.send(svg);
     } catch (e) {
       console.error("OG Image generation error:", e);
