@@ -8,6 +8,7 @@ interface Props {
 export const PricingSection: React.FC<Props> = ({ onOpenAuth }) => {
   const testimonials = [
     { quote: "Storelly made our boutique online in minutes!", author: "Priya S.", rating: 5 },
+    { quote: "Sold 500+ copies of my coding notes and booked 1:1 sessions effortlessly!", author: "Prof. Rajesh (Coding Coach)", rating: 5 },
     { quote: "The order notifications and WhatsApp sharing are incredible.", author: "Rahul M.", rating: 5 },
     { quote: "Best pricing and zero hassle to manage inventory.", author: "Anitha R.", rating: 5 },
   ];
@@ -105,9 +106,9 @@ export const PricingSection: React.FC<Props> = ({ onOpenAuth }) => {
 
           </div>
 
-          {/* Beside Pricing: 3 Stacked Testimonials with 5-star ratings (4 cols) */}
+          {/* Beside Pricing: Stacked Testimonials with 5-star ratings (4 cols) */}
           <div className="lg:col-span-4 space-y-4">
-            <h3 className="font-extrabold text-[#14201a] text-sm uppercase tracking-wider mb-4">What Our Vendors Say</h3>
+            <h3 className="font-extrabold text-[#14201a] text-sm uppercase tracking-wider mb-4">What Our Users Say</h3>
             {testimonials.map((t, idx) => (
               <div key={idx} className="bg-white p-5 rounded-[12px] border border-[#e7e5df] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] space-y-2">
                 <div className="flex gap-1">

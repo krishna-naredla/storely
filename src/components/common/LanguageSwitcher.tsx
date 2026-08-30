@@ -1,5 +1,6 @@
 import React from 'react';
-import { useLanguage, Language } from '../../context/LanguageContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { Language } from '../../translations';
 import { Globe } from 'lucide-react';
 
 export const LanguageSwitcher: React.FC = () => {
@@ -9,8 +10,6 @@ export const LanguageSwitcher: React.FC = () => {
     { code: 'en', label: 'English', native: 'English' },
     { code: 'te', label: 'Telugu', native: 'తెలుగు' },
     { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
-    { code: 'es', label: 'Spanish', native: 'Español' },
-    { code: 'fr', label: 'French', native: 'Français' },
   ];
 
   return (
@@ -23,7 +22,7 @@ export const LanguageSwitcher: React.FC = () => {
       >
         {languages.map((l) => (
           <option key={l.code} value={l.code}>
-            {l.native} ({l.label})
+            {l.native}
           </option>
         ))}
       </select>

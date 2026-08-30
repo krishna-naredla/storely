@@ -17,29 +17,28 @@ export const LandingNavbar: React.FC<Props> = ({ onOpenAuth }) => {
 
   const navLinks = [
     { label: 'Home', href: '#' },
-    { label: 'About', href: '#about' },
     { label: 'Features', href: '#features' },
     { label: 'Pricing', href: '#pricing' },
-    { label: 'Reviews', href: '#reviews' },
+    { label: 'How It Works', href: '#how-it-works' },
+    { label: 'Testimonials', href: '#testimonials' },
     { label: 'FAQ', href: '#faq' },
-    { label: 'Contact', href: '#contact' },
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-100 py-3' : 'bg-transparent py-5'}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 py-3' : 'bg-transparent py-4'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center overflow-hidden border border-emerald-500 shadow-sm">
-            <img src="/storelly3.jpg.jpeg" alt="Storelly Logo" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-xl bg-[#ff6b00] flex items-center justify-center overflow-hidden border border-[#ff6b00]/30 shadow-sm">
+            <Store className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-slate-900 tracking-tight">Storelly</span>
+          <span className="text-xl font-extrabold text-slate-900 tracking-tight">Storelly</span>
         </div>
 
         {/* Desktop Links */}
         <div className="hidden lg:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a key={link.label} href={link.href} className="text-sm font-medium text-slate-600 hover:text-emerald-600 transition-colors">
+            <a key={link.label} href={link.href} className="text-sm font-semibold text-slate-600 hover:text-[#ff6b00] transition-colors">
               {link.label}
             </a>
           ))}
@@ -47,11 +46,11 @@ export const LandingNavbar: React.FC<Props> = ({ onOpenAuth }) => {
 
         {/* Desktop CTA */}
         <div className="hidden lg:flex items-center gap-4">
-          <button onClick={() => onOpenAuth('login')} className="text-sm font-bold text-slate-700 hover:text-emerald-600 transition-colors px-4 py-2">
+          <button onClick={() => onOpenAuth('login')} className="text-sm font-bold text-slate-700 hover:text-[#ff6b00] transition-colors px-4 py-2">
             Login
           </button>
-          <button onClick={() => onOpenAuth('signup')} className="text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full transition-all shadow-md shadow-emerald-600/20 active:scale-95">
-            Get Started
+          <button onClick={() => onOpenAuth('signup')} className="text-sm font-bold bg-[#ff6b00] hover:bg-[#e65c00] text-white px-6 py-2.5 rounded-full transition-all shadow-md shadow-[#ff6b00]/25 active:scale-95">
+            Get Started Free
           </button>
         </div>
 

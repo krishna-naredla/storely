@@ -109,6 +109,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         name: name.trim(),
         slug: slug.trim() || generateSlug(name),
         type,
+        category: type,
         tagline: tagline.trim() || '',
         description: description.trim() || '',
         logo: logo.trim() || '',

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   ShoppingBag,
   IndianRupee,
@@ -39,6 +40,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenStorefront,
   onOpenShareModal,
 }) => {
+  const { t } = useLanguage();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -149,7 +151,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Total Orders */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Orders</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("dashboard.totalOrders")}</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
@@ -165,7 +167,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Total Revenue */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Revenue</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("dashboard.totalRevenue")}</span>
             <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
               {business.currencySymbol === '$' ? (
                 <DollarSign className="w-4 h-4" />
@@ -319,7 +321,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 onClick={() => setActiveTab('orders')}
                 className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
               >
-                <span>View All</span>
+                <span>{t("dashboard.viewAll")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

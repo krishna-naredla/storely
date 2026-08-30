@@ -72,8 +72,11 @@ export async function testFirestoreConnection(): Promise<boolean> {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
   } catch (error: any) {
-    if (error && error.message && error.message.includes('the client is offline')) {
-      console.warn('Firestore connectivity note: Operating in local cache while reconnecting.');
+    const errMsg = error?.message || '';
+    if (errMsg.includes('the client is offline') || errMsg.includes('closing') || errMsg.includes('hidden')) {
+      console.warn('Firestore connection lifecycle notice:', errMsg);
+    } else {
+      console.warn('Firestore connectivity note:', errMsg);
     }
     return false;
   }

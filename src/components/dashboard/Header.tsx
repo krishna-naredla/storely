@@ -17,6 +17,7 @@ import { getStorefrontUrl, subscribeToOrders } from '../../services/firebaseServ
 import { requestFcmNotificationPermission } from '../../services/fcmPushService';
 import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface HeaderProps {
   business: BusinessProfile | null;
@@ -39,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShareModal,
   userName,
 }) => {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
@@ -82,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Store className="w-3.5 h-3.5 text-emerald-600" />
             <span className="max-w-[140px] sm:max-w-[200px] truncate">
-              {business ? business.name : 'Select Store'}
+              {business ? business.name : t("header.selectStore")}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
@@ -90,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
           {bizDropdownOpen && (
             <div className="absolute left-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider px-3 py-1.5">
-                My Businesses ({userBusinesses.length})
+                {" " + t("header.myBusinesses") + " "} ({userBusinesses.length})
               </p>
               <div className="max-h-48 overflow-y-auto space-y-1 my-1">
                 {userBusinesses.map((b) => (
@@ -122,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-xl transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Create New Store</span>
+                  <span>{t("header.createNewStore")}</span>
                 </button>
               </div>
             </div>
@@ -133,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
         {business && (
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Store Live</span>
+            <span>{t("header.storeLive")}</span>
           </div>
         )}
       </div>
@@ -168,7 +170,7 @@ export const Header: React.FC<HeaderProps> = ({
               title="Copy public store link"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-              <span>{copied ? 'Copied' : 'Copy Link'}</span>
+              <span>{copied ? t("header.copied") : t("header.copyLink")}</span>
             </button>
 
             <button
@@ -177,7 +179,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition shadow-2xs"
             >
               <Share2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">Share QR & Card</span>
+              <span className="hidden sm:inline">{t("header.shareQR")}</span>
             </button>
 
             <button
@@ -185,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onOpenStorefront}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm shadow-emerald-600/20"
             >
-              <span className="hidden sm:inline">Visit Store</span>
+              <span className="hidden sm:inline">{t("header.visitStore")}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </>

@@ -10,6 +10,12 @@ export const VendorGallerySection: React.FC = () => {
       sales: "₹1.4L+ monthly"
     },
     {
+      title: "Ramesh Sir Academy",
+      vendor: "Online Courses & Coaching",
+      image: "/storelly3.jpg.jpeg",
+      sales: "₹95K+ monthly"
+    },
+    {
       title: "Organic Spices & Foods",
       vendor: "Nature's Basket",
       image: "/storelly4.jpg.jpeg",
@@ -31,14 +37,14 @@ export const VendorGallerySection: React.FC = () => {
 
   return (
     <section className="py-20 bg-white border-b border-[#e7e5df]">
-      <div className="max-w-[1180px] mx-auto px-6">
+      <div className="max-w-[1280px] mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
           <span className="text-xs font-bold uppercase tracking-wider text-[#2f9e5c]">Success Stories</span>
-          <h2 className="text-[32px] font-extrabold text-[#14201a]">Real Stores Thriving with Storelly</h2>
-          <p className="text-[#5c6b63] text-sm">Explore live vendor stores powered by our all-in-one digital commerce platform.</p>
+          <h2 className="text-[32px] font-extrabold text-[#14201a]">Real Stores & Creators Thriving with Storelly</h2>
+          <p className="text-[#5c6b63] text-sm">Explore live vendor stores and creator hubs powered by our all-in-one digital commerce platform.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {showcaseItems.map((item, idx) => (
             <div 
               key={idx} 
@@ -60,7 +66,7 @@ export const VendorGallerySection: React.FC = () => {
                   <h3 className="font-extrabold text-[#14201a] text-base mt-0.5">{item.title}</h3>
                 </div>
                 <div className="pt-3 border-t border-[#e7e5df] flex items-center justify-between text-xs text-[#5c6b63]">
-                  <span>Online Storefront</span>
+                  <span>Storefront</span>
                   <span className="font-bold text-[#155330] flex items-center gap-1">Active Now</span>
                 </div>
               </div>

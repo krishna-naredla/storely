@@ -1,3 +1,8 @@
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 import React, { useState, useEffect } from 'react';
 import {
   Store,
@@ -179,6 +184,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   // Modals
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<CatalogItem | null>(null);
   const [selectedItemForBooking, setSelectedItemForBooking] = useState<CatalogItem | null>(null);
+  const [selectedItemForDigital, setSelectedItemForDigital] = useState<CatalogItem | null>(null);
+  const [digitalPurchaseStatus, setDigitalPurchaseStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
+  const [digitalDownloadUrl, setDigitalDownloadUrl] = useState<string | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isCustomerOrdersOpen, setIsCustomerOrdersOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -186,6 +194,111 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [logoError, setLogoError] = useState(false);
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
+
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleDigitalPurchase = async (item: CatalogItem) => {
+    setSelectedItemForDigital(item);
+    setDigitalPurchaseStatus("processing");
+    setDigitalDownloadUrl(null);
+    try {
+      if (item.price <= 0) {
+        // Free flow
+        const res = await fetch("/api/digital/free", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemId: item.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setDigitalPurchaseStatus("success");
+          setDigitalDownloadUrl(data.downloadUrl);
+        } else {
+          setDigitalPurchaseStatus("error");
+          alert(data.error || "Failed to get free product");
+        }
+        return;
+      }
+
+      // Paid Flow
+      const isLoaded = await loadRazorpay();
+      if (!isLoaded) {
+        setDigitalPurchaseStatus("error");
+        alert("Payment gateway failed to load.");
+        return;
+      }
+
+      const res = await fetch("/api/digital/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id })
+      });
+      const order = await res.json();
+      if (order.error) {
+        setDigitalPurchaseStatus("error");
+        alert(order.error);
+        return;
+      }
+
+      const options = {
+        key: 'rzp_test_dummy', // Will be ignored by real Razorpay if order_id is valid, but required.
+        amount: order.amount,
+        currency: order.currency,
+        name: business.name,
+        description: item.name,
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch("/api/digital/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                itemId: item.id
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setDigitalPurchaseStatus("success");
+              setDigitalDownloadUrl(verifyData.downloadUrl);
+            } else {
+              setDigitalPurchaseStatus("error");
+              alert(verifyData.error || "Payment verification failed");
+            }
+          } catch(e) {
+            setDigitalPurchaseStatus("error");
+          }
+        },
+        theme: { color: "#10b981" }
+      };
+      
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function () {
+        setDigitalPurchaseStatus("error");
+      });
+      rzp.open();
+
+    } catch (e) {
+      setDigitalPurchaseStatus("error");
+      console.error(e);
+    }
+  };
+
 
   // Dynamic Browser Title, Favicon & Open Graph Meta Tags Injection for Rich WhatsApp Cards
   useEffect(() => {
@@ -821,7 +934,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   item.type === 'service' ||
                   item.type === 'room' ||
                   item.type === 'vehicle' ||
-                  item.type === 'package';
+                  item.type === 'package' || item.productType === 'consultation_slot';
 
                 const displayPrice = item.salePrice || item.price;
                 const hasDiscount = item.salePrice && item.salePrice < item.price;
@@ -956,11 +1069,23 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                           >
                             Book
                           </button>
+                        ) : item.productType === 'digital_file' ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                               e.stopPropagation();
+                               handleDigitalPurchase(item);
+                            }}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
+                          >
+                            {item.price === 0 ? 'Get Free' : 'Buy Now'}
+                          </button>
                         ) : (
                           <button
                             type="button"
                             disabled={item.inStock === false}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (item.variants && item.variants.length > 0) {
                                 setSelectedItemForDetail(item);
                               } else {

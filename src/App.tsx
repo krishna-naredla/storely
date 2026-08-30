@@ -419,7 +419,7 @@ function MainContent() {
           return;
         }
         const latest = orders[0];
-        if (latest && latest.status === 'pending') {
+        if (latest && latest.status === 'pending' && latest.businessId === biz.id) {
           playNotificationChime();
           setActiveNewOrderNotification({
             id: latest.id,
@@ -443,7 +443,7 @@ function MainContent() {
           return;
         }
         const latestBooking = bookings[0];
-        if (latestBooking && latestBooking.status === 'pending') {
+        if (latestBooking && latestBooking.status === 'pending' && latestBooking.businessId === biz.id) {
           playNotificationChime();
           setActiveNewOrderNotification({
             id: latestBooking.id,

@@ -1,3 +1,4 @@
+import { useLanguage } from '../../context/LanguageContext';
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
@@ -39,13 +40,14 @@ import { ImageUploadInput } from '../common/ImageUploadInput';
 import { ImageSizeWarning } from '../common/ImageSizeWarning';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { SwipeToDelete } from '../common/SwipeToDelete';
-import { deleteImageFromStorage } from '../../services/cloudinary';
+import { deleteImageFromStorage, uploadToCloudinary } from '../../services/cloudinary';
 
 interface CatalogManagerProps {
   business: BusinessProfile;
 }
 
-export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
+export const CatalogManager: React.FC<any> = ({ business }) => {
+  const { t } = useLanguage();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,6 +104,17 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   const [newAddonName, setNewAddonName] = useState('');
   const [newAddonPrice, setNewAddonPrice] = useState<number>(0);
 
+  // Digital Creator specific form fields
+  const [productType, setProductType] = useState<'physical' | 'digital_file' | 'consultation_slot'>('digital_file');
+  const [isFree, setIsFree] = useState(false);
+  const [cloudinaryPublicId, setCloudinaryPublicId] = useState('');
+  const [fileType, setFileType] = useState<'pdf' | 'zip' | 'video'>('pdf');
+  const [consultationDuration, setConsultationDuration] = useState<number>(30);
+  const [consultationDays, setConsultationDays] = useState<string[]>(['MO', 'WE', 'FR']);
+  const [consultationTimeSlots, setConsultationTimeSlots] = useState<string[]>(['17:00', '18:00']);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
   // Load items and categories
@@ -153,6 +166,13 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
     setFuelType('petrol');
     setTransmission('manual');
     setSeatingCapacity(5);
+    setProductType(business.type === 'digital_creator' ? 'digital_file' : 'physical');
+    setIsFree(false);
+    setCloudinaryPublicId('');
+    setFileType('pdf');
+    setConsultationDuration(30);
+    setConsultationDays(['MO', 'WE', 'FR']);
+    setConsultationTimeSlots(['17:00', '18:00']);
     setVariants([]);
     setAddons([]);
     setFormError(null);
@@ -187,6 +207,13 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
     setFuelType(item.fuelType || 'petrol');
     setTransmission(item.transmission || 'manual');
     setSeatingCapacity(item.seatingCapacity);
+    setProductType(item.productType || (business.type === 'digital_creator' ? 'digital_file' : 'physical'));
+    setIsFree(item.price === 0);
+    setCloudinaryPublicId(item.cloudinaryPublicId || '');
+    setFileType(item.fileType || 'pdf');
+    setConsultationDuration(item.consultationDuration || 30);
+    setConsultationDays(item.consultationDays || ['MO', 'WE', 'FR']);
+    setConsultationTimeSlots(item.consultationTimeSlots || ['17:00', '18:00']);
     setVariants(item.variants || []);
     setAddons(item.addons || []);
     setFormError(null);
@@ -219,7 +246,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
         type,
         shortDescription: shortDescription.trim() || undefined,
         detailedDescription: detailedDescription.trim() || undefined,
-        price: Number(price),
+        price: isFree ? 0 : Number(price),
         salePrice: salePrice !== undefined && salePrice > 0 ? Number(salePrice) : undefined,
         unit: type === 'product' ? (unit.trim() || undefined) : undefined,
         sku: sku.trim() || undefined,
@@ -240,6 +267,12 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
         fuelType: type === 'rental_vehicle' ? fuelType : undefined,
         transmission: type === 'rental_vehicle' ? transmission : undefined,
         seatingCapacity: type === 'rental_vehicle' ? (seatingCapacity ? Number(seatingCapacity) : undefined) : undefined,
+        productType: business.type === 'digital_creator' ? productType : undefined,
+        cloudinaryPublicId: productType === 'digital_file' ? (cloudinaryPublicId.trim() || undefined) : undefined,
+        fileType: productType === 'digital_file' ? fileType : undefined,
+        consultationDuration: productType === 'consultation_slot' ? Number(consultationDuration) : undefined,
+        consultationDays: productType === 'consultation_slot' ? consultationDays : undefined,
+        consultationTimeSlots: productType === 'consultation_slot' ? consultationTimeSlots : undefined,
         variants,
         addons,
         isActive: editingItem ? editingItem.isActive : true,
@@ -278,6 +311,29 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       );
     } catch (err) {
       console.error('Error toggling item visibility:', err);
+    }
+  };
+
+  const handleDigitalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024 * 1024) {
+      setFormError('File size exceeds 500MB limit');
+      return;
+    }
+    try {
+      setIsUploadingFile(true);
+      setUploadProgress(0);
+      setFormError(null);
+      const url = await uploadToCloudinary(file, (p) => setUploadProgress(p));
+      const randomId = 'creator_file_' + Date.now();
+      setCloudinaryPublicId(url);
+      // FIXED: Do not set digital file as the public thumbnail image array
+
+      setIsUploadingFile(false);
+    } catch (err: any) {
+      setFormError(err.message || 'File upload failed');
+      setIsUploadingFile(false);
     }
   };
 
@@ -674,7 +730,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     type="number"
                     min="0"
                     step="any"
-                    value={price}
+                    value={isFree ? 0 : price}
                     onChange={(e) => setPrice(Number(e.target.value))}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                     required
@@ -738,6 +794,145 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
+
+              {/* If Digital Creator */}
+              {business.type === 'digital_creator' && (
+                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-4">
+                  <h4 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    Digital Creator Product Type
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProductType('digital_file')}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition ${
+                        productType === 'digital_file'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
+                      }`}
+                    >
+                      📁 Digital File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProductType('consultation_slot')}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition ${
+                        productType === 'consultation_slot'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
+                      }`}
+                    >
+                      📅 1:1 Consultation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProductType('physical')}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition ${
+                        productType === 'physical'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
+                      }`}
+                    >
+                      📦 Physical Item
+                    </button>
+                  </div>
+
+                  {productType === 'digital_file' && (
+                    <div className="space-y-3 pt-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
+                            File Format
+                          </label>
+                          <select
+                            value={fileType}
+                            onChange={(e) => setFileType(e.target.value as any)}
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
+                          >
+                            <option value="pdf">PDF E-Book / Guide</option>
+                            <option value="zip">ZIP Course Bundle / Assets</option>
+                            <option value="video">MP4 Video Masterclass</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
+                            Cloudinary Public ID (Secure Delivery)
+                          </label>
+                          <input
+                            type="text"
+                            value={cloudinaryPublicId}
+                            onChange={(e) => setCloudinaryPublicId(e.target.value)}
+                            placeholder="e.g. creator_ebook_v1"
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-white rounded-xl border border-indigo-200 space-y-2">
+                        <label className="block text-[11px] font-bold text-indigo-900">
+                          Upload Digital File (PDF / ZIP / MP4 up to 500MB)
+                        </label>
+                        <input
+                          type="file"
+                          accept=".pdf,.zip,.mp4,.mov,.epub"
+                          onChange={handleDigitalFileUpload}
+                          className="w-full text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                        {isUploadingFile && (
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] text-indigo-700 font-semibold">
+                              <span>Uploading to Cloudinary Secure CDN...</span>
+                              <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-600 transition-all" style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                          </div>
+                        )}
+                        {cloudinaryPublicId && !isUploadingFile && (
+                          <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                            ✓ File attached & secured on Cloudinary (Public ID: {cloudinaryPublicId})
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {productType === 'consultation_slot' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
+                          Consultation Duration (Minutes)
+                        </label>
+                        <select
+                          value={consultationDuration}
+                          onChange={(e) => setConsultationDuration(Number(e.target.value))}
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
+                        >
+                          <option value={15}>15 Minutes</option>
+                          <option value={30}>30 Minutes</option>
+                          <option value={45}>45 Minutes</option>
+                          <option value={60}>60 Minutes (1 Hour)</option>
+                          <option value={90}>90 Minutes</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
+                          Available Time Slots (Comma-separated)
+                        </label>
+                        <input
+                          type="text"
+                          value={consultationTimeSlots.join(', ')}
+                          onChange={(e) => setConsultationTimeSlots(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          placeholder="10:00, 14:00, 17:00, 20:00"
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* VERTICAL SPECIFIC FIELDS */}
               {/* If Service / Appointment */}

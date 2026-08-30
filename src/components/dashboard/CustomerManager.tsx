@@ -1,3 +1,4 @@
+import { useLanguage } from '../../context/LanguageContext';
 import React, { useState, useEffect } from 'react';
 import {
   Users,
@@ -17,7 +18,8 @@ interface CustomerManagerProps {
   business: BusinessProfile;
 }
 
-export const CustomerManager: React.FC<CustomerManagerProps> = ({ business }) => {
+export const CustomerManager: React.FC<any> = ({ business }) => {
+  const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

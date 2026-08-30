@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowRight, Zap, MessageCircle, Send, Youtube, Instagram, Calendar, FileSpreadsheet, BarChart3, TrendingUp, Store, ShoppingBag, BookOpen, Coffee, Scissors } from 'lucide-react';
 
 interface Props {
   onOpenAuth: (mode: 'login' | 'signup') => void;
@@ -11,17 +11,29 @@ export const ZigzagGallerySection: React.FC<Props> = ({ onOpenAuth }) => {
       title: "Powerful Dashboard & Live Order Management",
       subtitle: "REAL-TIME CONTROL",
       description: "Monitor your store activity, track live customer orders, update inventory instantly, and manage your WhatsApp inquiries seamlessly from a single unified dashboard.",
-      image: "/storelly6.jpg.jpeg",
       badge: "Command Center",
-      bullets: ["Live order tracking", "Instant WhatsApp alerts", "Revenue analytics"]
+      bullets: ["Live order tracking", "Instant WhatsApp alerts", "Revenue analytics"],
+      isCustomComponent: "dashboard"
     },
     {
       title: "Designed for Everyday Business Owners",
       subtitle: "SIMPLE & INTUITIVE",
       description: "Whether you run a local retail shop, boutique, homemade food service, or artisan store, Storelly is built to be extremely user-friendly with zero technical hurdles.",
-      image: "/storelly1.jpg.jpeg",
       badge: "Merchant Friendly",
-      bullets: ["No coding required", "Mobile & desktop friendly", "Multi-staff support"]
+      bullets: ["No coding required", "Mobile & desktop friendly", "Multi-staff support"],
+      isCustomComponent: "multibusiness"
+    },
+    {
+      title: "Sell Notes, Courses & Consultations",
+      subtitle: "CREATOR HUB",
+      description: "Perfect for teachers, coaches, YouTubers, and consultants. Sell PDFs, courses, and 1:1 bookings — plus link your WhatsApp community, Telegram, and YouTube — all on one page.",
+      badge: "Creator Hub",
+      bullets: [
+        "Instant WhatsApp file delivery",
+        "1:1 paid consultation booking with auto Google Meet link",
+        "Link your WhatsApp groups, Telegram, YouTube, Google Forms/Sheets"
+      ],
+      isCustomComponent: "creatorhub"
     },
     {
       title: "Stunning Digital Storefronts & Catalogs",
@@ -90,20 +102,234 @@ export const ZigzagGallerySection: React.FC<Props> = ({ onOpenAuth }) => {
                   isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'
                 }`}
               >
-                {/* Image Container with 100% full visibility and device-friendly padding */}
-                <div className="w-full lg:w-1/2 relative group">
+                {/* Visual Container with max-w-full and mobile overflow prevention */}
+                <div className="w-full lg:w-1/2 relative group max-w-full overflow-hidden">
                   <div className="absolute -inset-4 bg-gradient-to-r from-emerald-100/60 to-teal-100/40 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500"></div>
-                  <div className="relative bg-slate-900 rounded-3xl p-3 sm:p-4 shadow-2xl border border-slate-200/80 overflow-hidden flex items-center justify-center min-h-[320px] sm:min-h-[380px]">
-                    <img 
-                      src={item.image} 
-                      alt={item.title} 
-                      referrerPolicy="no-referrer"
-                      className="w-full h-auto max-h-[420px] object-contain rounded-2xl shadow-md transition-transform duration-500 group-hover:scale-[1.02]"
-                    />
-                    <div className="absolute top-6 left-6 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-lg">
-                      <Zap className="w-3.5 h-3.5 text-emerald-400" /> {item.badge}
+                  
+                  {item.isCustomComponent === 'dashboard' ? (
+                    <div className="relative bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800 text-white space-y-6">
+                      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                            <BarChart3 className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-400">Live Command Center</div>
+                            <div className="text-base font-black text-white">Store Analytics & Orders</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">Live Sync</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60">
+                          <div className="text-[11px] text-slate-400 font-medium">Today's Revenue</div>
+                          <div className="text-xl font-black text-emerald-400 mt-1">₹24,850</div>
+                          <div className="text-[10px] text-emerald-300 mt-1 flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" /> +18% vs yesterday
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60">
+                          <div className="text-[11px] text-slate-400 font-medium">Active Orders</div>
+                          <div className="text-xl font-black text-white mt-1">14 Pending</div>
+                          <div className="text-[10px] text-amber-400 mt-1">WhatsApp synced</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5 pt-2">
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent Orders Feed</div>
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 border border-slate-700/40 text-xs">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center font-bold">#108</div>
+                            <div>
+                              <div className="font-bold text-white">Organic Honey & Tea Set</div>
+                              <div className="text-[11px] text-slate-400">Paid via WhatsApp UPI</div>
+                            </div>
+                          </div>
+                          <span className="font-bold text-emerald-400">₹1,299</span>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-6 right-6 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-lg">
+                        <Zap className="w-3.5 h-3.5 text-emerald-400" /> {item.badge}
+                      </div>
                     </div>
-                  </div>
+                  ) : item.isCustomComponent === 'multibusiness' ? (
+                    <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800 text-white space-y-6">
+                      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
+                            <Store className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-400">Universal Platform</div>
+                            <div className="text-base font-black text-white">Any Business, Any Industry</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <ShoppingBag className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs text-white">Retail Shops</div>
+                            <div className="text-[10px] text-slate-400">Catalogs & inventory</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                            <BookOpen className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs text-white">Online Courses</div>
+                            <div className="text-[10px] text-slate-400">PDFs & consultations</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                            <Coffee className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs text-white">Homemade Food</div>
+                            <div className="text-[10px] text-slate-400">Pickles & snacks</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
+                            <Scissors className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs text-white">Boutiques</div>
+                            <div className="text-[10px] text-slate-400">Apparel & sizing</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-6 right-6 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-lg">
+                        <Zap className="w-3.5 h-3.5 text-emerald-400" /> {item.badge}
+                      </div>
+                    </div>
+                  ) : item.isCustomComponent === 'creatorhub' ? (
+                    <div className="relative bg-slate-950 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800 flex items-center justify-center">
+                      <div className="relative w-full max-w-[280px] sm:max-w-[320px] bg-slate-900 rounded-[32px] p-4 shadow-2xl border-4 border-slate-700/80">
+                        <div className="w-20 h-3.5 bg-slate-800 rounded-full mx-auto mb-3 flex items-center justify-center">
+                          <div className="w-8 h-1 bg-slate-700 rounded-full"></div>
+                        </div>
+                        
+                        <div className="text-center pb-3 border-b border-slate-800 space-y-1">
+                          <div className="w-12 h-12 rounded-full bg-linear-to-tr from-emerald-500 to-teal-400 mx-auto flex items-center justify-center text-white font-extrabold text-lg shadow-md">
+                            RS
+                          </div>
+                          <h4 className="font-bold text-white text-xs">Ramesh Sir Academy</h4>
+                          <p className="text-[10px] text-emerald-400">Courses, Notes & Consultations</p>
+                        </div>
+
+                        <div className="py-3 space-y-2">
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/90 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                                <MessageCircle className="w-3.5 h-3.5 fill-white" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-[11px] font-bold text-white">Join WhatsApp VIP Group</div>
+                                <div className="text-[9px] text-slate-400">Instant PDF Notes Delivery</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">1.2K+</span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/90 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0">
+                                <Youtube className="w-3.5 h-3.5 fill-white" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-[11px] font-bold text-white">Free Masterclass Videos</div>
+                                <div className="text-[9px] text-slate-400">Weekly live sessions</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">45K</span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/90 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-sky-500 text-white flex items-center justify-center shrink-0">
+                                <Send className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-[11px] font-bold text-white">Telegram Study Channel</div>
+                                <div className="text-[9px] text-slate-400">Daily practice sheets</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400">8.5K</span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/90 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500 via-pink-600 to-purple-600 text-white flex items-center justify-center shrink-0">
+                                <Instagram className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-[11px] font-bold text-white">Instagram Reels & Updates</div>
+                                <div className="text-[9px] text-slate-400">Daily educational tips</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300">22K</span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/90 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0">
+                                <Calendar className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-[11px] font-bold text-white">1:1 Paid Consultation</div>
+                                <div className="text-[9px] text-slate-400">Auto Google Meet slot</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">Book</span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/90 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-[11px] font-bold text-white">Resource Request Form</div>
+                                <div className="text-[9px] text-slate-400">Google Forms / Sheets</div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300">Form</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="absolute top-6 right-6 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-lg">
+                        <Zap className="w-3.5 h-3.5 text-emerald-400" /> {item.badge}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative bg-slate-900 rounded-3xl p-3 sm:p-4 shadow-2xl border border-slate-200/80 overflow-hidden flex items-center justify-center min-h-[320px] sm:min-h-[380px]">
+                      <img 
+                        src={item.image} 
+                        alt={item.title} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-auto max-h-[420px] object-contain rounded-2xl shadow-md transition-transform duration-500 group-hover:scale-[1.02]"
+                      />
+                      <div className="absolute top-6 left-6 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-lg">
+                        <Zap className="w-3.5 h-3.5 text-emerald-400" /> {item.badge}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Text Description Container */}
@@ -148,3 +374,4 @@ export const ZigzagGallerySection: React.FC<Props> = ({ onOpenAuth }) => {
     </section>
   );
 };
+

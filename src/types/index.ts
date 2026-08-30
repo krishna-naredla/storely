@@ -15,6 +15,7 @@ export type BusinessType =
   | 'education'
   | 'services'
   | 'agency'
+  | 'digital_creator'
   | 'custom';
 
 export type ModuleKey =
@@ -73,6 +74,7 @@ export interface BusinessProfile {
   name: string;
   slug: string;
   type: BusinessType;
+  category?: string;
   tagline?: string;
   description?: string;
   logo?: string;
@@ -205,12 +207,35 @@ export interface CatalogItem {
   fuelType?: 'petrol' | 'diesel' | 'electric' | 'cng';
   transmission?: 'manual' | 'automatic';
   seatingCapacity?: number;
+
+  // Digital Creator extensions
+  productType?: 'physical' | 'digital_file' | 'consultation_slot';
+  cloudinaryPublicId?: string;
+  fileType?: 'pdf' | 'zip' | 'video';
+  consultationDuration?: number; // minutes
+  consultationDays?: string[]; // e.g. ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+  consultationTimeSlots?: string[]; // e.g. ["17:00", "18:00"]
   
   // Variations and Addons
   variants?: CatalogItemVariant[];
   addons?: CatalogItemAddon[];
   
   sortOrder?: number;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CommunityLink {
+  id: string;
+  linkId: string;
+  businessId: string;
+  type: 'whatsapp' | 'telegram' | 'youtube' | 'instagram' | 'google_form' | 'google_sheet' | 'google_doc' | 'gdrive' | 'custom';
+  title: string;
+  description?: string;
+  url: string;
+  clickCount: number;
+  order: number;
   isActive: boolean;
   createdAt: number;
   updatedAt: number;

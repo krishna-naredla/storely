@@ -1,3 +1,4 @@
+import { useLanguage } from '../../context/LanguageContext';
 import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
@@ -26,7 +27,8 @@ interface OrderManagerProps {
   business: BusinessProfile;
 }
 
-export const OrderManager: React.FC<OrderManagerProps> = ({ business }) => {
+export const OrderManager: React.FC<any> = ({ business }) => {
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,12 +175,12 @@ export const OrderManager: React.FC<OrderManagerProps> = ({ business }) => {
             className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
           >
             <option value="all">All Statuses ({orders.length})</option>
-            <option value="pending">Pending</option>
+            <option value="pending">{t("orders.pending")}</option>
             <option value="confirmed">Confirmed</option>
             <option value="processing">Processing / Kitchen</option>
             <option value="ready">Ready / Shipped</option>
             <option value="delivered">Delivered / Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="cancelled">{t("orders.cancelled")}</option>
           </select>
         </div>
       </div>

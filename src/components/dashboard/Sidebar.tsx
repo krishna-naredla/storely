@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   LayoutDashboard,
   Package,
@@ -54,6 +55,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
+
   activeTab,
   setActiveTab,
   business,
@@ -63,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   onOpenMasterAdmin,
 }) => {
+  const { t } = useLanguage();
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
   useEffect(() => {
@@ -86,50 +89,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }[] = [
     {
       id: 'overview',
-      label: 'Overview',
+      label: t("sidebar.dashboard"),
       icon: LayoutDashboard,
       visible: true,
     },
     {
       id: 'catalog',
-      label: bizMeta.itemPlural || 'Catalog',
+      label: bizMeta.itemPlural || t("sidebar.catalog"),
       icon: Package,
       visible: true,
     },
     {
       id: 'categories',
-      label: 'Categories',
+      label: t("sidebar.categories"),
       icon: Layers,
       visible: true,
     },
     {
       id: 'orders',
-      label: 'Orders',
+      label: t("sidebar.orders"),
       icon: ShoppingBag,
       badge: pendingOrdersCount > 0 ? pendingOrdersCount.toString() : undefined,
       visible: !!modules?.cart_ordering || !!modules?.menu || !!modules?.products,
     },
     {
       id: 'bookings',
-      label: 'Bookings',
+      label: t("sidebar.bookings"),
       icon: CalendarCheck,
       visible: !!modules?.booking_appointments || !!modules?.stay_booking || !!modules?.rental_booking,
     },
     {
       id: 'customers',
-      label: 'Customers',
+      label: t("sidebar.customers"),
       icon: Users,
       visible: true,
     },
     {
       id: 'reviews',
-      label: 'Reviews',
+      label: t("sidebar.reviews"),
       icon: Star,
       visible: !!modules?.reviews,
     },
     {
       id: 'offers',
-      label: 'Offers & Coupons',
+      label: t("sidebar.offers"),
       icon: Tag,
       visible: !!modules?.offers,
     },
@@ -142,31 +145,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'analytics',
-      label: 'Analytics',
+      label: t("sidebar.analytics"),
       icon: BarChart3,
       visible: true,
     },
     {
       id: 'modules',
-      label: 'Module Manager',
+      label: t("sidebar.modules"),
       icon: Sliders,
       visible: true,
     },
     {
       id: 'payments',
-      label: 'Payments & UPI',
+      label: t("sidebar.payments"),
       icon: CreditCard,
       visible: true,
     },
     {
       id: 'notifications',
-      label: 'Notification History',
+      label: t("sidebar.notifications"),
       icon: Bell,
       visible: true,
     },
     {
       id: 'settings',
-      label: 'Store Settings',
+      label: t("sidebar.settings"),
       icon: Settings,
       visible: true,
     },
