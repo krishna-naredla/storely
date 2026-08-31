@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, Customer } from '../../types';
 import { getCustomers } from '../../services/firebaseService';
-import { exportToCSV } from '../../utils/csvExport';
+import { exportToCSV } from '../../utils/export';
 
 interface CustomerManagerProps {
   business: BusinessProfile;

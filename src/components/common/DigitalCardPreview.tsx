@@ -30,7 +30,7 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
 
   const [copiedRich, setCopiedRich] = useState(false);
 
-  const storeUrl = getStorefrontUrl(business.slug);
+  const storeUrl = getStorefrontUrl(business);
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
   useEffect(() => {

@@ -21,6 +21,7 @@ import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { deleteImageFromStorage } from '../../services/cloudinary';
 import { requestFcmNotificationPermission, showMerchantNotification } from '../../services/fcmPushService';
+import { SeoManager } from './SeoManager';
 
 interface StoreSettingsProps {
   business: BusinessProfile;
@@ -31,6 +32,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
   business,
   onBusinessUpdated,
 }) => {
+  const [activeTab, setActiveTab] = useState<'profile' | 'seo'>('profile');
   const [name, setName] = useState(business.name);
   const [tagline, setTagline] = useState(business.tagline || '');
   const [type, setType] = useState<BusinessType>(business.type);
@@ -161,16 +163,44 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-          Store Profile & Settings
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Configure branding, photos, contact numbers, payment methods, and delivery terms.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
+            Store Settings
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Configure branding, photos, contact numbers, and SEO.
+          </p>
+        </div>
+
+        <div className="flex p-1 bg-slate-100 rounded-xl">
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition ${
+              activeTab === 'profile'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Store Profile
+          </button>
+          <button
+            onClick={() => setActiveTab('seo')}
+            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition ${
+              activeTab === 'seo'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            SEO Manager
+          </button>
+        </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      {activeTab === 'seo' ? (
+        <SeoManager business={business} />
+      ) : (
+        <form onSubmit={handleSave} className="space-y-6">
         {error && (
           <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
             {error}
@@ -483,59 +513,6 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </div>
         </div>
 
-        {/* SEO Manager Section */}
-        <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-5">
-          <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-            <div className="p-2.5 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100">
-              <Globe className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 font-heading">SEO Manager</h3>
-              <p className="text-[11px] text-slate-500">Configure how your store appears on Google search and social media sharing (WhatsApp, IG, FB).</p>
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-1">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                <span>Search Engine Title (Page Title)</span>
-                <span className="text-[10px] text-slate-400 font-normal">Recommended: 50-60 characters</span>
-              </label>
-              <input
-                type="text"
-                value={seoMetaTitle}
-                onChange={(e) => setSeoMetaTitle(e.target.value)}
-                placeholder={`${business.name} - Official Store`}
-                className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 bg-slate-50/50 font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                <span>Meta Description</span>
-                <span className="text-[10px] text-slate-400 font-normal">Recommended: 150-160 characters</span>
-              </label>
-              <textarea
-                value={seoMetaDescription}
-                onChange={(e) => setSeoMetaDescription(e.target.value)}
-                placeholder={`Shop the best products from ${business.name}. High quality, fast delivery & secure payments.`}
-                rows={3}
-                className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 bg-slate-50/50 font-medium leading-relaxed resize-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <ImageUploadInput
-                label="Social Sharing Image (OG Image)"
-                value={seoMetaImage}
-                onChange={setSeoMetaImage}
-                aspectRatio="banner"
-                helperText="This image appears when you share your store link on WhatsApp, Facebook, or Instagram."
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Browser & Push Notifications Permission Status */}
         <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -784,6 +761,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 };

@@ -23,7 +23,7 @@ import {
 import { BusinessProfile, Order, OrderStatus } from '../../types';
 import { getOrders, updateOrderStatus, subscribeToOrders, deleteOrder } from '../../services/firebaseService';
 import { SwipeToDelete } from '../common/SwipeToDelete';
-import { exportToCSV } from '../../utils/csvExport';
+import { exportToCSV } from '../../utils/export';
 
 interface OrderManagerProps {
   business: BusinessProfile;

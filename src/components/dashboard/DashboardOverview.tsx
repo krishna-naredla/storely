@@ -26,6 +26,7 @@ import { BusinessProfile, AnalyticsSummary, Order, Booking } from '../../types';
 import { getStorefrontUrl, getAnalyticsSummary } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { DashboardTab } from './Sidebar';
+import { SafeImage } from '../common/SafeImage';
 
 interface DashboardOverviewProps {
   business: BusinessProfile;
@@ -45,7 +46,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const storeUrl = getStorefrontUrl(business.slug);
+  const storeUrl = getStorefrontUrl(business);
+  const isCreator = !!business.modules?.universal_links;
+  const displayUrl = storeUrl.replace(/^https?:\/\//, '').replace(window.location.host, 'storelly.in');
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
   useEffect(() => {
@@ -72,7 +75,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `👋 Check out our digital catalog and order directly on WhatsApp from *${business.name}*:\n\n${storeUrl}`
+      `👋 Check out our digital catalog and order directly on WhatsApp from *${business.name}*:\n\n${displayUrl}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
@@ -106,7 +109,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm">
                 {business.logo ? (
-                  <img src={business.logo} alt={business.name} referrerPolicy="no-referrer" className="w-10 h-10 object-contain rounded-xl" />
+                  <SafeImage fallbackType="avatar" src={business.logo} alt={business.name} referrerPolicy="no-referrer" className="w-10 h-10 object-contain rounded-xl" />
                 ) : (
                   <Store className="w-6 h-6 text-emerald-700" />
                 )}
@@ -118,7 +121,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             
             <div className="flex items-center gap-2 pt-1">
               <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-xs text-xs font-mono text-emerald-800 truncate border border-emerald-200 shadow-xs max-w-sm sm:max-w-md font-bold">
-                {storeUrl}
+                {displayUrl}
               </div>
             </div>
           </div>
@@ -211,6 +214,38 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="text-[11px] text-slate-600 font-medium">total</span>
           </div>
         </div>
+
+        {isCreator && (
+          <>
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bio Link Views</span>
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
+                  {isLoading ? '...' : summary?.bioLinkViews ?? 0}
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Link Clicks</span>
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Store className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
+                  {isLoading ? '...' : summary?.bioLinkClicks ?? 0}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Total Catalog Items */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
@@ -391,7 +426,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center space-y-3">
               <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-xs mx-auto overflow-hidden">
                 {business.logo ? (
-                  <img src={business.logo} alt="Logo" className="w-full h-full object-cover" />
+                  <SafeImage fallbackType="avatar" src={business.logo} alt="Logo" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-emerald-100 text-emerald-800 font-bold text-lg flex items-center justify-center">
                     {business.name.slice(0, 2).toUpperCase()}

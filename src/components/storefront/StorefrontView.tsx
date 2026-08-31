@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { SafeImage } from '../common/SafeImage';
 import {
   Store,
+  Download,
+  Loader2,
+  X,
   ShoppingBag,
   Search,
   MessageCircle,
@@ -409,6 +413,17 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     loadStoreData();
   }, [business.id]);
 
+  useEffect(() => {
+    if (catalogItems.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const itemId = urlParams.get('item');
+      if (itemId) {
+        const item = catalogItems.find(i => i.id === itemId);
+        if (item) setSelectedItemForDetail(item);
+      }
+    }
+  }, [catalogItems.length]);
+
   // Calculate average rating
   const averageRating =
     reviews.length > 0
@@ -674,11 +689,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           <div className="p-8 sm:p-12 bg-white rounded-3xl border border-amber-200 shadow-xl space-y-6">
             <div className="w-full max-w-sm h-52 mx-auto bg-amber-50/50 rounded-2xl flex items-center justify-center border-2 border-amber-200/60 shadow-inner overflow-hidden p-2">
               {business.maintenanceImage ? (
-                <img
-                  src={business.maintenanceImage}
-                  alt="Closed for maintenance"
-                  className="w-full h-full object-contain rounded-xl"
-                />
+                <SafeImage src={business.maintenanceImage} alt="Closed for maintenance" fallbackType="none" className="w-full h-full object-contain rounded-xl" />
               ) : (
                 <Store className="w-16 h-16 text-amber-600 animate-pulse" />
               )}
@@ -929,8 +940,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   item.type === 'service' ||
                   item.type === 'room' ||
                   item.type === 'vehicle' ||
-                  item.type === 'package' || item.productType === 'consultation_slot';
+                  item.type === 'package' || 
+                  item.productType === 'consultation_slot';
 
+                const isDigital = item.productType === 'digital_file';
                 const displayPrice = item.salePrice || item.price;
                 const hasDiscount = item.salePrice && item.salePrice < item.price;
                 const inCart = cartItems.find((c) => c.catalogItem.id === item.id);
@@ -946,13 +959,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                       className="relative h-36 sm:h-44 bg-slate-100 overflow-hidden cursor-pointer"
                     >
                       {item.images?.[0] ? (
-                        <img
-                          src={item.images[0]}
-                          alt={item.name}
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <SafeImage src={item.images[0]} alt={item.name} fallbackType="product" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
                           <ShoppingBag className="w-10 h-10 stroke-1" />
@@ -961,6 +968,16 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
                       {/* Badges */}
                       <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">
+                        {isDigital && (
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                            Digital File
+                          </span>
+                        )}
+                        {item.productType === 'consultation_slot' && (
+                          <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                            Consultation
+                          </span>
+                        )}
                         {item.isOffer && (
                           <span className="px-2 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
                             {item.offerText || 'Offer'}
@@ -1055,25 +1072,30 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                           )}
                         </div>
 
-                        {/* Order / Book Button */}
-                        {isBookable ? (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedItemForBooking(item)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
-                          >
-                            Book
-                          </button>
-                        ) : item.productType === 'digital_file' ? (
+                        {/* Order / Book / Digital Button */}
+                        {isDigital ? (
                           <button
                             type="button"
                             onClick={(e) => {
                                e.stopPropagation();
                                handleDigitalPurchase(item);
                             }}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1"
                           >
-                            {item.price === 0 ? 'Get Free' : 'Buy Now'}
+                            <Sparkles className="w-3 h-3" />
+                            <span>{item.price === 0 ? 'Get' : 'Buy'}</span>
+                          </button>
+                        ) : isBookable ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedItemForBooking(item);
+                            }}
+                            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1"
+                          >
+                            <CalendarCheck className="w-3 h-3" />
+                            <span>Book</span>
                           </button>
                         ) : (
                           <button
@@ -1093,17 +1115,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                 : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
                             }`}
                           >
-                            {inCart ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-700" />
-                                <span className="hidden sm:inline">In Cart ({inCart.quantity})</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Add</span>
-                              </>
-                            )}
+                            {inCart ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            <span>{inCart ? 'Added' : 'Add'}</span>
                           </button>
                         )}
                       </div>
@@ -1287,6 +1300,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           setSelectedItemForDetail(null);
           setSelectedItemForBooking(item);
         }}
+        onBuyDigitalItem={(item) => {
+          setSelectedItemForDetail(null);
+          handleDigitalPurchase(item);
+        }}
       />
 
       {/* Booking Modal */}
@@ -1303,6 +1320,70 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
       />
+
+      
+      {/* Digital Purchase Status Modal */}
+      {selectedItemForDigital && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <button 
+              onClick={() => setSelectedItemForDigital(null)} 
+              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {digitalPurchaseStatus === 'processing' && (
+              <div className="py-6 space-y-4">
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto" />
+                <h3 className="text-xl font-bold text-slate-900">Processing Request...</h3>
+                <p className="text-sm text-slate-500">Please wait while we prepare your digital file.</p>
+              </div>
+            )}
+            
+            {digitalPurchaseStatus === 'success' && (
+              <div className="py-6 space-y-6">
+                <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border-4 border-white shadow-xl">
+                  <Check className="w-10 h-10" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-900 font-heading">Success!</h3>
+                  <p className="text-sm text-slate-600 mt-2">Your file is ready to download.</p>
+                </div>
+                {digitalDownloadUrl && (
+                  <a 
+                    href={digitalDownloadUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-5 h-5" />
+                    <span>Download File Now</span>
+                  </a>
+                )}
+              </div>
+            )}
+            
+            {digitalPurchaseStatus === 'error' && (
+              <div className="py-6 space-y-6">
+                <div className="w-20 h-20 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto border-4 border-white shadow-xl">
+                  <X className="w-10 h-10" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Payment Failed</h3>
+                  <p className="text-sm text-slate-600 mt-2">There was an issue processing your request.</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedItemForDigital(null)}
+                  className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Write Review Modal */}
       <ReviewSubmitModal

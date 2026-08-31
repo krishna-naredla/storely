@@ -13,6 +13,7 @@ import {
   Tag,
   Share2,
 } from 'lucide-react';
+import { SafeImage } from '../common/SafeImage';
 import { CatalogItem, CatalogItemVariant, CatalogItemAddon, BusinessProfile } from '../../types';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
 
@@ -22,6 +23,7 @@ interface ItemDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onBookItem?: (item: CatalogItem) => void;
+  onBuyDigitalItem?: (item: CatalogItem) => void;
 }
 
 export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
@@ -30,6 +32,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   isOpen,
   onClose,
   onBookItem,
+  onBuyDigitalItem,
 }) => {
   const { addItem } = useStorefrontCart();
 
@@ -51,7 +54,10 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
     item.type === 'service' ||
     item.type === 'room' ||
     item.type === 'vehicle' ||
-    item.type === 'package';
+    item.type === 'package' ||
+    item.productType === 'consultation_slot';
+
+  const isDigital = item.productType === 'digital_file';
 
   const handleAddonToggle = (addon: CatalogItemAddon) => {
     setSelectedAddons((prev) => {
@@ -97,12 +103,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           {/* Main Image Banner / Carousel */}
           <div className="relative h-64 sm:h-72 bg-slate-100">
             {images.length > 0 ? (
-              <img
-                src={images[selectedImageIndex] || images[0]}
-                alt={item.name}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
+              <SafeImage src={images[selectedImageIndex] || images[0]} alt={item.name} fallbackType="product" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
                 <ShoppingBag className="w-16 h-16 stroke-1" />
@@ -150,11 +151,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                         : 'border-white/80 opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img
-                      src={img}
-                      alt={`Thumbnail ${idx}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <SafeImage src={img} alt={`Thumbnail ${idx}`} fallbackType="product" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -380,7 +377,18 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
           )}
 
           {/* Main CTA */}
-          {isBookable ? (
+          {isDigital ? (
+            <button
+              type="button"
+              onClick={() => onBuyDigitalItem && onBuyDigitalItem(item)}
+              className="flex-1 py-3 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>{item.price === 0 ? 'Get File Now' : 'Buy File'}</span>
+              <span className="font-mono bg-white/20 px-2 py-0.5 rounded-md text-xs">
+                {business.currencySymbol}{totalPrice}
+              </span>
+            </button>
+          ) : isBookable ? (
             <button
               type="button"
               onClick={handleBookNow}

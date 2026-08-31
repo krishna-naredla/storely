@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BusinessProfile } from '../../types';
-import { getBioLinks, createBioLink, updateBioLink, deleteBioLink, updateBioLinksOrder, updateBusinessProfile } from '../../services/firebaseService';
-import { Plus, GripVertical, Edit2, Trash2, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Mail, Phone, Palette, Copy, Share2, QrCode } from 'lucide-react';
+import { getBioLinks, createBioLink, updateBioLink, deleteBioLink, updateBioLinksOrder, updateBusinessProfile, getBioLinkAnalytics } from '../../services/firebaseService';
+import { Plus, GripVertical, Edit2, Trash2, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Mail, Phone, Palette, Copy, Share2, QrCode, BarChart2, Eye, MousePointerClick } from 'lucide-react';
 import QRCode from 'qrcode';
 
 interface Props {
@@ -9,14 +9,23 @@ interface Props {
 }
 
 const LINK_TYPES = [
-  { id: 'whatsapp', label: 'WhatsApp', icon: Smartphone },
-  { id: 'whatsapp_community', label: 'WhatsApp Community', icon: Smartphone },
-  { id: 'instagram', label: 'Instagram', icon: Instagram },
-  { id: 'youtube', label: 'YouTube', icon: Youtube },
-  { id: 'facebook', label: 'Facebook', icon: Facebook },
+  { id: 'whatsapp', label: 'WhatsApp Messenger', icon: Smartphone },
+  { id: 'whatsapp_community', label: 'WhatsApp Community / Group', icon: Smartphone },
+  { id: 'telegram', label: 'Telegram Channel / Group', icon: ExternalLink },
+  { id: 'instagram', label: 'Instagram Profile', icon: Instagram },
+  { id: 'youtube', label: 'YouTube Channel', icon: Youtube },
+  { id: 'facebook', label: 'Facebook Page', icon: Facebook },
   { id: 'twitter', label: 'X (Twitter)', icon: Twitter },
-  { id: 'website', label: 'Website', icon: ExternalLink },
-  { id: 'custom', label: 'Custom URL', icon: LinkIcon },
+  { id: 'linkedin', label: 'LinkedIn Profile', icon: ExternalLink },
+  { id: 'discord', label: 'Discord Server', icon: ExternalLink },
+  { id: 'google_form', label: 'Google Form', icon: LinkIcon },
+  { id: 'google_sheet', label: 'Google Sheet', icon: LinkIcon },
+  { id: 'google_doc', label: 'Google Doc', icon: LinkIcon },
+  { id: 'gdrive', label: 'Google Drive Link', icon: LinkIcon },
+  { id: 'website', label: 'Website / Portfolio', icon: ExternalLink },
+  { id: 'email', label: 'Email Address', icon: Mail },
+  { id: 'phone', label: 'Phone Number', icon: Phone },
+  { id: 'custom', label: 'Custom Link', icon: LinkIcon },
 ];
 
 export const BioProfileManager: React.FC<Props> = ({ business }) => {
@@ -25,6 +34,10 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingLink, setEditingLink] = useState<any>(null);
   
+  const [analytics, setAnalytics] = useState<{ views: number, clicks: number, clicksPerLink: Record<string, number> }>({
+    views: 0, clicks: 0, clicksPerLink: {}
+  });
+
   // Form states
   const [type, setType] = useState('custom');
   const [title, setTitle] = useState('');
@@ -41,20 +54,32 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
 
   const loadLinks = async () => {
     setLoading(true);
-    const data = await getBioLinks(business.id);
+    const [data, stats] = await Promise.all([
+      getBioLinks(business.id),
+      getBioLinkAnalytics(business.id)
+    ]);
     setLinks(data);
+    setAnalytics(stats);
     setLoading(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // URL Validation and Sanitization
+    let safeUrl = url.trim();
+    if (/^(javascript|data|file|vbs):/i.test(safeUrl)) {
+      alert("Unsafe URL protocol detected. Please use http or https.");
+      return;
+    }
+    
     if (editingLink) {
-      await updateBioLink(editingLink.id, { type, title, url });
+      await updateBioLink(editingLink.id, { type, title, url: safeUrl });
     } else {
       await createBioLink(business.id, {
         type,
         title,
-        url,
+        url: safeUrl,
         enabled: true,
         order: links.length
       });
@@ -105,7 +130,8 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
 
   const copyLink = () => {
     navigator.clipboard.writeText(publicUrl);
-    alert('Copied to clipboard!');
+    // Use a non-blocking toast or simple state instead of alert
+    alert('Public Link Copied!');
   };
 
   return (
@@ -221,7 +247,12 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
                         <div className="text-xs text-slate-500 truncate">{link.url}</div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end px-4 border-r border-slate-100 hidden sm:flex">
+                        <div className="text-sm font-bold text-slate-900">{analytics.clicksPerLink[link.id] || 0}</div>
+                        <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Clicks</div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 pl-2">
                         <button 
                           onClick={() => toggleStatus(link)}
                           className={`px-2 py-1 text-xs font-semibold rounded-md ${link.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}
@@ -240,6 +271,49 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
         </div>
 
         <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-emerald-600" /> 
+              Link Analytics
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-2 text-slate-500 mb-1">
+                  <Eye className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Profile Views</span>
+                </div>
+                <div className="text-2xl font-bold text-slate-900">{analytics.views}</div>
+              </div>
+              
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-2 text-slate-500 mb-1">
+                  <MousePointerClick className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Total Clicks</span>
+                </div>
+                <div className="text-2xl font-bold text-slate-900">{analytics.clicks}</div>
+              </div>
+            </div>
+            
+            {Object.keys(analytics.clicksPerLink).length > 0 && (
+              <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Top Performing Link</div>
+                  <div className="font-bold text-slate-900">
+                    {(() => {
+                      const topLinkId = Object.keys(analytics.clicksPerLink).reduce((a, b) => analytics.clicksPerLink[a] > analytics.clicksPerLink[b] ? a : b);
+                      const topLink = links.find(l => l.id === topLinkId);
+                      return topLink ? topLink.title : 'Unknown Link';
+                    })()}
+                  </div>
+                </div>
+                <div className="text-xl font-bold text-emerald-700">
+                  {Math.max(...(Object.values(analytics.clicksPerLink) as number[]))} <span className="text-sm font-medium">clicks</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center text-center">
             <h3 className="font-bold text-lg mb-4 w-full text-left">Profile QR Code</h3>
             <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 mb-4 inline-block">

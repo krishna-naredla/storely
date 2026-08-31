@@ -33,7 +33,10 @@ export type ModuleKey =
   | 'reviews'
   | 'offers'
   | 'digital_card'
-  | 'inventory_tracking';
+  | 'inventory_tracking'
+  | 'digital_products'
+  | 'universal_links'
+  | 'analytics';
 
 export interface BusinessModuleConfig {
   products?: boolean;
@@ -51,6 +54,10 @@ export interface BusinessModuleConfig {
   offers?: boolean;
   digital_card?: boolean;
   inventory_tracking?: boolean;
+  digital_products?: boolean;
+  universal_links?: boolean;
+  analytics?: boolean;
+
   
   // Alternative key aliases for backward/cross-module compatibility
   catalog_products?: boolean;
@@ -73,13 +80,16 @@ export interface BusinessProfile {
   ownerId: string;
   name: string;
   slug: string;
+  username?: string; // For @username URLs
   type: BusinessType;
   category?: string;
   tagline?: string;
   description?: string;
+  bio?: string; // Specific for creators
   logo?: string;
   banner?: string;
   coverImage?: string;
+  profileImage?: string; // Specific for creators
   phone: string;
   whatsapp: string;
   email?: string;
@@ -110,15 +120,22 @@ export interface BusinessProfile {
     facebook?: string;
     website?: string;
     youtube?: string;
+    twitter?: string;
+    telegram?: string;
+    linkedin?: string;
   };
   socials?: {
     instagram?: string;
     facebook?: string;
     website?: string;
     youtube?: string;
+    twitter?: string;
+    telegram?: string;
+    linkedin?: string;
   };
   seoMetaTitle?: string;
   seoMetaDescription?: string;
+  seoMetaKeywords?: string;
   seoMetaImage?: string;
   modules: BusinessModuleConfig;
   status: 'active' | 'inactive' | 'draft' | 'suspended' | 'maintenance';
@@ -126,6 +143,8 @@ export interface BusinessProfile {
   maintenanceMessage?: string;
   maintenanceImage?: string;
   themeColor?: string;
+  accentColor?: string; // Specific for creators
+  publicProfileStatus?: 'published' | 'draft'; // Specific for creators
   shareCount?: number;
   createdAt: number;
   updatedAt: number;
@@ -211,11 +230,19 @@ export interface CatalogItem {
 
   // Digital Creator extensions
   productType?: 'physical' | 'digital_file' | 'consultation_slot';
-  cloudinaryPublicId?: string;
-  fileType?: 'pdf' | 'zip' | 'video';
+  isFree?: boolean;
+  digitalFileType?: 'pdf' | 'zip' | 'video' | 'audio' | 'document' | 'template' | 'course' | 'other';
+  digitalFileUrl?: string; // Secure Cloudinary URL or Signed URL
+  digitalFileId?: string; // Cloudinary Public ID
+  fileSize?: string;
+  downloadLimit?: number;
+  
+  // Booking/Consultation extensions
   consultationDuration?: number; // minutes
   consultationDays?: string[]; // e.g. ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
   consultationTimeSlots?: string[]; // e.g. ["17:00", "18:00"]
+  timezone?: string;
+  bufferTime?: number; // minutes
   
   // Variations and Addons
   variants?: CatalogItemVariant[];
@@ -286,6 +313,8 @@ export interface Order {
   status: OrderStatus;
   paymentMethod: 'cod' | 'upi_on_delivery' | 'online' | 'cash_at_counter';
   paymentStatus: 'pending' | 'paid' | 'failed';
+  downloadStatus?: 'not_started' | 'completed';
+  digitalAccessUrl?: string; // Temporary signed URL
   notes?: string;
   createdAt: number;
   updatedAt: number;
@@ -323,6 +352,8 @@ export interface Booking {
   
   totalAmount: number;
   status: BookingStatus;
+  paymentStatus?: 'pending' | 'paid' | 'failed';
+  meetingUrl?: string; // Google Meet or Zoom
   notes?: string;
   createdAt: number;
   updatedAt: number;
@@ -382,6 +413,8 @@ export interface AnalyticsSummary {
   storeViews: number;
   whatsappClicks: number;
   conversionRate: number;
+  bioLinkViews?: number;
+  bioLinkClicks?: number;
   recentOrders: Order[];
   recentBookings: Booking[];
 }

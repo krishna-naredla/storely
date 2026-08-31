@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
-  const storeUrl = business ? getStorefrontUrl(business.slug) : '';
+  const storeUrl = business ? getStorefrontUrl(business) : '';
 
   useEffect(() => {
     if (!business) return;

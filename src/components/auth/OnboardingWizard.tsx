@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, BusinessType, BusinessModuleConfig } from '../../types';
 import { BUSINESS_TYPES, MODULE_DEFINITIONS } from '../../services/businessConfig';
-import { generateSlug, createCategory, createCatalogItem } from '../../services/firebaseService';
+import { generateSlug, createCategory, createCatalogItem, createBioLink } from '../../services/firebaseService';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 
 interface OnboardingWizardProps {
@@ -37,6 +37,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
   // Step 1: Business Identity & Type
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [type, setType] = useState<BusinessType>('retail');
   const [slug, setSlug] = useState('');
   const [tagline, setTagline] = useState('');
@@ -62,11 +63,20 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [initialItemPrice, setInitialItemPrice] = useState<number>(199);
   const [initialItemImage, setInitialItemImage] = useState('');
 
+  // Bio Links
+  const [onboardingLinks, setOnboardingLinks] = useState<Array<{type: string, title: string, url: string, id: string}>>([]);
+  const [newLinkType, setNewLinkType] = useState('instagram');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+
   // Auto-slug when name changes
   const handleNameChange = (val: string) => {
     setName(val);
     if (!slug || slug === generateSlug(name)) {
       setSlug(generateSlug(val));
+    }
+    if (!username || username === generateSlug(name)) {
+      setUsername(generateSlug(val));
     }
   };
 
@@ -107,6 +117,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
       const businessData: Omit<BusinessProfile, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'> = {
         name: name.trim(),
+        username: username.trim() || generateSlug(name),
         slug: slug.trim() || generateSlug(name),
         type,
         category: type,
@@ -141,11 +152,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           // Create first catalog item if provided
           if (initialItemName.trim()) {
             const meta = BUSINESS_TYPES[type] || BUSINESS_TYPES.retail;
+            const isDigital = !!modules.digital_products;
             await createCatalogItem(newBiz.id, {
               name: initialItemName.trim(),
               slug: generateSlug(initialItemName),
               categoryId: cat.id,
               type: meta.defaultItemType || 'product',
+              productType: isDigital ? 'digital_file' : undefined,
+              isFree: isDigital && Number(initialItemPrice) === 0 ? true : undefined,
               price: Number(initialItemPrice) || 0,
               images: initialItemImage.trim() ? [initialItemImage.trim()] : [],
               inStock: true,
@@ -154,6 +168,23 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           }
         } catch (subErr) {
           console.warn('Initial category/item creation handled:', subErr);
+        }
+      }
+
+      // Create Bio Links
+      if (modules.universal_links && onboardingLinks.length > 0) {
+        for (let i = 0; i < onboardingLinks.length; i++) {
+          try {
+            await createBioLink(newBiz.id, {
+              type: onboardingLinks[i].type,
+              title: onboardingLinks[i].title,
+              url: onboardingLinks[i].url,
+              enabled: true,
+              order: i
+            });
+          } catch (linkErr) {
+            console.warn('Link creation handled:', linkErr);
+          }
         }
       }
 
@@ -223,7 +254,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Store URL Slug *
@@ -235,6 +266,22 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                       value={slug}
                       onChange={(e) => setSlug(generateSlug(e.target.value))}
                       placeholder="my-store-name"
+                      className="w-full py-2.5 pr-3 text-xs bg-transparent focus:outline-hidden font-mono text-emerald-800 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Creator @Username *
+                  </label>
+                  <div className="flex items-center text-xs border border-slate-200 rounded-xl bg-slate-50 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500">
+                    <span className="pl-3 text-slate-400 font-mono">@</span>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(generateSlug(e.target.value))}
+                      placeholder="username"
                       className="w-full py-2.5 pr-3 text-xs bg-transparent focus:outline-hidden font-mono text-emerald-800 font-medium"
                     />
                   </div>
@@ -503,97 +550,243 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           <div className="space-y-5 animate-in fade-in duration-200">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-                Modules & First Catalog Item
+                Choose Your Store Features
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Customize enabled features for your store and optionally add your first item to launch immediately.
+                Select the features you need for your Storelly page. You can add or change them anytime from your dashboard.
               </p>
             </div>
 
-            {/* Quick module toggles */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Enabled Business Features
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {MODULE_DEFINITIONS.slice(0, 6).map((m) => {
-                  const isEnabled = !!modules[m.key];
-                  return (
-                    <button
-                      key={m.key}
-                      type="button"
-                      onClick={() => handleModuleToggle(m.key)}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition flex items-center justify-between ${
-                        isEnabled
-                          ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 font-semibold'
-                          : 'bg-slate-50 border-slate-200 text-slate-500'
-                      }`}
-                    >
-                      <span className="truncate">{m.label}</span>
-                      <span
-                        className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${
-                          isEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-300'
-                        }`}
-                      >
-                        {isEnabled ? '✓' : ''}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Initial Item Setup */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-emerald-600" />
-                First Offering / Item (Optional)
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Category</label>
-                  <input
-                    type="text"
-                    value={initialCategoryName}
-                    onChange={(e) => setInitialCategoryName(e.target.value)}
-                    placeholder="e.g. Special Collection, Best Sellers"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                {/* Quick module toggles */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Price ({currencySymbol})</label>
-                  <input
-                    type="number"
-                    value={initialItemPrice}
-                    onChange={(e) => setInitialItemPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Enabled Business Features
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
+                    {MODULE_DEFINITIONS.map((m) => {
+                      const isEnabled = !!modules[m.key];
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => handleModuleToggle(m.key)}
+                          className={`p-2.5 rounded-xl border text-left text-xs transition flex items-center justify-between ${
+                            isEnabled
+                              ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 font-semibold'
+                              : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-bold truncate">{m.label}</span>
+                            <span className="text-[9px] line-clamp-1 mt-0.5 opacity-70">{m.description}</span>
+                          </div>
+                          <span
+                            className={`w-4 h-4 ml-2 shrink-0 rounded-full flex items-center justify-center text-[10px] ${
+                              isEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200'
+                            }`}
+                          >
+                            {isEnabled ? '✓' : ''}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bio Links Setup */}
+                {modules.universal_links && (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Add Universal Links (Optional)
+                    </h3>
+                    
+                    <div className="flex gap-2">
+                      <select 
+                        value={newLinkType}
+                        onChange={(e) => setNewLinkType(e.target.value)}
+                        className="px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 w-1/3"
+                      >
+                        <option value="instagram">Instagram</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="whatsapp_community">WA Community</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="twitter">X / Twitter</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="website">Website</option>
+                        <option value="custom">Custom URL</option>
+                      </select>
+                      
+                      <input
+                        type="text"
+                        value={newLinkUrl}
+                        onChange={(e) => setNewLinkUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      />
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newLinkUrl.trim()) return;
+                          setOnboardingLinks([
+                            ...onboardingLinks, 
+                            { 
+                              id: Math.random().toString(36).substring(7),
+                              type: newLinkType, 
+                              title: newLinkTitle || (newLinkType.charAt(0).toUpperCase() + newLinkType.slice(1).replace('_', ' ')), 
+                              url: newLinkUrl 
+                            }
+                          ]);
+                          setNewLinkUrl('');
+                          setNewLinkTitle('');
+                        }}
+                        className="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold text-xs rounded-lg transition"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    
+                    {onboardingLinks.length > 0 && (
+                      <div className="space-y-2 mt-3 max-h-32 overflow-y-auto">
+                        {onboardingLinks.map((link) => (
+                          <div key={link.id} className="flex items-center justify-between bg-white p-2 border border-slate-100 rounded-lg text-xs">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className="font-semibold text-slate-800 capitalize">{link.type.replace('_', ' ')}</span>
+                              <span className="text-slate-500 truncate text-[10px]">{link.url}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOnboardingLinks(onboardingLinks.filter(l => l.id !== link.id))}
+                              className="text-red-500 hover:text-red-700 px-2"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Initial Item Setup */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-emerald-600" />
+                    {modules.digital_products ? 'Add Your First Digital Product' : modules.menu ? 'Add Your First Menu Item' : modules.services ? 'Add Your First Service' : 'Add Your First Product / Offering'} (Optional)
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Category</label>
+                      <input
+                        type="text"
+                        value={initialCategoryName}
+                        onChange={(e) => setInitialCategoryName(e.target.value)}
+                        placeholder="e.g. E-Books, Best Sellers, Services"
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Price ({currencySymbol})</label>
+                      <input
+                        type="number"
+                        value={initialItemPrice}
+                        onChange={(e) => setInitialItemPrice(Number(e.target.value))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Item / Service Name</label>
+                    <input
+                      type="text"
+                      value={initialItemName}
+                      onChange={(e) => setInitialItemName(e.target.value)}
+                      placeholder={modules.digital_products ? "e.g. Masterclass Video" : "e.g. Premium Item"}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  
+                  {modules.digital_products && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Upload Digital File (PDF/ZIP)</label>
+                      <input
+                        type="file"
+                        className="w-full text-xs"
+                      />
+                    </div>
+                  )}
+
+                  <ImageUploadInput
+                    label="Item Photo (Optional)"
+                    value={initialItemImage}
+                    onChange={setInitialItemImage}
+                    aspectRatio="square"
+                    suggestedPresetType="item"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Item / Service Name</label>
-                <input
-                  type="text"
-                  value={initialItemName}
-                  onChange={(e) => setInitialItemName(e.target.value)}
-                  placeholder="e.g. Premium Mango Pickle 500g, Hair Spa Treatment, Deluxe Room"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+              {/* Preview */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col hidden lg:flex">
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Your Storelly Page</h3>
+                <div className="bg-white rounded-xl shadow-xs border border-slate-100 flex-1 overflow-hidden flex flex-col relative">
+                  {banner ? (
+                     <img src={banner} className="w-full h-20 object-cover" alt="Banner" />
+                  ) : (
+                     <div className="w-full h-20 bg-slate-200"></div>
+                  )}
+                  <div className="px-4 pb-4 flex flex-col items-center -mt-8 relative z-10">
+                    {logo ? (
+                      <img src={logo} className="w-16 h-16 rounded-full border-4 border-white object-cover bg-white shadow-sm" alt="Logo" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full border-4 border-white bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xl shadow-sm">{name.charAt(0)}</div>
+                    )}
+                    <div className="font-bold text-sm text-slate-900 mt-2 text-center">{name || 'Your Name'}</div>
+                    {tagline && <div className="text-[10px] text-slate-500 text-center mt-0.5">{tagline}</div>}
+                    
+                    {modules.universal_links && (
+                      <div className="w-full space-y-1.5 mt-4">
+                        <div className="w-full h-7 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center text-[10px] text-slate-500">WhatsApp</div>
+                        <div className="w-full h-7 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center text-[10px] text-slate-500">Instagram</div>
+                      </div>
+                    )}
 
-              <ImageUploadInput
-                label="Item Photo (Optional)"
-                value={initialItemImage}
-                onChange={setInitialItemImage}
-                aspectRatio="square"
-                suggestedPresetType="item"
-              />
+                    {modules.digital_products && (
+                      <div className="w-full mt-4">
+                        <div className="text-[10px] font-bold mb-1">Digital Products</div>
+                        <div className="w-full h-12 bg-slate-50 border border-slate-100 rounded-lg"></div>
+                      </div>
+                    )}
+
+                    {modules.products && !modules.digital_products && (
+                      <div className="w-full mt-4">
+                        <div className="text-[10px] font-bold mb-1">Products</div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="h-16 bg-slate-50 border border-slate-100 rounded-lg"></div>
+                          <div className="h-16 bg-slate-50 border border-slate-100 rounded-lg"></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {modules.booking_appointments && (
+                      <div className="w-full mt-4">
+                        <div className="w-full h-8 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg flex items-center justify-center text-[10px] font-bold">Book Consultation</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between pt-4 border-t border-slate-100">
               <button
                 type="button"
                 disabled={isSubmitting}
@@ -618,7 +811,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Launch My Digital Store</span>
+                    <span>Launch My Storelly Page</span>
                   </>
                 )}
               </button>

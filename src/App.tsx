@@ -67,7 +67,7 @@ import { OnboardingWizard } from './components/auth/OnboardingWizard';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
-import { OfflineAlert } from './components/common/OfflineAlert';
+import { OfflineBanner } from './components/common/OfflineBanner';
 import { MasterAdminDashboard } from './components/admin/MasterAdminDashboard';
 import { MasterAdminLogin } from './components/admin/MasterAdminLogin';
 import { isUserAuthorizedAdmin } from './services/adminService';
@@ -338,6 +338,13 @@ function MainContent() {
         setPublicBusiness(null);
         setPublicStoreNotFound(false);
         setViewMode('dashboard');
+      } else {
+        // Handle item deep linking
+        const urlParams = new URLSearchParams(window.location.search);
+        const itemId = urlParams.get('item');
+        if (itemId && publicBusiness) {
+           // We might need to fetch the item specifically if not in list
+        }
       }
     };
 
@@ -1036,7 +1043,7 @@ export default function App() {
         <LanguageProvider>
           <MainContent />
           <PWAInstallPrompt />
-          <OfflineAlert />
+          <OfflineBanner />
         </LanguageProvider>
       </StorefrontCartProvider>
     </AuthProvider>

@@ -1,4 +1,5 @@
 import { useLanguage } from '../../context/LanguageContext';
+import { SafeImage } from '../common/SafeImage';
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
@@ -109,13 +110,14 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
   const [newAddonPrice, setNewAddonPrice] = useState<number>(0);
 
   // Digital Creator specific form fields
-  const [productType, setProductType] = useState<'physical' | 'digital_file' | 'consultation_slot'>('digital_file');
+  const [productType, setProductType] = useState<'physical' | 'digital_file' | 'consultation_slot'>('physical');
   const [isFree, setIsFree] = useState(false);
   const [cloudinaryPublicId, setCloudinaryPublicId] = useState('');
-  const [fileType, setFileType] = useState<'pdf' | 'zip' | 'video'>('pdf');
+  const [digitalFileType, setDigitalFileType] = useState<'pdf' | 'zip' | 'video' | 'audio' | 'document' | 'template' | 'course' | 'other'>('pdf');
+  const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [consultationDuration, setConsultationDuration] = useState<number>(30);
-  const [consultationDays, setConsultationDays] = useState<string[]>(['MO', 'WE', 'FR']);
-  const [consultationTimeSlots, setConsultationTimeSlots] = useState<string[]>(['17:00', '18:00']);
+  const [consultationDays, setConsultationDays] = useState<string[]>(['MO', 'TU', 'WE', 'TH', 'FR']);
+  const [consultationTimeSlots, setConsultationTimeSlots] = useState<string[]>(['10:00', '11:00', '14:00', '15:00', '16:00']);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -170,13 +172,14 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
     setFuelType('petrol');
     setTransmission('manual');
     setSeatingCapacity(5);
-    setProductType(business.type === 'digital_creator' ? 'digital_file' : 'physical');
+    setProductType(business.modules?.digital_products ? 'digital_file' : 'physical');
     setIsFree(false);
     setCloudinaryPublicId('');
-    setFileType('pdf');
     setConsultationDuration(30);
-    setConsultationDays(['MO', 'WE', 'FR']);
-    setConsultationTimeSlots(['17:00', '18:00']);
+    setConsultationDays(['MO', 'TU', 'WE', 'TH', 'FR']);
+    setConsultationTimeSlots(['10:00', '11:00', '14:00', '15:00', '16:00']);
+    setDigitalFileType('pdf');
+    setDigitalFileUrl('');
     setVariants([]);
     setAddons([]);
     setFormError(null);
@@ -211,13 +214,14 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
     setFuelType(item.fuelType || 'petrol');
     setTransmission(item.transmission || 'manual');
     setSeatingCapacity(item.seatingCapacity);
-    setProductType(item.productType || (business.type === 'digital_creator' ? 'digital_file' : 'physical'));
+    setProductType(item.productType || (business.modules?.digital_products ? 'digital_file' : 'physical'));
     setIsFree(item.price === 0);
-    setCloudinaryPublicId(item.cloudinaryPublicId || '');
-    setFileType(item.fileType || 'pdf');
+    setCloudinaryPublicId(item.digitalFileId || '');
+    setDigitalFileType(item.digitalFileType || 'pdf');
+    setDigitalFileUrl(item.digitalFileUrl || '');
     setConsultationDuration(item.consultationDuration || 30);
-    setConsultationDays(item.consultationDays || ['MO', 'WE', 'FR']);
-    setConsultationTimeSlots(item.consultationTimeSlots || ['17:00', '18:00']);
+    setConsultationDays(item.consultationDays || ['MO', 'TU', 'WE', 'TH', 'FR']);
+    setConsultationTimeSlots(item.consultationTimeSlots || ['10:00', '11:00', '14:00', '15:00', '16:00']);
     setVariants(item.variants || []);
     setAddons(item.addons || []);
     setFormError(null);
@@ -232,6 +236,11 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
     }
     if (price < 0) {
       setFormError('Price must be greater than or equal to 0');
+      return;
+    }
+    
+    if (business.modules?.digital_products && productType === 'digital_file' && !digitalFileUrl) {
+      setFormError('Please upload a digital file before saving.');
       return;
     }
 
@@ -271,9 +280,11 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
         fuelType: type === 'rental_vehicle' ? fuelType : undefined,
         transmission: type === 'rental_vehicle' ? transmission : undefined,
         seatingCapacity: type === 'rental_vehicle' ? (seatingCapacity ? Number(seatingCapacity) : undefined) : undefined,
-        productType: business.type === 'digital_creator' ? productType : undefined,
-        cloudinaryPublicId: productType === 'digital_file' ? (cloudinaryPublicId.trim() || undefined) : undefined,
-        fileType: productType === 'digital_file' ? fileType : undefined,
+        productType: business.modules?.digital_products ? productType : undefined,
+        digitalFileId: productType === 'digital_file' ? (cloudinaryPublicId.trim() || undefined) : undefined,
+        digitalFileUrl: productType === 'digital_file' ? (digitalFileUrl.trim() || undefined) : undefined,
+        digitalFileType: productType === 'digital_file' ? digitalFileType : undefined,
+        isFree: business.modules?.digital_products ? isFree : undefined,
         consultationDuration: productType === 'consultation_slot' ? Number(consultationDuration) : undefined,
         consultationDays: productType === 'consultation_slot' ? consultationDays : undefined,
         consultationTimeSlots: productType === 'consultation_slot' ? consultationTimeSlots : undefined,
@@ -283,14 +294,6 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
       };
 
       if (editingItem) {
-        // Detect if the existing image was replaced or removed, then clean up the old one to save storage costs
-        if (editingItem.images && editingItem.images.length > 0) {
-          const oldImageUrl = editingItem.images[0];
-          const newImageUrl = imageUrls[0];
-          if (oldImageUrl !== newImageUrl) {
-            deleteImageFromStorage(oldImageUrl);
-          }
-        }
         await updateCatalogItem(business.id, editingItem.id, itemPayload);
       } else {
         await createCatalogItem(business.id, itemPayload);
@@ -305,12 +308,21 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
     }
   };
 
-  
-  const handleToggleSelectAll = () => {
-    if (selectedItemIds.size === filteredItems.length) {
-      setSelectedItemIds(new Set());
-    } else {
-      setSelectedItemIds(new Set(filteredItems.map(i => i.id)));
+  const handleDigitalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingFile(true);
+      setUploadProgress(0);
+      const url = await uploadToCloudinary(file, (p) => setUploadProgress(p));
+      setDigitalFileUrl(url);
+      const parts = url.split('/');
+      const publicId = parts[parts.length - 1].split('.')[0];
+      setCloudinaryPublicId(publicId);
+      setIsUploadingFile(false);
+    } catch (err: any) {
+      setFormError(err.message || 'File upload failed');
+      setIsUploadingFile(false);
     }
   };
 
@@ -323,9 +335,17 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
     });
   };
 
+  const handleToggleSelectAll = () => {
+    if (selectedItemIds.size === filteredItems.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(filteredItems.map(i => i.id)));
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedItemIds.size === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedItemIds.size} items?`)) return;
+    if (!window.confirm(`Delete ${selectedItemIds.size} items?`)) return;
     setIsBulkProcessing(true);
     try {
       for (const id of selectedItemIds) {
@@ -333,8 +353,6 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
       }
       setItems(prev => prev.filter(i => !selectedItemIds.has(i.id)));
       setSelectedItemIds(new Set());
-    } catch (err) {
-      console.error('Error in bulk delete:', err);
     } finally {
       setIsBulkProcessing(false);
     }
@@ -349,46 +367,17 @@ export const CatalogManager: React.FC<any> = ({ business }) => {
       }
       setItems(prev => prev.map(i => selectedItemIds.has(i.id) ? { ...i, isActive } : i));
       setSelectedItemIds(new Set());
-    } catch (err) {
-      console.error('Error in bulk visibility toggle:', err);
     } finally {
       setIsBulkProcessing(false);
     }
   };
 
-const handleToggleActive = async (item: CatalogItem) => {
+  const handleToggleActive = async (item: CatalogItem) => {
     try {
-      await updateCatalogItem(business.id, item.id, {
-        isActive: !item.isActive,
-      });
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, isActive: !i.isActive } : i))
-      );
+      await updateCatalogItem(business.id, item.id, { isActive: !item.isActive });
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, isActive: !item.isActive } : i));
     } catch (err) {
-      console.error('Error toggling item visibility:', err);
-    }
-  };
-
-  const handleDigitalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 500 * 1024 * 1024) {
-      setFormError('File size exceeds 500MB limit');
-      return;
-    }
-    try {
-      setIsUploadingFile(true);
-      setUploadProgress(0);
-      setFormError(null);
-      const url = await uploadToCloudinary(file, (p) => setUploadProgress(p));
-      const randomId = 'creator_file_' + Date.now();
-      setCloudinaryPublicId(url);
-      // FIXED: Do not set digital file as the public thumbnail image array
-
-      setIsUploadingFile(false);
-    } catch (err: any) {
-      setFormError(err.message || 'File upload failed');
-      setIsUploadingFile(false);
+      console.error('Error toggling item:', err);
     }
   };
 
@@ -405,15 +394,9 @@ const handleToggleActive = async (item: CatalogItem) => {
     if (!itemToDelete) return;
     try {
       setIsDeleting(true);
-      // Clean up storage bucket for the product image before deleting the document
-      if (itemToDelete.images && itemToDelete.images.length > 0) {
-        itemToDelete.images.forEach(img => deleteImageFromStorage(img));
-      }
       await deleteCatalogItem(business.id, itemToDelete.id);
       setItemToDelete(null);
       await loadData();
-    } catch (err) {
-      console.error('Error deleting item:', err);
     } finally {
       setIsDeleting(false);
     }
@@ -421,910 +404,191 @@ const handleToggleActive = async (item: CatalogItem) => {
 
   const addVariant = () => {
     if (!newVarName.trim()) return;
-    setVariants((prev) => [
-      ...prev,
-      {
-        id: 'var_' + Date.now(),
-        name: newVarName.trim(),
-        price: Number(newVarPrice) || price,
-      },
-    ]);
+    setVariants(prev => [...prev, { id: 'var_' + Date.now(), name: newVarName.trim(), price: newVarPrice || price }]);
     setNewVarName('');
     setNewVarPrice(price);
   };
 
-  const removeVariant = (varId: string) => {
-    setVariants((prev) => prev.filter((v) => v.id !== varId));
-  };
+  const removeVariant = (id: string) => setVariants(prev => prev.filter(v => v.id !== id));
 
-  const addAddon = () => {
-    if (!newAddonName.trim()) return;
-    setAddons((prev) => [
-      ...prev,
-      {
-        id: 'add_' + Date.now(),
-        name: newAddonName.trim(),
-        price: Number(newAddonPrice) || 0,
-      },
-    ]);
-    setNewAddonName('');
-    setNewAddonPrice(0);
-  };
-
-  const removeAddon = (addId: string) => {
-    setAddons((prev) => prev.filter((a) => a.id !== addId));
-  };
-
-  // Filter items
-  const filteredItems = items.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory =
-      selectedCategoryFilter === 'all' || item.categoryId === selectedCategoryFilter;
+  const filteredItems = items.filter(i => {
+    const matchesSearch = i.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategoryFilter === 'all' || i.categoryId === selectedCategoryFilter;
     return matchesSearch && matchesCategory;
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header Bar */}
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-            {bizMeta.itemPlural} & Catalog Management
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Create, edit, duplicate, manage stock and pricing for your offerings.
-          </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{bizMeta.itemPlural}</h2>
+          <p className="text-xs text-slate-500">Manage your store offerings.</p>
         </div>
-
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New {bizMeta.itemLabel}</span>
+        <button onClick={openCreateModal} className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Add New
         </button>
       </div>
 
-      {/* Search & Filter Strip */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 rounded-lg border border-slate-100">
-            <input
-              type="checkbox"
-              checked={selectedItemIds.size > 0 && selectedItemIds.size === filteredItems.length}
-              onChange={handleToggleSelectAll}
-              className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 cursor-pointer"
-            />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight hidden sm:inline">Select All</span>
-          </div>
-          <div className="relative flex-1 w-full sm:min-w-[200px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${bizMeta.itemPlural.toLowerCase()} by name, SKU...`}
-              className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
-            />
+          <input type="checkbox" checked={selectedItemIds.size > 0 && selectedItemIds.size === filteredItems.length} onChange={handleToggleSelectAll} className="w-4 h-4 text-emerald-600" />
+          <div className="relative flex-1 sm:min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl" />
           </div>
         </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={selectedCategoryFilter}
-            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            className="w-full sm:w-48 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
-          >
-            <option value="all">All Categories ({items.length})</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select value={selectedCategoryFilter} onChange={e => setSelectedCategoryFilter(e.target.value)} className="w-full sm:w-48 px-3 py-2 text-xs border border-slate-200 rounded-xl">
+          <option value="all">All Categories</option>
+          {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+        </select>
       </div>
 
-      
       {selectedItemIds.size > 0 && (
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 mb-4 flex items-center justify-between">
-          <span className="text-sm font-semibold text-indigo-800">
-            {selectedItemIds.size} item{selectedItemIds.size > 1 ? 's' : ''} selected
-          </span>
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-indigo-800">{selectedItemIds.size} selected</span>
           <div className="flex gap-2">
-            <button
-              onClick={() => handleBulkToggleVisibility(true)}
-              disabled={isBulkProcessing}
-              className="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-50 disabled:opacity-50"
-            >
-              Show
-            </button>
-            <button
-              onClick={() => handleBulkToggleVisibility(false)}
-              disabled={isBulkProcessing}
-              className="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 text-xs font-bold rounded-lg hover:bg-indigo-50 disabled:opacity-50"
-            >
-              Hide
-            </button>
-            <button
-              onClick={handleBulkDelete}
-              disabled={isBulkProcessing}
-              className="px-3 py-1.5 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 disabled:opacity-50 flex items-center gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete
+            <button onClick={() => handleBulkToggleVisibility(true)} className="px-3 py-1.5 bg-white border border-indigo-200 text-xs font-bold rounded-lg">Show</button>
+            <button onClick={() => handleBulkToggleVisibility(false)} className="px-3 py-1.5 bg-white border border-indigo-200 text-xs font-bold rounded-lg">Hide</button>
+            <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg flex items-center gap-1">
+              <Trash2 className="w-3.5 h-3.5" /> Delete
             </button>
           </div>
         </div>
       )}
-{/* Item List / Grid */}
+
       {isLoading ? (
+        <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
+      ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-44 bg-white rounded-2xl border border-slate-200 animate-pulse p-4 space-y-3">
-              <div className="h-4 bg-slate-100 rounded w-2/3" />
-              <div className="h-3 bg-slate-100 rounded w-1/2" />
-              <div className="h-16 bg-slate-100 rounded-xl" />
+          {filteredItems.map(item => (
+            <div key={item.id} className={`bg-white rounded-2xl border p-4 flex flex-col gap-3 relative ${!item.isActive ? 'opacity-60' : 'border-slate-200'}`}>
+              <div className="absolute top-3 left-3"><input type="checkbox" checked={selectedItemIds.has(item.id)} onChange={() => handleToggleSelectItem(item.id)} className="w-4 h-4 text-emerald-600" /></div>
+              <div className="flex items-start justify-between">
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    {item.images?.[0] ? <SafeImage src={item.images[0]} alt={item.name} fallbackType="product" className="w-full h-full object-cover" /> : <Package className="w-6 h-6 text-slate-300" />}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-bold text-slate-900">{item.name}</h3>
+                    <div className="text-sm font-extrabold text-emerald-700">{business.currencySymbol}{item.salePrice || item.price}</div>
+                  </div>
+                </div>
+                <button onClick={() => handleToggleActive(item)} className={`p-1.5 rounded-lg border ${item.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                  {item.isActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                <div className="text-[11px] text-slate-500">
+                  {item.productType === 'digital_file' && '📁 Digital'}
+                  {item.productType === 'consultation_slot' && '📅 Consultation'}
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => handleDuplicate(item)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openEditModal(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setItemToDelete(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
             </div>
           ))}
         </div>
-      ) : filteredItems.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.map((item) => {
-            const cat = categories.find((c) => c.id === item.categoryId);
-            const image = item.images && item.images.length > 0 ? item.images[0] : '';
-            return (
-              <SwipeToDelete key={item.id} onDelete={() => setItemToDelete(item)}>
-                <div
-                  className={`bg-white rounded-2xl border transition-all p-4 flex flex-col justify-between gap-3 relative shadow-2xs hover:shadow-md ${
-                    !item.isActive ? 'opacity-60 border-slate-200' : 'border-slate-200/90 hover:border-emerald-300'
-                  }`}
-                >
-                  {/* Bulk Select Checkbox */}
-                  <div className="absolute top-3 left-3 z-20">
-                    <input
-                      type="checkbox"
-                      checked={selectedItemIds.has(item.id)}
-                      onChange={() => handleToggleSelectItem(item.id)}
-                      className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                {/* Top Badge & Status */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex gap-3">
-                    <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
-                      {image ? (
-                        <img src={image} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-400">
-                          <Package className="w-6 h-6" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
-                          {cat ? cat.name : 'General'}
-                        </span>
-                        
-                        {(item.stockQuantity !== undefined && item.stockQuantity < 5 && item.type === 'product' && item.inStock) && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
-                            <Flame className="w-3 h-3" />
-                            Low Stock ({item.stockQuantity})
-                          </span>
-                        )}
-{item.isFeatured && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                            Featured
-                          </span>
-                        )}
-                      </div>
-
-                      <h3 className="text-xs font-bold text-slate-900 line-clamp-1 leading-snug">
-                        {item.name}
-                      </h3>
-
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-sm font-extrabold text-emerald-700">
-                          {business.currencySymbol}{item.salePrice || item.price}
-                        </span>
-                        {item.salePrice && item.salePrice < item.price && (
-                          <span className="text-[11px] text-slate-400 line-through">
-                            {business.currencySymbol}{item.price}
-                          </span>
-                        )}
-                        {item.unit && (
-                          <span className="text-[10px] text-slate-600">/{item.unit}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Active Visibility Pill */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleActive(item)}
-                    title={item.isActive ? 'Active (Click to hide)' : 'Hidden (Click to publish)'}
-                    className={`p-1.5 rounded-lg border transition ${
-                      item.isActive
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-slate-100 text-slate-400 border-slate-200'
-                    }`}
-                  >
-                    {item.isActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-
-                {/* Specific Specs Details */}
-                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {item.type === 'service' && item.durationMinutes && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        {item.durationMinutes} mins
-                      </span>
-                    )}
-                    {item.stockQuantity !== undefined && (
-                      <span className="flex items-center gap-1">
-                        <Boxes className="w-3 h-3 text-slate-400" />
-                        {item.stockQuantity} in stock
-                      </span>
-                    )}
-                    {item.type === 'room_stay' && item.roomCapacity && (
-                      <span className="flex items-center gap-1">
-                        <BedDouble className="w-3 h-3 text-slate-400" />
-                        {item.roomCapacity} Guests
-                      </span>
-                    )}
-                    {item.type === 'rental_vehicle' && item.seatingCapacity && (
-                      <span className="flex items-center gap-1">
-                        <Car className="w-3 h-3 text-slate-400" />
-                        {item.seatingCapacity} Seats
-                      </span>
-                    )}
-                    {item.type === 'menu_item' && item.spiceLevel && (
-                      <span className="flex items-center gap-1 capitalize">
-                        🌶️ {item.spiceLevel}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions Toolbar */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicate(item)}
-                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-                      title="Duplicate Item"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(item)}
-                      className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition"
-                      title="Edit Item"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setItemToDelete(item)}
-                      className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
-                      title="Delete Item"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </SwipeToDelete>
-          );
-          })}
-        </div>
       ) : (
-        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-            <Package className="w-6 h-6" />
-          </div>
-          <h3 className="text-base font-bold text-slate-900">No {bizMeta.itemPlural} Found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Add your first {bizMeta.itemLabel.toLowerCase()} to showcase your offerings to customers.
-          </p>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition inline-flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add {bizMeta.itemLabel}</span>
-          </button>
-        </div>
+        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">No items found.</div>
       )}
 
-      {/* CREATE / EDIT ITEM MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-base font-bold text-slate-900 font-heading">
-                  {editingItem ? `Edit ${bizMeta.itemLabel}` : `Add New ${bizMeta.itemLabel}`}
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Configure details, pricing, photos, and options.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-5 border-b flex justify-between items-center">
+              <h3 className="font-bold text-slate-900">{editingItem ? 'Edit Item' : 'Add Item'}</h3>
+              <button onClick={() => setIsModalOpen(false)}><X className="w-5 h-5" /></button>
             </div>
-
-            {/* Modal Body */}
-            <form onSubmit={handleSaveItem} className="p-6 overflow-y-auto space-y-4 flex-1">
-              {formError && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700">
-                  {formError}
-                </div>
-              )}
-
-              {/* Item Type & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSaveItem} className="p-6 overflow-y-auto space-y-4">
+              {formError && <div className="p-3 bg-red-50 text-red-700 rounded-xl text-xs">{formError}</div>}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Category *
-                  </label>
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                    required
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Category</label>
+                  <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-xl" required>
+                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Item Type
-                  </label>
-                  <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value as CatalogItemType)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="product">Physical Product</option>
-                    <option value="service">Service / Appointment</option>
-                    <option value="menu_item">Restaurant Menu Item</option>
-                    <option value="room">Hotel Room / Stay</option>
-                    <option value="vehicle">Vehicle Rental</option>
-                    <option value="package">Package / Combo</option>
-                    <option value="course">Course / Workshop</option>
-                    <option value="property">Property Listing</option>
-                    <option value="custom">Custom Offering</option>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Type</label>
+                  <select value={type} onChange={e => setType(e.target.value as any)} className="w-full px-3 py-2 text-xs border rounded-xl">
+                    <option value="product">{business.modules?.digital_products ? 'Product / Digital' : 'Physical Product'}</option>
+                    <option value="service">Service</option>
+                    <option value="menu_item">Menu Item</option>
+                    <option value="room">Room</option>
+                    <option value="vehicle">Vehicle</option>
                   </select>
                 </div>
               </div>
-
-              {/* Item Name */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  {bizMeta.itemLabel} Name *
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Handmade Mango Pickle, Bridal Makeover, Deluxe Sea View Suite"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  required
-                />
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Item Name</label>
+                <input value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-xl" required />
               </div>
-
-              {/* Pricing & Unit */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Price ({business.currencySymbol}) *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={isFree ? 0 : price}
-                    onChange={(e) => setPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Price</label>
+                  <input type="number" value={isFree ? 0 : price} onChange={e => setPrice(Number(e.target.value))} className="w-full px-3 py-2 text-xs border rounded-xl" required />
                 </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Sale Price ({business.currencySymbol}) (Optional)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={salePrice ?? ''}
-                    onChange={(e) =>
-                      setSalePrice(e.target.value ? Number(e.target.value) : undefined)
-                    }
-                    placeholder="Discounted price"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Unit / Basis
-                  </label>
-                  <input
-                    type="text"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    placeholder="pcs, kg, night, hour, session"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Photos with Cloudinary */}
-              <div className="space-y-2">
-                <ImageUploadInput
-                  label="Item Photo (Cloudinary CDN or Image URL)"
-                  value={imageUrls[0] || ''}
-                  onChange={(url) => setImageUrls(url ? [url] : [])}
-                  aspectRatio="square"
-                  helperText="Primary photo displayed across your storefront catalog."
-                  onFileSizeChange={(size) => setImageFileSize(size)}
-                />
-                <ImageSizeWarning fileSize={imageFileSize} />
-              </div>
-
-              {/* Short & Detailed Descriptions */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Short Description
-                </label>
-                <input
-                  type="text"
-                  value={shortDescription}
-                  onChange={(e) => setShortDescription(e.target.value)}
-                  placeholder="Key features, ingredients, or highlights"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* If Digital Creator */}
-              {business.type === 'digital_creator' && (
-                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-4">
-                  <h4 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                    Digital Creator Product Type
-                  </h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setProductType('digital_file')}
-                      className={`p-2.5 rounded-xl text-xs font-bold border transition ${
-                        productType === 'digital_file'
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
-                      }`}
-                    >
-                      📁 Digital File
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setProductType('consultation_slot')}
-                      className={`p-2.5 rounded-xl text-xs font-bold border transition ${
-                        productType === 'consultation_slot'
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
-                      }`}
-                    >
-                      📅 1:1 Consultation
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setProductType('physical')}
-                      className={`p-2.5 rounded-xl text-xs font-bold border transition ${
-                        productType === 'physical'
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
-                      }`}
-                    >
-                      📦 Physical Item
-                    </button>
-                  </div>
-
-                  {productType === 'digital_file' && (
-                    <div className="space-y-3 pt-2">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
-                            File Format
-                          </label>
-                          <select
-                            value={fileType}
-                            onChange={(e) => setFileType(e.target.value as any)}
-                            className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
-                          >
-                            <option value="pdf">PDF E-Book / Guide</option>
-                            <option value="zip">ZIP Course Bundle / Assets</option>
-                            <option value="video">MP4 Video Masterclass</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
-                            Cloudinary Public ID (Secure Delivery)
-                          </label>
-                          <input
-                            type="text"
-                            value={cloudinaryPublicId}
-                            onChange={(e) => setCloudinaryPublicId(e.target.value)}
-                            placeholder="e.g. creator_ebook_v1"
-                            className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-white rounded-xl border border-indigo-200 space-y-2">
-                        <label className="block text-[11px] font-bold text-indigo-900">
-                          Upload Digital File (PDF / ZIP / MP4 up to 500MB)
-                        </label>
-                        <input
-                          type="file"
-                          accept=".pdf,.zip,.mp4,.mov,.epub"
-                          onChange={handleDigitalFileUpload}
-                          className="w-full text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                        />
-                        {isUploadingFile && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] text-indigo-700 font-semibold">
-                              <span>Uploading to Cloudinary Secure CDN...</span>
-                              <span>{uploadProgress}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-indigo-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-600 transition-all" style={{ width: `${uploadProgress}%` }} />
-                            </div>
-                          </div>
-                        )}
-                        {cloudinaryPublicId && !isUploadingFile && (
-                          <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-                            ✓ File attached & secured on Cloudinary (Public ID: {cloudinaryPublicId})
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {productType === 'consultation_slot' && (
-                    <div className="space-y-3 pt-2">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
-                          Consultation Duration (Minutes)
-                        </label>
-                        <select
-                          value={consultationDuration}
-                          onChange={(e) => setConsultationDuration(Number(e.target.value))}
-                          className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
-                        >
-                          <option value={15}>15 Minutes</option>
-                          <option value={30}>30 Minutes</option>
-                          <option value={45}>45 Minutes</option>
-                          <option value={60}>60 Minutes (1 Hour)</option>
-                          <option value={90}>90 Minutes</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-indigo-900 mb-1">
-                          Available Time Slots (Comma-separated)
-                        </label>
-                        <input
-                          type="text"
-                          value={consultationTimeSlots.join(', ')}
-                          onChange={(e) => setConsultationTimeSlots(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                          placeholder="10:00, 14:00, 17:00, 20:00"
-                          className="w-full px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* VERTICAL SPECIFIC FIELDS */}
-              {/* If Service / Appointment */}
-              {type === 'service' && (
-                <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100 space-y-3">
-                  <h4 className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                    <Scissors className="w-3.5 h-3.5 text-purple-600" />
-                    Service Details
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-purple-900 mb-1">
-                        Duration (Minutes)
-                      </label>
-                      <input
-                        type="number"
-                        value={durationMinutes ?? 30}
-                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-purple-200 rounded-lg"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* If Restaurant Menu Item */}
-              {type === 'menu_item' && (
-                <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-100 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                    <UtensilsCrossed className="w-3.5 h-3.5 text-amber-600" />
-                    Food & Menu Specs
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2 pt-4">
-                      <input
-                        type="checkbox"
-                        id="isVegCheck"
-                        checked={isVeg}
-                        onChange={(e) => setIsVeg(e.target.checked)}
-                        className="w-4 h-4 rounded text-emerald-600"
-                      />
-                      <label htmlFor="isVegCheck" className="text-xs font-bold text-amber-900">
-                        {isVeg ? '🌱 Pure Veg' : '🍗 Non-Veg'}
-                      </label>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-amber-900 mb-1">
-                        Prep Time (Mins)
-                      </label>
-                      <input
-                        type="number"
-                        value={prepTimeMinutes ?? 20}
-                        onChange={(e) => setPrepTimeMinutes(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-amber-200 rounded-lg"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-amber-900 mb-1">
-                        Spice Level
-                      </label>
-                      <select
-                        value={spiceLevel}
-                        onChange={(e) => setSpiceLevel(e.target.value as any)}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-amber-200 rounded-lg"
-                      >
-                        <option value="mild">Mild 🌿</option>
-                        <option value="medium">Medium 🌶️</option>
-                        <option value="spicy">Spicy 🔥</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* If Hotel Room */}
-              {type === 'room' && (
-                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
-                  <h4 className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                    <BedDouble className="w-3.5 h-3.5 text-blue-600" />
-                    Room & Stay Specifications
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-blue-900 mb-1">
-                        Guest Capacity
-                      </label>
-                      <input
-                        type="number"
-                        value={roomCapacity ?? 2}
-                        onChange={(e) => setRoomCapacity(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-blue-200 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-blue-900 mb-1">
-                        Bed Type
-                      </label>
-                      <input
-                        type="text"
-                        value={bedType}
-                        onChange={(e) => setBedType(e.target.value)}
-                        placeholder="King Bed, Twin Bed"
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-blue-200 rounded-lg"
-                      />
-                    </div>
-                  </div>
+                {productType !== 'digital_file' && productType !== 'consultation_slot' && (
                   <div>
-                    <label className="block text-[11px] font-semibold text-blue-900 mb-1">
-                      Amenities (comma-separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={amenitiesInput}
-                      onChange={(e) => setAmenitiesInput(e.target.value)}
-                      placeholder="AC, Free WiFi, Balcony, Swimming Pool"
-                      className="w-full px-3 py-1.5 text-xs bg-white border border-blue-200 rounded-lg"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* If Vehicle Rental */}
-              {type === 'vehicle' && (
-                <div className="p-4 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-3">
-                  <h4 className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-teal-600" />
-                    Vehicle Fleet Specifications
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-teal-900 mb-1">
-                        Model / Year
-                      </label>
-                      <input
-                        type="text"
-                        value={vehicleModel}
-                        onChange={(e) => setVehicleModel(e.target.value)}
-                        placeholder="e.g. 2024 Automatic"
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-teal-200 rounded-lg"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-teal-900 mb-1">
-                        Fuel Type
-                      </label>
-                      <select
-                        value={fuelType}
-                        onChange={(e) => setFuelType(e.target.value as any)}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-teal-200 rounded-lg"
-                      >
-                        <option value="petrol">Petrol</option>
-                        <option value="diesel">Diesel</option>
-                        <option value="electric">Electric (EV)</option>
-                        <option value="cng">CNG</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-teal-900 mb-1">
-                        Transmission
-                      </label>
-                      <select
-                        value={transmission}
-                        onChange={(e) => setTransmission(e.target.value as any)}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-teal-200 rounded-lg"
-                      >
-                        <option value="manual">Manual</option>
-                        <option value="automatic">Automatic</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Variants Section */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800">
-                    Variants / Options (e.g. 500g, 1kg or Size L)
-                  </h4>
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newVarName}
-                    onChange={(e) => setNewVarName(e.target.value)}
-                    placeholder="Variant name (e.g. 500g Pack, Large)"
-                    className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
-                  />
-                  <input
-                    type="number"
-                    value={newVarPrice}
-                    onChange={(e) => setNewVarPrice(Number(e.target.value))}
-                    placeholder="Price"
-                    className="w-24 px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={addVariant}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg"
-                  >
-                    Add
-                  </button>
-                </div>
-
-                {variants.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {variants.map((v) => (
-                      <div
-                        key={v.id}
-                        className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs flex items-center gap-2 shadow-2xs"
-                      >
-                        <span className="font-semibold text-slate-800">{v.name}</span>
-                        <span className="text-emerald-700 font-bold">
-                          {business.currencySymbol}{v.price}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeVariant(v.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Unit</label>
+                    <input value={unit} onChange={e => setUnit(e.target.value)} className="w-full px-3 py-2 text-xs border rounded-xl" />
                   </div>
                 )}
               </div>
-
-              {/* Toggles: Featured & In Stock */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <label className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={inStock}
-                    onChange={(e) => setInStock(e.target.checked)}
-                    className="w-4 h-4 rounded text-emerald-600"
-                  />
-                  <div>
-                    <div className="text-xs font-bold text-slate-800">In Stock / Available</div>
-                    <div className="text-[10px] text-slate-500">Allow customers to order</div>
+              <ImageUploadInput label="Item Photo" value={imageUrls[0] || ''} onChange={url => setImageUrls(url ? [url] : [])} aspectRatio="square" />
+              
+              {business.modules?.digital_products && (
+                <div className="p-4 bg-indigo-50 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-bold text-indigo-900">Digital Creator Options</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['physical', 'digital_file', 'consultation_slot'].map(pt => (
+                      <button key={pt} type="button" onClick={() => setProductType(pt as any)} className={`p-2 rounded-xl text-[10px] font-bold border ${productType === pt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-indigo-100'}`}>
+                        {pt === 'digital_file' ? '📁 File' : pt === 'consultation_slot' ? '📅 1:1' : '📦 Physical'}
+                      </button>
+                    ))}
                   </div>
-                </label>
+                  {productType === 'digital_file' && (
+                    <div className="space-y-3">
+                       <select value={digitalFileType} onChange={e => setDigitalFileType(e.target.value as any)} className="w-full px-3 py-1.5 text-xs border rounded-lg">
+                          <option value="pdf">PDF</option>
+                          <option value="zip">ZIP</option>
+                          <option value="video">Video</option>
+                          <option value="audio">Audio</option>
+                       </select>
+                       <div className="flex items-center gap-2">
+                          <input type="checkbox" checked={isFree} onChange={e => { setIsFree(e.target.checked); if(e.target.checked) setPrice(0); }} id="isFree" />
+                          <label htmlFor="isFree" className="text-xs font-bold">Free Download</label>
+                       </div>
+                       <input type="file" onChange={handleDigitalFileUpload} className="w-full text-[10px]" />
+                       {isUploadingFile && <div className="text-[10px] font-bold text-indigo-700">Uploading {uploadProgress}%...</div>}
+                       {digitalFileUrl && <div className="text-[10px] text-emerald-700">✓ Uploaded</div>}
+                    </div>
+                  )}
+                  {productType === 'consultation_slot' && (
+                    <div className="space-y-3">
+                       <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold mb-1">Duration (min)</label>
+                            <input type="number" value={consultationDuration} onChange={e => setConsultationDuration(Number(e.target.value))} className="w-full px-2 py-1 text-xs border rounded-lg" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold mb-1">Slots (comma sep)</label>
+                            <input value={consultationTimeSlots.join(',')} onChange={e => setConsultationTimeSlots(e.target.value.split(','))} className="w-full px-2 py-1 text-xs border rounded-lg" placeholder="10:00,11:00" />
+                          </div>
+                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
-                <label className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isFeatured}
-                    onChange={(e) => setIsFeatured(e.target.checked)}
-                    className="w-4 h-4 rounded text-emerald-600"
-                  />
-                  <div>
-                    <div className="text-xs font-bold text-slate-800">Featured Offering</div>
-                    <div className="text-[10px] text-slate-500">Show on storefront top banner</div>
-                  </div>
-                </label>
-              </div>
-
-              {/* Modal Footer Actions */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  disabled={isSaving}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2"
-                >
+              <div className="pt-4 border-t flex justify-end gap-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-bold text-slate-500">Cancel</button>
+                <button type="submit" disabled={isSaving} className="px-6 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center gap-2">
                   {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{editingItem ? 'Save Changes' : `Create ${bizMeta.itemLabel}`}</span>
+                  <span>{editingItem ? 'Save' : 'Create'}</span>
                 </button>
               </div>
             </form>
@@ -1332,12 +596,11 @@ const handleToggleActive = async (item: CatalogItem) => {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!itemToDelete}
-        title={`Delete ${itemToDelete?.name}?`}
-        message="This will permanently delete this catalog item from your store. Customers will no longer be able to view or order it."
-        confirmText="Delete Item"
+        title="Delete Item?"
+        message="Permanently remove this item?"
+        confirmText="Delete"
         isDestructive={true}
         isLoading={isDeleting}
         onConfirm={handleDeleteConfirm}

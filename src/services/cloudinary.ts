@@ -84,7 +84,7 @@ export async function uploadToCloudinary(
   file: File | Blob,
   onProgress?: (percent: number) => void
 ): Promise<string> {
-  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
 
   try {
     const formData = new FormData();

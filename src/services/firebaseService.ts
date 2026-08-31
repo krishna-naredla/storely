@@ -68,10 +68,13 @@ export function generateSlug(text: string): string {
 /**
  * Get dynamic, accurate storefront URL for any environment
  */
-export function getStorefrontUrl(slug: string): string {
-  if (typeof window === 'undefined') return `/store/${slug}`;
+export function getStorefrontUrl(businessOrSlug: any): string {
+  const slug = typeof businessOrSlug === 'string' ? businessOrSlug : businessOrSlug?.slug || '';
+  const isCreator = typeof businessOrSlug === 'object' && businessOrSlug?.modules?.universal_links;
+  
+  if (typeof window === 'undefined') return isCreator ? `/@${slug}` : `/store/${slug}`;
   const origin = window.location.origin;
-  return `${origin}/store/${encodeURIComponent(slug)}`;
+  return `${origin}${isCreator ? '/@' : '/store/'}${encodeURIComponent(slug)}`;
 }
 
 // Local Storage Business Cache Helpers
@@ -952,6 +955,8 @@ export async function getAnalyticsSummary(businessId: string): Promise<Analytics
     const events = eventsSnap.docs.map((d: any) => d.data());
     const storeViews = events.filter((e: any) => e.eventType === 'store_view').length;
     const whatsappClicks = events.filter((e: any) => e.eventType === 'whatsapp_click').length;
+    const bioLinkViews = events.filter((e: any) => e.eventType === 'biolink_view').length;
+    const bioLinkClicks = events.filter((e: any) => e.eventType === 'biolink_click').length;
 
     const totalConversions = completedOrders.length + bookings.filter((b) => b.status !== 'cancelled').length;
     const conversionRate = storeViews > 0 ? (totalConversions / storeViews) * 100 : totalConversions > 0 ? 100 : 0;
@@ -964,6 +969,8 @@ export async function getAnalyticsSummary(businessId: string): Promise<Analytics
       totalProducts: items.length,
       storeViews: Math.max(storeViews, orders.length + bookings.length),
       whatsappClicks,
+      bioLinkViews,
+      bioLinkClicks,
       conversionRate: Math.min(100, Math.round(conversionRate * 10) / 10),
       recentOrders: orders.slice(0, 5),
       recentBookings: bookings.slice(0, 5),
@@ -1082,15 +1089,62 @@ export const updateBioLinksOrder = async (links: any[]) => {
   await batch.commit();
 };
 
-export const recordBioLinkClick = async (linkId: string) => {
-  // Add a click analytics document
+export const recordBioLinkClick = async (businessId: string, linkId: string) => {
   try {
-    await addDoc(collection(db, 'analytics'), {
-      type: 'biolink_click',
-      linkId,
+    await addDoc(collection(db, 'businesses', businessId, 'analyticsEvents'), {
+      id: 'ev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      businessId,
+      eventType: 'biolink_click',
+      metadata: { linkId },
       timestamp: Date.now()
     });
   } catch(e) {
     console.error(e);
+  }
+};
+
+export const recordBioLinkView = async (businessId: string) => {
+  try {
+    await addDoc(collection(db, 'businesses', businessId, 'analyticsEvents'), {
+      id: 'ev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      businessId,
+      eventType: 'biolink_view',
+      metadata: {},
+      timestamp: Date.now()
+    });
+  } catch(e) {
+    console.error(e);
+  }
+};
+
+export const getBioLinkAnalytics = async (businessId: string) => {
+  try {
+    const q = query(
+      collection(db, 'businesses', businessId, 'analyticsEvents'),
+      where('eventType', 'in', ['biolink_view', 'biolink_click'])
+    );
+    const snap = await getDocs(q);
+    const events = snap.docs.map(d => d.data());
+    
+    let views = 0;
+    let clicks = 0;
+    const clicksPerLink: Record<string, number> = {};
+    
+    events.forEach((ev: any) => {
+      if (ev.eventType === 'biolink_view') {
+        views++;
+      } else if (ev.eventType === 'biolink_click') {
+        clicks++;
+        const linkId = ev.metadata?.linkId;
+        if (linkId) {
+          clicksPerLink[linkId] = (clicksPerLink[linkId] || 0) + 1;
+        }
+      }
+    });
+    
+    return { views, clicks, clicksPerLink };
+  } catch (error) {
+    console.error("Error fetching bio link analytics:", error);
+    return { views: 0, clicks: 0, clicksPerLink: {} };
   }
 };

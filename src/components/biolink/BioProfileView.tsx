@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { SafeImage } from '../common/SafeImage';
 import { BusinessProfile, CatalogItem } from '../../types';
-import { getBioLinks, recordBioLinkClick, getCatalogItems } from '../../services/firebaseService';
-import { Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { getBioLinks, recordBioLinkClick, recordBioLinkView, getCatalogItems } from '../../services/firebaseService';
+import { Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Link as LinkIcon, Mail } from 'lucide-react';
 
 interface Props {
   business: BusinessProfile;
@@ -21,8 +22,23 @@ const getIcon = (type: string) => {
       return Facebook;
     case 'twitter':
       return Twitter;
+    case 'telegram':
+      return ExternalLink;
+    case 'linkedin':
+      return ExternalLink;
+    case 'discord':
+      return ExternalLink;
+    case 'google_form':
+    case 'google_sheet':
+    case 'google_doc':
+    case 'gdrive':
+      return LinkIcon;
     case 'website':
       return ExternalLink;
+    case 'email':
+      return Mail;
+    case 'phone':
+      return Smartphone;
     default:
       return LinkIcon;
   }
@@ -34,7 +50,40 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = `${business.name} | Storelly`;
+    // Dynamic SEO Update
+    const title = business.seoMetaTitle || `${business.name} | Storelly`;
+    const description = business.seoMetaDescription || business.tagline || business.description || '';
+    const image = business.seoMetaImage || business.logo || '';
+    
+    document.title = title;
+    
+    // Meta tags helper
+    const updateMeta = (name: string, content: string, isProperty = false) => {
+      if (!content) return;
+      let el = isProperty 
+        ? document.querySelector(`meta[property="${name}"]`)
+        : document.querySelector(`meta[name="${name}"]`);
+        
+      if (!el) {
+        el = document.createElement('meta');
+        if (isProperty) el.setAttribute('property', name);
+        else el.setAttribute('name', name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+
+    updateMeta('description', description);
+    updateMeta('keywords', business.seoMetaKeywords || '');
+    updateMeta('og:title', title, true);
+    updateMeta('og:description', description, true);
+    updateMeta('og:image', image, true);
+    updateMeta('twitter:card', 'summary_large_image');
+    updateMeta('twitter:title', title);
+    updateMeta('twitter:description', description);
+    updateMeta('twitter:image', image);
+
+    recordBioLinkView(business.id);
     loadLinks();
   }, [business.id]);
 
@@ -50,8 +99,15 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   };
 
   const handleLinkClick = async (link: any) => {
-    await recordBioLinkClick(link.id);
-    window.open(link.url, '_blank');
+    // Non-blocking analytics
+    recordBioLinkClick(business.id, link.id).catch(console.error);
+    
+    // Ensure absolute URL
+    let finalUrl = link.url;
+    if (!/^https?:\/\//i.test(finalUrl)) {
+      finalUrl = 'https://' + finalUrl;
+    }
+    window.open(finalUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -66,7 +122,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
         {/* Profile Image */}
         <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto rounded-full border-4 border-white bg-white shadow-lg overflow-hidden flex items-center justify-center">
           {business.logo ? (
-            <img src={business.logo} alt={business.name} className="w-full h-full object-cover" />
+            <SafeImage src={business.logo} alt={business.name} fallbackType="avatar" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-4xl font-black">
               {business.name.charAt(0).toUpperCase()}
@@ -77,10 +133,10 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
         {/* Profile Info */}
         <div className="mt-4 mb-8">
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{business.name}</h1>
-          <p className="text-emerald-600 font-semibold text-sm mb-3">@{business.slug}</p>
-          {(business.description || business.tagline) && (
-            <p className="text-slate-600 leading-relaxed text-sm max-w-md mx-auto">
-              {business.description || business.tagline}
+          <p className="text-emerald-600 font-semibold text-sm mb-3">@{business.username || business.slug}</p>
+          {(business.bio || business.description || business.tagline) && (
+            <p className="text-slate-600 leading-relaxed text-sm max-w-md mx-auto whitespace-pre-wrap">
+              {business.bio || business.description || business.tagline}
             </p>
           )}
         </div>
@@ -110,28 +166,50 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
         {/* Featured Store Items */}
         {catalogItems.length > 0 && (
           <div className="mt-8 pt-8 border-t border-slate-200">
-            <h2 className="text-xl font-bold text-slate-900 mb-4 text-left">Featured Products</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-4 text-left">
+              {business.type === 'digital_creator' ? 'Digital Products & Services' : 'Featured Products'}
+            </h2>
             <div className="space-y-4">
               {catalogItems.map(item => (
-                <div key={item.id} className="flex items-center p-3 bg-white border border-slate-200 rounded-2xl shadow-sm text-left">
-                  {item.images?.[0] && (
-                    <img src={item.images[0]} alt={item.title} className="w-16 h-16 rounded-xl object-cover mr-4" />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-800 text-sm line-clamp-1">{item.title}</h3>
-                    <p className="text-slate-500 text-xs mt-0.5 line-clamp-1">{item.description}</p>
-                    <div className="text-emerald-600 font-bold text-sm mt-1">
-                      {item.price === 0 ? 'Free' : `${business.currencySymbol}${item.price}`}
+                <div key={item.id} className="flex items-center p-3 bg-white border border-slate-200 rounded-2xl shadow-sm text-left group hover:border-emerald-500 transition-colors">
+                  <div className="relative">
+                    {item.images?.[0] ? (
+                      <SafeImage src={item.images[0]} alt={item.name} fallbackType="product" className="w-16 h-16 rounded-xl object-cover mr-4" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center mr-4 text-slate-400">
+                        {item.productType === 'digital_file' ? <LinkIcon className="w-6 h-6" /> : <Smartphone className="w-6 h-6" />}
+                      </div>
+                    )}
+                    {item.productType === 'digital_file' && (
+                      <div className="absolute -top-1 -left-1 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">
+                        FILE
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-800 text-sm line-clamp-1">{item.name}</h3>
+                    <p className="text-slate-500 text-xs mt-0.5 line-clamp-1">{item.shortDescription || item.detailedDescription}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-emerald-600 font-bold text-sm">
+                        {item.price === 0 ? 'FREE' : `${business.currencySymbol}${item.price}`}
+                      </div>
+                      {item.productType === 'consultation_slot' && (
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          • {item.consultationDuration} MIN SESSION
+                        </div>
+                      )}
                     </div>
                   </div>
+                  
                   <button
                     onClick={() => {
-                       // Just redirect to the full store with item query
-                       window.location.href = `/store/${business.slug}`;
+                       // Direct to store for now, future: direct "Get" or "Book" flow
+                       window.location.href = `/store/${business.slug}?item=${item.id}`;
                     }}
-                    className="ml-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition"
+                    className="ml-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition shrink-0"
                   >
-                    {item.isBookable ? 'Book' : (item.price === 0 ? 'Get' : 'Buy')}
+                    {item.productType === 'consultation_slot' ? 'BOOK' : (item.price === 0 ? 'GET' : 'BUY')}
                   </button>
                 </div>
               ))}
@@ -141,7 +219,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               onClick={() => window.location.href = `/store/${business.slug}`}
               className="mt-4 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl transition"
             >
-              View All Products
+              Visit Storefront
             </button>
           </div>
         )}
