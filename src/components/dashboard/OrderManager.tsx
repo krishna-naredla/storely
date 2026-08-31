@@ -18,10 +18,12 @@ import {
   X,
   Loader2,
   Send,
+  Download,
 } from 'lucide-react';
 import { BusinessProfile, Order, OrderStatus } from '../../types';
 import { getOrders, updateOrderStatus, subscribeToOrders, deleteOrder } from '../../services/firebaseService';
 import { SwipeToDelete } from '../common/SwipeToDelete';
+import { exportToCSV } from '../../utils/csvExport';
 
 interface OrderManagerProps {
   business: BusinessProfile;
@@ -93,6 +95,21 @@ export const OrderManager: React.FC<any> = ({ business }) => {
     window.print();
   };
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredOrders.map(o => ({
+      OrderNumber: o.orderNumber,
+      Customer: o.customerName,
+      Phone: o.customerPhone,
+      Type: o.orderType,
+      Status: o.status,
+      Total: o.total,
+      Payment: o.paymentMethod,
+      CreatedAt: o.createdAt,
+      Items: o.items.map(i => `${i.name} x${i.quantity}`).join('; ')
+    }));
+    exportToCSV(`Storelly_Orders_${business.slug}`, dataToExport);
+  };
+
   const handleShareOrderToMerchant = (order: Order) => {
     const itemsList = order.items.map(i => `- ${i.name} x ${i.quantity} (${business.currencySymbol}${i.price * i.quantity})`).join('\n');
     const text = encodeURIComponent(
@@ -151,7 +168,14 @@ export const OrderManager: React.FC<any> = ({ business }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Refresh button removed for real-time */}
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 

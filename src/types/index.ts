@@ -119,6 +119,7 @@ export interface BusinessProfile {
   };
   seoMetaTitle?: string;
   seoMetaDescription?: string;
+  seoMetaImage?: string;
   modules: BusinessModuleConfig;
   status: 'active' | 'inactive' | 'draft' | 'suspended' | 'maintenance';
   maintenanceMode?: boolean;
@@ -391,4 +392,17 @@ export interface CartItem {
   quantity: number;
   selectedVariant?: CatalogItemVariant;
   selectedAddons?: CatalogItemAddon[];
+}
+
+export interface BioLink {
+  id: string;
+  businessId: string;
+  type: string;
+  title: string;
+  url: string;
+  icon?: string;
+  order: number;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
 }

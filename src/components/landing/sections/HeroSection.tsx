@@ -15,7 +15,7 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
       badge: "India's #1 Digital Business Operating System",
       headline: "Launch Your Online Store & Grow With Storelly",
       subtitle: "Empower your local shop, boutique, homemade brand, or service business with a professional storefront, product catalog, instant orders, and custom digital cards — in minutes, no coding needed.",
-      heroImageUrl: "/storelly6.jpg.jpeg"
+      heroImageUrl: "/landingpage.jpeg"
     };
   })();
 
@@ -77,7 +77,7 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           <div className="lg:col-span-5 relative flex items-center justify-center">
             <div className="relative w-full rounded-3xl bg-linear-to-b from-emerald-50 to-teal-100/50 shadow-2xl shadow-emerald-900/10 border border-emerald-200/60 p-5 overflow-hidden flex items-center justify-center transform hover:scale-[1.01] transition-transform duration-300">
               <img 
-                src={heroConfig.heroImageUrl} 
+                src={"/landingpage.jpeg"} 
                 alt="Storelly Business Showcase" 
                 className="w-full h-auto max-h-[580px] lg:max-h-[640px] object-cover rounded-2xl shadow-xl mx-auto"
               />

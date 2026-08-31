@@ -10,9 +10,11 @@ import {
   IndianRupee,
   DollarSign,
   UserCheck,
+  Download,
 } from 'lucide-react';
 import { BusinessProfile, Customer } from '../../types';
 import { getCustomers } from '../../services/firebaseService';
+import { exportToCSV } from '../../utils/csvExport';
 
 interface CustomerManagerProps {
   business: BusinessProfile;
@@ -50,6 +52,20 @@ export const CustomerManager: React.FC<any> = ({ business }) => {
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredCustomers.map(c => ({
+      Name: c.name,
+      Phone: c.phone,
+      WhatsApp: c.whatsapp || '',
+      Email: c.email || '',
+      TotalOrders: c.totalOrders || 0,
+      TotalSpent: c.totalSpent || 0,
+      Address: c.address || '',
+      LastInteraction: c.lastInteractionAt ? new Date(c.lastInteractionAt).toISOString() : ''
+    }));
+    exportToCSV(`Storelly_Customers_${business.slug}`, dataToExport);
+  };
+
   const filteredCustomers = customers.filter((c) => {
     return (
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -72,6 +88,14 @@ export const CustomerManager: React.FC<any> = ({ business }) => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </button>
           <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
             Total Customers: {customers.length}
           </div>

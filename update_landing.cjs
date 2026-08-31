@@ -1,15 +1,29 @@
 const fs = require('fs');
+
 const file = 'src/components/landing/MasterLandingView.tsx';
 let code = fs.readFileSync(file, 'utf8');
 
-const targetHero = `                     <img 
-                       src="/ladingpage.jpeg" 
-                       alt="Storelly Landing" 
-                       className="max-w-full h-auto object-contain hover:scale-105 transition-transform duration-700"
-                     />`;
+const target1 = `<svg className="absolute hidden lg:block text-emerald-600 w-24 h-12 left-20 top-4 opacity-40" style={{ transform: 'rotate(-15deg)' }} viewBox="0 0 100 50">
+                    <path d="M0,40 Q50,0 95,20" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
+                    <polygon points="95,20 85,15 90,28" fill="currentColor" />
+                  </svg>`;
+const replacement1 = `<svg className="absolute hidden lg:block text-emerald-600 w-24 h-12 left-20 top-4 opacity-40" style={{ transform: 'rotate(-15deg)' }} viewBox="0 0 100 50">
+                    <path d="M0,40 Q50,0 95,20" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
+                    <polygon points="95,20 85,15 90,28" fill="currentColor" />
+                  </svg>`; // Not replacing Vendor arrow as per "Extend the SAME existing dotted curved arrow" we will just replace Creator arrow. Actually I'll keep this as is.
 
-const cssMockup = `
-                      <div className="w-full bg-slate-50 border-[6px] border-slate-900 rounded-[2.5rem] p-4 shadow-2xl relative overflow-hidden transform hover:scale-105 transition-transform duration-700">
+const target2 = `<svg className="absolute hidden lg:block text-emerald-500 w-24 h-12 left-20 top-4 opacity-40" style={{ transform: 'rotate(15deg)' }} viewBox="0 0 100 50">
+                    <path d="M0,10 Q50,50 95,30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
+                    <polygon points="95,30 85,22 90,38" fill="currentColor" />
+                  </svg>`;
+const replacement2 = `<svg className="absolute hidden lg:block text-emerald-500 left-20 top-4 opacity-40" style={{ width: 'clamp(150px, 22vw, 350px)', overflow: 'visible' }} viewBox="0 0 200 50">
+                    <path d="M0,10 Q100,80 190,30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
+                    <polygon points="195,29 183,23 186,37" fill="currentColor" />
+                  </svg>`;
+
+code = code.replace(target2, replacement2);
+
+const targetPhone = `<div className="w-full bg-slate-50 border-[6px] border-slate-900 rounded-[2.5rem] p-4 shadow-2xl relative overflow-hidden transform hover:scale-105 transition-transform duration-700">
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-6 bg-slate-900 rounded-b-xl z-10"></div>
                         
                         <div className="space-y-4 pt-4">
@@ -61,11 +75,23 @@ const cssMockup = `
                             <button className="px-3 py-1.5 bg-slate-900 text-white font-bold text-xs rounded-lg whitespace-nowrap">Get Free</button>
                           </div>
                         </div>
-                      </div>
-`;
+                      </div>`;
 
-if (code.includes('src="/ladingpage.jpeg"')) {
-  code = code.replace(targetHero, cssMockup);
+const replacementPhone = `<div className="w-full relative overflow-hidden transform hover:scale-105 transition-transform duration-700 rounded-2xl">
+                        <img src="/landingpage.jpeg" alt="Hero Storefront" className="w-full h-auto object-contain" />
+                      </div>`;
+
+if (code.includes(target2)) {
+  console.log("Found arrow. Replacing...");
+} else {
+  console.log("Could not find arrow!");
+}
+
+if (code.includes(targetPhone)) {
+  console.log("Found phone. Replacing...");
+  code = code.replace(targetPhone, replacementPhone);
+} else {
+  console.log("Could not find phone block!");
 }
 
 fs.writeFileSync(file, code);

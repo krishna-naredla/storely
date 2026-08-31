@@ -46,6 +46,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { BUSINESS_TYPES } from './services/businessConfig';
 import { Sidebar, DashboardTab } from './components/dashboard/Sidebar';
 import { Header } from './components/dashboard/Header';
+import { BioProfileManager } from './components/biolink/BioProfileManager';
+import { BioProfileView } from './components/biolink/BioProfileView';
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { CatalogManager } from './components/dashboard/CatalogManager';
 import { CategoryManager } from './components/dashboard/CategoryManager';
@@ -65,6 +67,7 @@ import { OnboardingWizard } from './components/auth/OnboardingWizard';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
+import { OfflineAlert } from './components/common/OfflineAlert';
 import { MasterAdminDashboard } from './components/admin/MasterAdminDashboard';
 import { MasterAdminLogin } from './components/admin/MasterAdminLogin';
 import { isUserAuthorizedAdmin } from './services/adminService';
@@ -82,8 +85,14 @@ function parseStoreSlugFromUrl(): string | null {
     return storeParam.trim();
   }
 
-  // 2. Check path e.g. /store/myshop or /store/myshop/
+  // 2. Check path e.g. /@username or /store/myshop/
   const pathname = window.location.pathname;
+  
+  const bioMatch = pathname.match(/^\/@([^/?#]+)/i);
+  if (bioMatch && bioMatch[1]) {
+    return decodeURIComponent(bioMatch[1]).trim();
+  }
+
   const match = pathname.match(/^\/store\/([^/?#]+)/i);
   if (match && match[1]) {
     return decodeURIComponent(match[1]).trim();
@@ -545,9 +554,9 @@ function MainContent() {
             <div className="relative">
               <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-3xl blur-md opacity-20 animate-pulse" />
               <div className="relative w-20 h-20 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center overflow-hidden shadow-sm">
-                {publicBusiness?.logoUrl ? (
+                {publicBusiness?.logo ? (
                   <img
-                    src={publicBusiness.logoUrl}
+                    src={publicBusiness.logo}
                     alt={publicBusiness.name}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
@@ -580,6 +589,20 @@ function MainContent() {
     const targetBusiness = publicStoreSlug ? publicBusiness : selectedBusiness;
     if (targetBusiness && !publicStoreNotFound) {
       const isOwner = currentUser && selectedBusiness && selectedBusiness.id === targetBusiness.id;
+      
+      // Check if it's a bio link
+      const pathname = window.location.pathname;
+      const isBioLink = pathname.startsWith('/@');
+
+      if (isBioLink) {
+        return (
+          <BioProfileView
+            business={targetBusiness}
+            onBackToDashboard={isOwner ? navigateToDashboard : undefined}
+          />
+        );
+      }
+
       return (
         <StorefrontView
           business={targetBusiness}
@@ -833,6 +856,8 @@ function MainContent() {
             />
           )}
 
+          {activeTab === 'biolink' && <BioProfileManager business={biz} />}
+
           {activeTab === 'share' && (
             <div className="space-y-6">
               <div>
@@ -1011,6 +1036,7 @@ export default function App() {
         <LanguageProvider>
           <MainContent />
           <PWAInstallPrompt />
+          <OfflineAlert />
         </LanguageProvider>
       </StorefrontCartProvider>
     </AuthProvider>

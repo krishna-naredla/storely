@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+
+import { FaWhatsapp, FaTelegram, FaYoutube, FaInstagram } from 'react-icons/fa';
+import { SiGooglepay, SiPhonepe, SiPaytm, SiGoogleforms } from 'react-icons/si';
+import { Link, CalendarCheck, LineChart, FileDown, Wand2 } from 'lucide-react';
+
 import { 
   Store, CheckCircle2, Star, FileText, Calendar, Link2, 
   MessageCircle, TrendingUp, ChevronDown, Check, Play, QrCode, 
@@ -12,15 +17,29 @@ interface MasterLandingViewProps {
 }
 
 const featuresData = [
-  { emoji: '💬', iconGradient: 'from-emerald-400 to-green-500', shadow: 'shadow-emerald-500/30', title: 'WhatsApp Orders', desc: 'Receive order details directly on WhatsApp, no dashboard needed.' },
-  { emoji: '⚡', iconGradient: 'from-violet-400 to-purple-600', shadow: 'shadow-purple-500/30', title: 'UPI Payments', desc: 'Let customers pay instantly using Google Pay, PhonePe, and Paytm.' },
-  { emoji: '🔗', iconGradient: 'from-blue-400 to-cyan-500', shadow: 'shadow-cyan-500/30', title: 'Your Own Store Link', desc: 'Share one memorable, professional link across all your platforms.' },
-  { emoji: '📅', iconGradient: 'from-pink-400 to-rose-500', shadow: 'shadow-rose-500/30', title: 'Booking & Consultations', desc: 'Let customers book available slots and pay for 1:1 sessions online.' },
-  { emoji: '📱', iconGradient: 'from-orange-400 to-amber-500', shadow: 'shadow-amber-500/30', title: 'All Your Links in One Place', desc: 'Connect WhatsApp, Telegram, YouTube, Instagram, and Forms.' },
-  { emoji: '📈', iconGradient: 'from-sky-400 to-blue-500', shadow: 'shadow-blue-500/30', title: 'Simple Analytics', desc: 'Understand visits, clicks and how customers interact with your page.' },
-  { emoji: '📦', iconGradient: 'from-red-400 to-rose-600', shadow: 'shadow-red-500/30', title: 'Digital Products', desc: 'Sell PDFs, notes, templates, and courses with secure auto-delivery.' },
-  { emoji: '🎨', iconGradient: 'from-yellow-400 to-orange-500', shadow: 'shadow-orange-500/30', title: 'Customizable Storefront', desc: 'Choose themes and colors to match your personal or brand identity.' },
-  { emoji: '🛠️', iconGradient: 'from-teal-400 to-emerald-500', shadow: 'shadow-teal-500/30', title: 'Zero Coding Required', desc: 'Launch your store in less than 2 minutes. No technical skills needed.' }
+  { icon: <FaWhatsapp size={34} color="white" />, iconGradient: 'from-emerald-400 to-green-500', shadow: 'shadow-emerald-500/30', title: 'WhatsApp Orders', desc: 'Receive order details directly on WhatsApp, no dashboard needed.' },
+  { icon: (
+      <div className="flex gap-1.5 text-white items-center justify-center">
+        <SiGooglepay size={22} color="white" />
+        <SiPhonepe size={18} color="white" />
+        <SiPaytm size={24} color="white" />
+      </div>
+    ), iconGradient: 'from-violet-400 to-purple-600', shadow: 'shadow-purple-500/30', title: 'UPI Payments', desc: 'Let customers pay instantly using Google Pay, PhonePe, and Paytm.' },
+  { icon: <Link size={32} className="text-white" />, iconGradient: 'from-blue-400 to-cyan-500', shadow: 'shadow-cyan-500/30', title: 'Your Own Store Link', desc: 'Share one memorable, professional link across all your platforms.' },
+  { icon: <CalendarCheck size={32} className="text-white" />, iconGradient: 'from-pink-400 to-rose-500', shadow: 'shadow-rose-500/30', title: 'Booking & Consultations', desc: 'Let customers book available slots and pay for 1:1 sessions online.' },
+  { icon: (
+      <div className="flex flex-wrap justify-center items-center gap-1.5 w-12 text-white">
+        <FaWhatsapp size={14} color="white" />
+        <FaTelegram size={14} color="white" />
+        <FaYoutube size={14} color="white" />
+        <FaInstagram size={14} color="white" />
+        <SiGoogleforms size={14} color="white" />
+      </div>
+    ), iconGradient: 'from-orange-400 to-amber-500', shadow: 'shadow-amber-500/30', title: 'All Your Links in One Place', desc: 'Connect WhatsApp, Telegram, YouTube, Instagram, and Forms.' },
+  { icon: <LineChart size={32} className="text-white" />, iconGradient: 'from-sky-400 to-blue-500', shadow: 'shadow-blue-500/30', title: 'Simple Analytics', desc: 'Understand visits, clicks and how customers interact with your page.' },
+  { icon: <FileDown size={32} className="text-white" />, iconGradient: 'from-red-400 to-rose-600', shadow: 'shadow-red-500/30', title: 'Digital Products', desc: 'Sell PDFs, notes, templates, and courses with secure auto-delivery.' },
+  { icon: <Store size={32} className="text-white" />, iconGradient: 'from-yellow-400 to-orange-500', shadow: 'shadow-orange-500/30', title: 'Customizable Storefront', desc: 'Choose themes and colors to match your personal or brand identity.' },
+  { icon: <Wand2 size={32} className="text-white" />, iconGradient: 'from-teal-400 to-emerald-500', shadow: 'shadow-teal-500/30', title: 'Zero Coding Required', desc: 'Launch your store in less than 2 minutes. No technical skills needed.' }
 ];
 
 const howItWorksData = [
@@ -133,7 +152,7 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
-                Create your Storelly page, showcase your products, accept UPI payments and manage orders through WhatsApp — without building an app.
+                Create your Storelly page, showcase products or services, accept UPI payments, share everything from one link, and sell through WhatsApp — without building an app.
               </p>
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -190,9 +209,9 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                     </svg>
                   </div>
                   <div className="text-sm font-bold text-slate-900">Creator</div>
-                  <svg className="absolute hidden lg:block text-emerald-500 w-24 h-12 left-20 top-4 opacity-40" style={{ transform: 'rotate(15deg)' }} viewBox="0 0 100 50">
-                    <path d="M0,10 Q50,50 95,30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
-                    <polygon points="95,30 85,22 90,38" fill="currentColor" />
+                  <svg className="absolute hidden lg:block text-emerald-500 left-20 top-4 opacity-40" style={{ width: 'clamp(150px, 22vw, 350px)', overflow: 'visible' }} viewBox="0 0 200 50">
+                    <path d="M0,10 Q100,80 190,30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
+                    <polygon points="195,29 183,23 186,37" fill="currentColor" />
                   </svg>
                 </motion.div>
               </div>
@@ -202,63 +221,17 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
               initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
               className="lg:w-1/2 flex justify-center lg:justify-end relative mt-8 lg:mt-0"
             >
-               <div className="relative w-[clamp(280px,95vw,400px)] lg:w-[clamp(400px,40vw,500px)] mx-auto lg:ml-auto lg:mr-4">
+               <div className="relative w-full max-w-[500px] lg:max-w-[800px] lg:w-[125%] xl:w-[140%] mx-auto lg:-mr-10 xl:-mr-20 z-20 flex flex-col gap-6">
                   <div className="w-full flex items-center justify-center relative">
-
-                      <div className="w-full bg-slate-50 border-[6px] border-slate-900 rounded-[2.5rem] p-4 shadow-2xl relative overflow-hidden transform hover:scale-105 transition-transform duration-700">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-6 bg-slate-900 rounded-b-xl z-10"></div>
-                        
-                        <div className="space-y-4 pt-4">
-                          {/* 1) Physical Product */}
-                          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-                            <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                               <span className="text-2xl">🍯</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-slate-900 truncate">Chicken Pickle</h4>
-                              <p className="text-xs text-slate-500 font-medium">₹249</p>
-                            </div>
-                            <button className="px-3 py-1.5 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg whitespace-nowrap">Buy Now</button>
-                          </div>
-
-                          {/* 2) Digital Product */}
-                          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-                            <div className="w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                               <FileText className="w-6 h-6 text-indigo-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-slate-900 truncate">TSPSC Notes PDF</h4>
-                              <p className="text-xs text-slate-500 font-medium">₹49</p>
-                            </div>
-                            <button className="px-3 py-1.5 bg-emerald-600 text-white font-bold text-xs rounded-lg whitespace-nowrap shadow-sm shadow-emerald-200">Buy Now</button>
-                          </div>
-
-                          {/* 3) Booking Service */}
-                          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-                            <div className="w-14 h-14 bg-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                               <Calendar className="w-6 h-6 text-rose-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-slate-900 truncate">1:1 Consultation</h4>
-                              <p className="text-xs text-slate-500 font-medium">₹499</p>
-                            </div>
-                            <button className="px-3 py-1.5 border border-emerald-600 text-emerald-700 font-bold text-xs rounded-lg whitespace-nowrap">Book Now</button>
-                          </div>
-                          
-                          {/* 4) Free Digital */}
-                          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
-                            <div className="w-14 h-14 bg-sky-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                               <Zap className="w-6 h-6 text-sky-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-slate-900 truncate">Startup Guide</h4>
-                              <p className="text-xs font-bold text-emerald-600">Free</p>
-                            </div>
-                            <button className="px-3 py-1.5 bg-slate-900 text-white font-bold text-xs rounded-lg whitespace-nowrap">Get Free</button>
-                          </div>
-                        </div>
+                      <div className="w-full relative overflow-hidden transform hover:scale-105 transition-transform duration-700 rounded-2xl">
+                        <img src="/landingpage.jpeg" alt="Hero Storefront" className="w-full h-auto object-contain drop-shadow-2xl" style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
                       </div>
-
+                  </div>
+                  
+                  <div className="w-full flex items-center justify-center relative mt-4">
+                      <div className="w-full relative overflow-hidden transform hover:scale-105 transition-transform duration-700 rounded-2xl">
+                        <img src="/cteatorlink.jpeg" alt="Creator Link Showcase" className="w-full h-auto object-contain drop-shadow-2xl" style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
+                      </div>
                   </div>
                </div>
               
@@ -284,7 +257,8 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                         <img 
                           src="/storelly6.jpg" 
                           alt="Storelly for Vendors" 
-                          className="max-w-full h-auto object-contain hover:scale-105 transition-transform duration-700"
+                          className="w-full max-w-[120%] lg:max-w-[130%] h-auto object-contain hover:scale-105 transition-transform duration-700 drop-shadow-xl"
+                          style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                         />
                      </div>
                   </div>
@@ -508,9 +482,10 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                   <div className="lg:w-[60%] flex justify-center items-center relative max-w-full mx-auto">
                      <div className="w-full max-w-full flex items-center justify-center relative">
                         <img 
-                          src="/creator.jpeg" 
+                          src="/cteatorlink.jpeg" 
                           alt="Storelly for Creators" 
-                          className="max-w-full h-auto object-contain hover:scale-105 transition-transform duration-700"
+                          className="w-full max-w-[120%] lg:max-w-[130%] h-auto object-contain hover:scale-105 transition-transform duration-700 drop-shadow-xl"
+                          style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                         />
                      </div>
                   </div>
@@ -572,7 +547,7 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${feat.iconGradient} rounded-full blur-[60px] opacity-0 group-hover:opacity-30 group-hover:animate-pulse-subtle transition-opacity duration-500 pointer-events-none transform translate-x-1/2 -translate-y-1/2`}></div>
                 
                 <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feat.iconGradient} flex items-center justify-center shrink-0 mb-6 shadow-lg ${feat.shadow} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 border-2 border-white relative z-10`}>
-                  <span className="text-3xl drop-shadow-md" role="img" aria-label={feat.title}>{feat.emoji}</span>
+                  <div className="drop-shadow-md flex items-center justify-center w-full h-full">{feat.icon}</div>
                 </div>
                 <h3 className="font-bold text-slate-900 text-xl mb-3 relative z-10">{feat.title}</h3>
                 <p className="text-slate-500 font-medium leading-relaxed relative z-10">{feat.desc}</p>

@@ -55,6 +55,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
   const [socialFacebook, setSocialFacebook] = useState(business.socials?.facebook || '');
   const [seoMetaTitle, setSeoMetaTitle] = useState(business.seoMetaTitle || '');
   const [seoMetaDescription, setSeoMetaDescription] = useState(business.seoMetaDescription || '');
+  const [seoMetaImage, setSeoMetaImage] = useState(business.seoMetaImage || '');
   const [status, setStatus] = useState<any>(business.status || 'active');
   const [maintenanceMessage, setMaintenanceMessage] = useState(business.maintenanceMessage || 'We are currently undergoing scheduled maintenance or taking a short break. We will be back online shortly!');
   const [maintenanceImage, setMaintenanceImage] = useState(business.maintenanceImage || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800');
@@ -125,6 +126,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
         },
         seoMetaTitle: seoMetaTitle.trim() || undefined,
         seoMetaDescription: seoMetaDescription.trim() || undefined,
+        seoMetaImage: seoMetaImage.trim() || undefined,
         status,
         maintenanceMode: status === 'maintenance',
         maintenanceMessage: maintenanceMessage.trim() || undefined,
@@ -481,22 +483,22 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </div>
         </div>
 
-        {/* SEO & Search Engine Indexing Section */}
-        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-700">
+        {/* SEO Manager Section */}
+        <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-5">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+            <div className="p-2.5 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100">
               <Globe className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">SEO & Search Engine Indexing</h3>
-              <p className="text-[11px] text-slate-500">Customize meta tags to rank higher on Google & Bing search results.</p>
+              <h3 className="text-sm font-bold text-slate-900 font-heading">SEO Manager</h3>
+              <p className="text-[11px] text-slate-500">Configure how your store appears on Google search and social media sharing (WhatsApp, IG, FB).</p>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 pt-1">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                <span>Storefront Meta Title</span>
+                <span>Search Engine Title (Page Title)</span>
                 <span className="text-[10px] text-slate-400 font-normal">Recommended: 50-60 characters</span>
               </label>
               <input
@@ -510,7 +512,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                <span>Storefront Meta Description</span>
+                <span>Meta Description</span>
                 <span className="text-[10px] text-slate-400 font-normal">Recommended: 150-160 characters</span>
               </label>
               <textarea
@@ -519,6 +521,16 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
                 placeholder={`Shop the best products from ${business.name}. High quality, fast delivery & secure payments.`}
                 rows={3}
                 className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500 bg-slate-50/50 font-medium leading-relaxed resize-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <ImageUploadInput
+                label="Social Sharing Image (OG Image)"
+                value={seoMetaImage}
+                onChange={setSeoMetaImage}
+                aspectRatio="banner"
+                helperText="This image appears when you share your store link on WhatsApp, Facebook, or Instagram."
               />
             </div>
           </div>

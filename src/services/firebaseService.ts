@@ -11,6 +11,8 @@ import {
   orderBy,
   limit,
   onSnapshot,
+  addDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { deleteImageFromStorage } from './cloudinary';
@@ -1031,3 +1033,64 @@ export async function permanentlyDeleteStoreAccount(business: BusinessProfile): 
     throw err;
   }
 }
+
+// BIO LINKS
+export const getBioLinks = async (businessId: string) => {
+  try {
+    const q = query(
+      collection(db, 'biolinks'),
+      where('businessId', '==', businessId),
+      orderBy('order', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching bio links:", error);
+    return [];
+  }
+};
+
+export const createBioLink = async (businessId: string, data: any) => {
+  const docRef = await addDoc(collection(db, 'biolinks'), {
+    businessId,
+    ...data,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+  return docRef.id;
+};
+
+export const updateBioLink = async (linkId: string, data: any) => {
+  const docRef = doc(db, 'biolinks', linkId);
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Date.now()
+  });
+};
+
+export const deleteBioLink = async (linkId: string) => {
+  const docRef = doc(db, 'biolinks', linkId);
+  await deleteDoc(docRef);
+};
+
+export const updateBioLinksOrder = async (links: any[]) => {
+  const batch = writeBatch(db);
+  links.forEach((link, index) => {
+    const ref = doc(db, 'biolinks', link.id);
+    batch.update(ref, { order: index, updatedAt: Date.now() });
+  });
+  await batch.commit();
+};
+
+export const recordBioLinkClick = async (linkId: string) => {
+  // Add a click analytics document
+  try {
+    await addDoc(collection(db, 'analytics'), {
+      type: 'biolink_click',
+      linkId,
+      timestamp: Date.now()
+    });
+  } catch(e) {
+    console.error(e);
+  }
+};

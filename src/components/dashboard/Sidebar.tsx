@@ -13,6 +13,7 @@ import {
   Sliders,
   Settings,
   Share2,
+  Link,
   CreditCard,
   ExternalLink,
   LogOut,
@@ -39,6 +40,7 @@ export type DashboardTab =
   | 'modules'
   | 'payments'
   | 'notifications'
+  | 'biolink'
   | 'share'
   | 'settings'
   | 'profile';
@@ -135,6 +137,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: t("sidebar.offers"),
       icon: Tag,
       visible: !!modules?.offers,
+    },
+    {
+      id: 'biolink',
+      label: 'Universal Bio Link',
+      icon: Link,
+      badge: 'New',
+      visible: true,
     },
     {
       id: 'share',

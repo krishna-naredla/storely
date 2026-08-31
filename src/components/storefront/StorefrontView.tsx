@@ -1,8 +1,3 @@
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
 import React, { useState, useEffect } from 'react';
 import {
   Store,
@@ -71,7 +66,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     const storeTitle = business.seoMetaTitle || `${business.name} - Official Digital Store`;
     const storeDesc = business.seoMetaDescription || business.tagline || business.description || 'Explore catalog, instant WhatsApp checkout & direct bookings.';
     const currentUrl = window.location.href;
-    const ogImage = `${window.location.origin}/api/og-image/${business.slug || business.id}`;
+    const ogImage = business.seoMetaImage || `${window.location.origin}/api/og-image/${business.slug || business.id}`;
 
     document.title = storeTitle;
 
@@ -1326,3 +1321,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     </div>
   );
 };
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}

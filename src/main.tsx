@@ -4,7 +4,7 @@ if (typeof window !== 'undefined') {
   const suppressError = (msg: any) => {
     if (!msg) return false;
     const str = typeof msg === 'string' ? msg : (msg.message || '');
-    return str.includes('Database is closing') || str.includes('hidden') || str.includes('IndexedDB') || str.includes('Database is closed');
+    return str.includes('Database is closing') || str.includes('hidden') || str.includes('IndexedDB') || str.includes('Database is closed') || str.includes('Could not reach Cloud Firestore backend') || str.includes('code=unavailable') || str.includes('healthy Internet connection') || str.includes('The operation could not be completed');
   };
   
   window.addEventListener('error', (e) => {
