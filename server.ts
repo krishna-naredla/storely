@@ -394,7 +394,7 @@ async function startServer() {
   });
 
   // 7. Secure Download Endpoint with 10-minute token verification
-  app.get("/api/digital/download", (req, res) => {
+  app.get("/api/digital/download", async (req, res) => {
     try {
       const token = req.query.token as string;
       if (!token) {
@@ -455,7 +455,33 @@ async function startServer() {
         }
       }
 
-      // Otherwise redirect to secure Cloudinary file URL
+      // Proxy the file to ensure correct headers and prevent JSON/HTML errors
+      if (fileUrl.startsWith("http")) {
+        try {
+          const fetchRes = await fetch(fileUrl);
+          if (!fetchRes.ok) {
+            throw new Error(`Storage returned ${fetchRes.status}`);
+          }
+          
+          // Force PDF content type if not provided or if it's generic binary
+          let contentType = fetchRes.headers.get("content-type") || "application/pdf";
+          if (contentType.includes("text/plain") || contentType.includes("application/octet-stream")) {
+            if (fileUrl.toLowerCase().includes(".pdf") || (check.payload?.fileName || "").toLowerCase().endsWith(".pdf")) {
+              contentType = "application/pdf";
+            }
+          }
+          
+          res.setHeader("Content-Type", contentType);
+          res.setHeader("Content-Disposition", `attachment; filename="${check.payload?.fileName || "download.pdf"}"`);
+          
+          const arrayBuffer = await fetchRes.arrayBuffer();
+          return res.send(Buffer.from(arrayBuffer));
+        } catch (fetchErr) {
+          console.error("Proxy download error:", fetchErr);
+          // Fallback to redirect if proxy fails
+          return res.redirect(fileUrl);
+        }
+      }
       return res.redirect(fileUrl);
     } catch (err: any) {
       res.status(500).send("Error downloading file: " + (err.message || "Internal error"));
@@ -606,6 +632,42 @@ async function startServer() {
     }
   });
 
+  // 9. Razorpay Webhook for Subscription/Vendor Upgrades
+app.post("/api/webhooks/razorpay", express.json({ type: 'application/json' }), (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || "default_secret"; // Normally fetched from config
+    
+    if (signature) {
+      const crypto = require('crypto');
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(JSON.stringify(req.body))
+        .digest('hex');
+        
+      if (expectedSignature !== signature) {
+        console.warn("Invalid Razorpay Webhook Signature");
+        return res.status(400).send("Invalid signature");
+      }
+    }
+    
+    const event = req.body.event;
+    console.log(`[Webhook] Received Razorpay event: ${event}`);
+    
+    // Handle specific events like subscription charged or payment captured for Pro upgrade
+    if (event === "payment.captured" || event === "subscription.charged") {
+      const payload = req.body.payload?.payment?.entity || req.body.payload?.subscription?.entity;
+      // In a real DB, we would look up the vendor by notes.vendorId and set plan to 'pro'
+      console.log(`[Webhook] Processing upgrade for vendor:`, payload?.notes?.vendorId || "Unknown");
+    }
+    
+    res.json({ status: 'ok' });
+  } catch (err: any) {
+    console.error("Webhook error:", err);
+    res.status(500).send("Webhook handler failed");
+  }
+});
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -627,3 +689,5 @@ async function startServer() {
 }
 
 startServer();
+
+

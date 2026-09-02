@@ -137,5 +137,42 @@ service cloud.firestore {
         allow write: if true;
       }
     }
+
+    // Platform SaaS Settings, CMS & Pricing Plans (Founder / Admin Management)
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /platform_pricing_plans/{planId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /platform_settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /platform_clients/{clientId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /payment_transactions/{transactionId} {
+      allow read, write: if true;
+    }
+
+    match /admin_audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    match /platform_support_tickets/{ticketId} {
+      allow read, write: if true;
+    }
+
+    match /platform_announcements/{announcementId} {
+      allow read, write: if true;
+    }
   }
 }

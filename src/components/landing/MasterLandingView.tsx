@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { FaWhatsapp, FaTelegram, FaYoutube, FaInstagram } from 'react-icons/fa';
@@ -10,6 +10,14 @@ import {
   MessageCircle, TrendingUp, ChevronDown, Check, Play, QrCode, 
   ArrowRight, Smartphone, ShieldCheck, Zap, Instagram, Youtube, User, Plus, Search, HelpCircle, MapPin, Send
 } from 'lucide-react';
+import { PlatformPricingPlan, PlatformPricingCMS } from '../../types/admin';
+import { 
+  adminGetPricingPlans, 
+  adminGetPricingCMS, 
+  DEFAULT_PRICING_PLANS, 
+  DEFAULT_PRICING_CMS 
+} from '../../services/adminService';
+import { HappyClientsMarquee } from './HappyClientsMarquee';
 
 interface MasterLandingViewProps {
   onOpenAuth: (mode: 'login' | 'signup') => void;
@@ -69,6 +77,49 @@ const trustData = [
 export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [pricingPlans, setPricingPlans] = useState<PlatformPricingPlan[]>(DEFAULT_PRICING_PLANS);
+  const [pricingCMS, setPricingCMS] = useState<PlatformPricingCMS>(DEFAULT_PRICING_CMS);
+
+  useEffect(() => {
+    const loadPricing = async () => {
+      try {
+        const [loadedPlans, loadedCms] = await Promise.all([
+          adminGetPricingPlans(),
+          adminGetPricingCMS(),
+        ]);
+        if (loadedPlans && loadedPlans.length > 0) {
+          setPricingPlans(loadedPlans.filter(p => p.isActive !== false));
+        }
+        if (loadedCms && loadedCms.title) {
+          setPricingCMS(loadedCms);
+        }
+      } catch (err) {
+        console.warn('Error loading dynamic pricing in MasterLandingView:', err);
+      }
+    };
+
+    loadPricing();
+
+    const handlePlansChange = (e: CustomEvent) => {
+      if (e.detail?.plans) {
+        setPricingPlans(e.detail.plans.filter((p: PlatformPricingPlan) => p.isActive !== false));
+      }
+    };
+
+    const handleCmsChange = (e: CustomEvent) => {
+      if (e.detail) {
+        setPricingCMS(e.detail);
+      }
+    };
+
+    window.addEventListener('storelly_pricing_changed' as any, handlePlansChange as EventListener);
+    window.addEventListener('storelly_pricing_cms_changed' as any, handleCmsChange as EventListener);
+
+    return () => {
+      window.removeEventListener('storelly_pricing_changed' as any, handlePlansChange as EventListener);
+      window.removeEventListener('storelly_pricing_cms_changed' as any, handleCmsChange as EventListener);
+    };
+  }, []);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -242,6 +293,9 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
           </div>
         </div>
       </section>
+
+      {/* HAPPY CLIENTS & FAST-GROWING BRANDS SCROLLING MARQUEE */}
+      <HappyClientsMarquee />
 
       {/* VENDOR SECTION */}
       <motion.div 
@@ -661,62 +715,92 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       {/* PRICING SECTION */}
       <section id="pricing" className="py-24 bg-slate-50 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4">Start Free. Upgrade When You Grow.</h2>
+          <div className="text-center mb-16 space-y-2">
+            {pricingCMS.badge && (
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                {pricingCMS.badge}
+              </span>
+            )}
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-2">
+              {pricingCMS.title || 'Start Free. Upgrade When You Grow.'}
+            </h2>
+            {pricingCMS.subtitle && (
+              <p className="text-slate-500 font-medium max-w-xl mx-auto text-sm sm:text-base">
+                {pricingCMS.subtitle}
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Free */}
-            <div className="bg-white rounded-[32px] p-10 border border-slate-200 shadow-sm flex flex-col">
-              <h3 className="text-2xl font-black text-slate-900 mb-2">FREE</h3>
-              <div className="flex items-end gap-1 mb-4">
-                <span className="text-5xl font-black text-slate-900">₹0</span>
-              </div>
-              <p className="text-slate-500 font-medium mb-8">Get started without upfront cost.</p>
-              
-              <div className="space-y-4 mb-10 flex-1">
-                 {['Store link', 'Basic storefront', 'Limited products', 'QR code', 'WhatsApp orders', 'UPI payments'].map((feat, i) => (
-                   <div key={i} className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check className="w-4 h-4 text-emerald-600 font-bold" /></div>
-                      <span className="font-medium text-slate-700">{feat}</span>
-                   </div>
-                 ))}
-              </div>
+          <div className={`grid grid-cols-1 ${pricingPlans.length === 1 ? 'md:grid-cols-1 max-w-md mx-auto' : pricingPlans.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : 'md:grid-cols-3 max-w-6xl mx-auto'} gap-8`}>
+            {pricingPlans.map((plan) => {
+              const isRecommended = plan.isRecommended || plan.badge === 'Recommended';
+              return (
+                <div
+                  key={plan.id}
+                  className={`bg-white rounded-[32px] p-8 sm:p-10 border flex flex-col relative transition-all duration-200 ${
+                    isRecommended
+                      ? 'border-2 border-emerald-600 shadow-xl md:-translate-y-3'
+                      : 'border-slate-200 shadow-sm'
+                  }`}
+                >
+                  {(plan.badge || isRecommended) && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest px-6 py-2 rounded-full flex items-center gap-1.5 shadow-md">
+                      <Star className="w-4 h-4 fill-white" /> {plan.badge || 'Recommended'}
+                    </div>
+                  )}
 
-              <button onClick={() => onOpenAuth('signup')} className="w-full py-4 rounded-full border-2 border-emerald-200 text-emerald-700 font-bold hover:bg-emerald-50 hover:border-emerald-300 transition-all text-lg">
-                Start Free
-              </button>
-            </div>
+                  <h3 className={`text-2xl font-black text-slate-900 mb-2 ${isRecommended ? 'mt-2' : ''}`}>
+                    {plan.name}
+                  </h3>
 
-            {/* Pro Plan */}
-            <div className="bg-white rounded-[32px] p-10 border-2 border-emerald-600 shadow-xl flex flex-col relative transform md:-translate-y-4">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest px-6 py-2 rounded-full flex items-center gap-1.5 shadow-md">
-                <Star className="w-4 h-4 fill-white" /> Recommended
-              </div>
+                  <div className="flex items-end gap-1 mb-4">
+                    <span className="text-5xl font-black text-slate-900">
+                      {plan.currency || '₹'}{plan.monthlyPrice}
+                    </span>
+                    {plan.billingCycle && (
+                      <span className="text-slate-500 font-medium mb-1">{plan.billingCycle}</span>
+                    )}
+                  </div>
 
-              <h3 className="text-2xl font-black text-slate-900 mb-2 mt-2">PRO</h3>
-              <div className="flex items-end gap-1 mb-4">
-                <span className="text-5xl font-black text-slate-900">₹199</span>
-                <span className="text-slate-500 font-medium mb-1">/ month</span>
-              </div>
-              <p className="text-slate-500 font-medium mb-8">Everything you need to grow.</p>
-              
-              <div className="space-y-4 mb-10 flex-1">
-                 {['More products', 'Advanced storefront features', 'Digital products', 'Booking', 'Link hub', 'Analytics', 'Priority support'].map((feat, i) => (
-                   <div key={i} className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-600/10 flex items-center justify-center shrink-0"><Check className="w-4 h-4 text-emerald-600 font-bold" /></div>
-                      <span className="font-bold text-slate-700">{feat}</span>
-                   </div>
-                 ))}
-              </div>
+                  <p className="text-slate-500 font-medium mb-8 text-sm sm:text-base">{plan.tagline}</p>
 
-              <button onClick={() => onOpenAuth('signup')} className="w-full py-4 rounded-full bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-md text-lg active:scale-95">
-                Get Started
-              </button>
-            </div>
+                  <div className="space-y-4 mb-10 flex-1">
+                    {plan.features?.map((feat, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isRecommended ? 'bg-emerald-600/10' : 'bg-emerald-100'}`}>
+                          <Check className="w-4 h-4 text-emerald-600 font-bold" />
+                        </div>
+                        <span className={`text-sm sm:text-base ${isRecommended ? 'font-bold text-slate-800' : 'font-medium text-slate-700'}`}>
+                          {feat}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (plan.ctaAction === 'login') onOpenAuth('login');
+                      else onOpenAuth('signup');
+                    }}
+                    className={`w-full py-4 rounded-full font-bold transition-all text-base sm:text-lg cursor-pointer active:scale-95 ${
+                      isRecommended
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md'
+                        : 'border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300'
+                    }`}
+                  >
+                    {plan.ctaText || (plan.monthlyPrice === 0 ? 'Start Free' : 'Get Started')}
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
-          <p className="text-center text-slate-500 font-medium mt-10">Same simple pricing for vendors and creators.</p>
+          {pricingCMS.footerNote && (
+            <p className="text-center text-slate-500 font-medium mt-10 text-sm sm:text-base">
+              {pricingCMS.footerNote}
+            </p>
+          )}
         </div>
       </section>
 

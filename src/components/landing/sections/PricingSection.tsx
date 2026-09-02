@@ -1,11 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Star } from 'lucide-react';
+import { PlatformPricingPlan, PlatformPricingCMS } from '../../../types/admin';
+import { 
+  adminGetPricingPlans, 
+  adminGetPricingCMS, 
+  DEFAULT_PRICING_PLANS, 
+  DEFAULT_PRICING_CMS 
+} from '../../../services/adminService';
 
 interface Props {
   onOpenAuth: (mode: 'login' | 'signup') => void;
 }
 
 export const PricingSection: React.FC<Props> = ({ onOpenAuth }) => {
+  const [plans, setPlans] = useState<PlatformPricingPlan[]>(DEFAULT_PRICING_PLANS);
+  const [cms, setCms] = useState<PlatformPricingCMS>(DEFAULT_PRICING_CMS);
+
+  useEffect(() => {
+    const loadPricing = async () => {
+      try {
+        const [loadedPlans, loadedCms] = await Promise.all([
+          adminGetPricingPlans(),
+          adminGetPricingCMS()
+        ]);
+        if (loadedPlans && loadedPlans.length > 0) {
+          setPlans(loadedPlans.filter(p => p.isActive !== false));
+        }
+        if (loadedCms && loadedCms.title) {
+          setCms(loadedCms);
+        }
+      } catch (e) {
+        console.warn('Error loading dynamic pricing in PricingSection:', e);
+      }
+    };
+
+    loadPricing();
+
+    const handlePlansChange = (e: CustomEvent) => {
+      if (e.detail?.plans) {
+        setPlans(e.detail.plans.filter((p: PlatformPricingPlan) => p.isActive !== false));
+      }
+    };
+
+    const handleCmsChange = (e: CustomEvent) => {
+      if (e.detail) {
+        setCms(e.detail);
+      }
+    };
+
+    window.addEventListener('storelly_pricing_changed' as any, handlePlansChange as EventListener);
+    window.addEventListener('storelly_pricing_cms_changed' as any, handleCmsChange as EventListener);
+
+    return () => {
+      window.removeEventListener('storelly_pricing_changed' as any, handlePlansChange as EventListener);
+      window.removeEventListener('storelly_pricing_cms_changed' as any, handleCmsChange as EventListener);
+    };
+  }, []);
+
   const testimonials = [
     { quote: "Storelly made our boutique online in minutes!", author: "Priya S.", rating: 5 },
     { quote: "Sold 500+ copies of my coding notes and booked 1:1 sessions effortlessly!", author: "Prof. Rajesh (Coding Coach)", rating: 5 },
@@ -17,93 +68,77 @@ export const PricingSection: React.FC<Props> = ({ onOpenAuth }) => {
     <section id="pricing" className="py-24 bg-[#faf9f5] border-b border-[#e7e5df]">
       <div className="max-w-[1180px] mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#2f9e5c]">Transparent Pricing</span>
-          <h2 className="text-[32px] font-extrabold text-[#14201a]">Simple Plans for Every Business</h2>
-          <p className="text-[#5c6b63] text-sm">Start free, upgrade as your business grows. No hidden fees.</p>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#2f9e5c]">{cms.badge || 'Transparent Pricing'}</span>
+          <h2 className="text-[32px] font-extrabold text-[#14201a]">{cms.title || 'Start Free. Upgrade When You Grow.'}</h2>
+          <p className="text-[#5c6b63] text-sm">{cms.subtitle || 'Start free, upgrade as your business grows. No hidden fees.'}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Pricing Tiers (9 cols) */}
-          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Basic Plan */}
-            <div className="bg-white p-6 rounded-[16px] border border-[#e7e5df] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] flex flex-col justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-[#14201a] mb-1">Basic</h3>
-                <p className="text-xs text-[#5c6b63] mb-4">For new local vendors.</p>
-                <div className="mb-6">
-                  <span className="text-3xl font-extrabold text-[#14201a]">₹299</span>
-                  <span className="text-xs text-[#5c6b63]">/mo</span>
-                </div>
-                <ul className="space-y-3 mb-6 text-xs text-[#14201a]">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> 1 Store</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> 100 Products</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Basic Support</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Community Access</li>
-                </ul>
-              </div>
-              <button 
-                onClick={() => onOpenAuth('signup')} 
-                className="w-full py-2.5 rounded-[9px] border border-[#e7e5df] text-[#14201a] font-semibold text-[14.5px] hover:bg-[#faf9f5] transition"
-              >
-                Get Started
-              </button>
-            </div>
+          {/* Dynamic Pricing Tiers (8 cols) */}
+          <div className={`lg:col-span-8 grid grid-cols-1 ${plans.length === 1 ? 'md:grid-cols-1 max-w-md mx-auto' : plans.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-6`}>
+            {plans.map((plan) => {
+              const isRecommended = plan.isRecommended || plan.badge === 'Recommended';
+              return (
+                <div
+                  key={plan.id}
+                  className={`p-6 rounded-[16px] flex flex-col justify-between relative transition-all ${
+                    isRecommended
+                      ? 'bg-[#155330] text-white border-2 border-[#2f9e5c] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.25)] transform md:-translate-y-2'
+                      : 'bg-white border border-[#e7e5df] text-[#14201a] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.1)]'
+                  }`}
+                >
+                  {(plan.badge || isRecommended) && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2f9e5c] text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider flex items-center gap-1 shadow-sm">
+                      <Star className="w-3 h-3 fill-white" /> {plan.badge || 'Recommended'}
+                    </div>
+                  )}
 
-            {/* Pro Plan (Popular) */}
-            <div className="bg-[#155330] text-white p-6 rounded-[16px] border border-[#123c25] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] flex flex-col justify-between relative transform md:-translate-y-2">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2f9e5c] text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider">
-                Popular
-              </div>
-              <div>
-                <h3 className="text-lg font-extrabold text-white mb-1">Pro</h3>
-                <p className="text-xs text-emerald-100 mb-4">For growing storefronts.</p>
-                <div className="mb-6">
-                  <span className="text-3xl font-extrabold text-white">₹599</span>
-                  <span className="text-xs text-emerald-200">/mo</span>
-                </div>
-                <ul className="space-y-3 mb-6 text-xs text-emerald-50">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> 5 Stores</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Unlimited Products</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Priority Support</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Marketing Tools</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Custom Domain</li>
-                </ul>
-              </div>
-              <button 
-                onClick={() => onOpenAuth('signup')} 
-                className="w-full py-2.5 rounded-[9px] bg-white text-[#155330] font-semibold text-[14.5px] hover:bg-emerald-50 transition shadow-md"
-              >
-                Start Free Trial
-              </button>
-            </div>
+                  <div>
+                    <h3 className={`text-lg font-extrabold mb-1 ${isRecommended ? 'text-white' : 'text-[#14201a]'}`}>
+                      {plan.name}
+                    </h3>
+                    <p className={`text-xs mb-4 ${isRecommended ? 'text-emerald-100' : 'text-[#5c6b63]'}`}>
+                      {plan.tagline}
+                    </p>
 
-            {/* Premium Plan */}
-            <div className="bg-white p-6 rounded-[16px] border border-[#e7e5df] shadow-[0_20px_50px_-20px_rgba(20,40,30,0.18)] flex flex-col justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-[#14201a] mb-1">Premium</h3>
-                <p className="text-xs text-[#5c6b63] mb-4">For large brands & chains.</p>
-                <div className="mb-6">
-                  <span className="text-3xl font-extrabold text-[#14201a]">₹999</span>
-                  <span className="text-xs text-[#5c6b63]">/mo</span>
-                </div>
-                <ul className="space-y-3 mb-6 text-xs text-[#14201a]">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Unlimited Stores</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Unlimited Products</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Advanced Analytics</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Dedicated Support</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#2f9e5c]" /> Custom Features</li>
-                </ul>
-              </div>
-              <button 
-                onClick={() => onOpenAuth('signup')} 
-                className="w-full py-2.5 rounded-[9px] border border-[#e7e5df] text-[#14201a] font-semibold text-[14.5px] hover:bg-[#faf9f5] transition"
-              >
-                Contact Sales
-              </button>
-            </div>
+                    <div className="mb-6 flex items-baseline gap-1">
+                      <span className={`text-3xl font-extrabold ${isRecommended ? 'text-white' : 'text-[#14201a]'}`}>
+                        {plan.currency || '₹'}{plan.monthlyPrice}
+                      </span>
+                      {plan.billingCycle && (
+                        <span className={`text-xs ${isRecommended ? 'text-emerald-200' : 'text-[#5c6b63]'}`}>
+                          {plan.billingCycle}
+                        </span>
+                      )}
+                    </div>
 
+                    <ul className={`space-y-3 mb-6 text-xs ${isRecommended ? 'text-emerald-50' : 'text-[#14201a]'}`}>
+                      {plan.features?.map((feat, idx) => (
+                        <li key={idx} className="flex items-center gap-2">
+                          <CheckCircle2 className={`w-4 h-4 shrink-0 ${isRecommended ? 'text-[#2f9e5c]' : 'text-[#2f9e5c]'}`} />
+                          <span className="font-medium">{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      if (plan.ctaAction === 'login') onOpenAuth('login');
+                      else onOpenAuth('signup');
+                    }} 
+                    className={`w-full py-2.5 rounded-[9px] font-semibold text-[14.5px] transition shadow-md active:scale-95 cursor-pointer ${
+                      isRecommended
+                        ? 'bg-white text-[#155330] hover:bg-emerald-50'
+                        : 'border border-[#e7e5df] text-[#14201a] hover:bg-[#faf9f5]'
+                    }`}
+                  >
+                    {plan.ctaText || (plan.monthlyPrice === 0 ? 'Start Free' : 'Get Started')}
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {/* Beside Pricing: Stacked Testimonials with 5-star ratings (4 cols) */}
@@ -123,6 +158,12 @@ export const PricingSection: React.FC<Props> = ({ onOpenAuth }) => {
           </div>
 
         </div>
+
+        {cms.footerNote && (
+          <p className="text-center text-[#5c6b63] font-medium text-xs mt-10">
+            {cms.footerNote}
+          </p>
+        )}
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ export type MasterAdminTab =
   | 'subscriptions'
   | 'pricing'
   | 'payments'
+  | 'clients'
   | 'reviews'
   | 'landing_cms'
   | 'branding'
@@ -16,7 +17,7 @@ export type MasterAdminTab =
   | 'business_types'
   | 'support'
   | 'announcements'
-  | 'audit_logs'
+  | 'activity_log'
   | 'system_logs'
   | 'system_health'
   | 'settings';
@@ -29,22 +30,38 @@ export interface AdminUser {
   createdAt: number;
 }
 
+export interface PlatformPricingCMS {
+  badge: string;
+  title: string;
+  subtitle: string;
+  footerNote: string;
+  updatedAt?: number;
+}
+
 export interface PlatformPricingPlan {
   id: string;
   name: string;
   tagline: string;
+  currency?: string;
   monthlyPrice: number;
-  yearlyPrice: number;
-  trialDays: number;
+  yearlyPrice?: number;
+  billingCycle?: string;
+  badge?: string;
+  isRecommended?: boolean;
+  trialDays?: number;
   isActive: boolean;
+  order?: number;
+  ctaText?: string;
+  ctaAction?: 'signup' | 'login' | 'contact' | 'custom_url';
+  ctaUrl?: string;
   features: string[];
-  limits: {
-    catalogueItems: number;
-    monthlyOrders: number;
-    customerRecords: number;
-    hasCustomDomain: boolean;
-    hasAiPromotions: boolean;
-    hasDigitalCard: boolean;
+  limits?: {
+    catalogueItems?: number;
+    monthlyOrders?: number;
+    customerRecords?: number;
+    hasCustomDomain?: boolean;
+    hasAiPromotions?: boolean;
+    hasDigitalCard?: boolean;
   };
 }
 
@@ -103,3 +120,34 @@ export interface PlatformGlobalSettings {
   defaultCurrency: string;
   taxRatePercent: number;
 }
+
+export interface PlatformClientBrand {
+  id: string;
+  name: string;
+  category: string; // e.g., 'Fashion Boutique', 'Food & Bakery', 'Tech Coach', 'Handmade & Crafts', 'Fitness & Wellness'
+  logoUrl: string;
+  storeUrl?: string;
+  tagline?: string;
+  rating?: number;
+  highlightMetric?: string; // e.g., '₹15L+ Monthly GMV', '500+ WhatsApp Orders'
+  reviewText?: string;
+  reviewAuthor?: string;
+  isActive: boolean;
+  order: number;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface PlatformRazorpayConfig {
+  keyId: string;
+  keySecret?: string;
+  isEnabled: boolean;
+  isTestMode: boolean;
+  merchantName: string;
+  merchantThemeColor: string;
+  autoUpgradePlan: boolean;
+  currency: string;
+  webhookSecret?: string;
+  updatedAt?: number;
+}
+

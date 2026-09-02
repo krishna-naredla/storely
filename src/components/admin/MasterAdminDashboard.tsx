@@ -37,8 +37,23 @@ import {
   UserCheck,
   Ban,
   Filter,
+  Check,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  Sparkles,
+  Eye,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
-import { MasterAdminTab, PlatformPricingPlan, PlatformGlobalSettings, PlatformSupportTicket, PlatformAnnouncement } from '../../types/admin';
+import {
+  MasterAdminTab,
+  PlatformPricingPlan,
+  PlatformPricingCMS,
+  PlatformGlobalSettings,
+  PlatformSupportTicket,
+  PlatformAnnouncement,
+} from '../../types/admin';
 import { BusinessProfile } from '../../types';
 import {
   adminGetAllBusinesses,
@@ -48,12 +63,21 @@ import {
   adminGetAllCustomers,
   adminGetAuditLogs,
   adminGetPricingPlans,
+  adminSavePricingPlan,
+  adminDeletePricingPlan,
+  adminReorderPricingPlans,
+  adminGetPricingCMS,
+  adminSavePricingCMS,
+  adminResetPricingToDefaults,
+  DEFAULT_PRICING_PLANS,
+  DEFAULT_PRICING_CMS,
   adminGetGlobalSettings,
   adminUpdateBusiness,
-  adminSavePricingPlan,
   adminSaveGlobalSettings,
   adminRecordAuditLog,
 } from '../../services/adminService';
+import { AdminPricingManager } from './AdminPricingManager';
+import { AdminClientsManager } from './AdminClientsManager';
 
 interface MasterAdminDashboardProps {
   adminEmail: string;
@@ -73,8 +97,42 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
   const [reviews, setReviews] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [pricingPlans, setPricingPlans] = useState<PlatformPricingPlan[]>([]);
+  const [pricingCMS, setPricingCMS] = useState<PlatformPricingCMS>(DEFAULT_PRICING_CMS);
+  const [cmsForm, setCmsForm] = useState<PlatformPricingCMS>(DEFAULT_PRICING_CMS);
+  const [isCmsSaving, setIsCmsSaving] = useState(false);
   const [globalSettings, setGlobalSettings] = useState<PlatformGlobalSettings | null>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+
+  // Plan Management Modal State
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [featureInput, setFeatureInput] = useState('');
+  const [planForm, setPlanForm] = useState<PlatformPricingPlan>({
+    id: '',
+    name: '',
+    tagline: '',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    currency: '₹',
+    billingCycle: '/ month',
+    trialDays: 0,
+    isActive: true,
+    isRecommended: false,
+    badge: '',
+    ctaText: 'Get Started',
+    ctaAction: 'signup',
+    order: 0,
+    features: [],
+    limits: {
+      catalogueItems: 100,
+      monthlyOrders: 500,
+      customerRecords: 1000,
+      hasCustomDomain: false,
+      hasAiPromotions: false,
+      hasDigitalCard: true,
+    },
+  });
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -214,13 +272,14 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
   const loadPlatformData = async () => {
     setIsLoading(true);
     try {
-      const [bizData, ordData, bookData, revData, custData, plansData, settingsData, auditData] = await Promise.all([
+      const [bizData, ordData, bookData, revData, custData, plansData, cmsData, settingsData, auditData] = await Promise.all([
         adminGetAllBusinesses(),
         adminGetAllOrders(),
         adminGetAllBookings(),
         adminGetAllReviews(),
         adminGetAllCustomers(),
         adminGetPricingPlans(),
+        adminGetPricingCMS(),
         adminGetGlobalSettings(),
         adminGetAuditLogs(),
       ]);
@@ -231,6 +290,8 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
       setReviews(revData);
       setCustomers(custData);
       setPricingPlans(plansData);
+      setPricingCMS(cmsData);
+      setCmsForm(cmsData);
       setGlobalSettings(settingsData);
       setAuditLogs(auditData);
     } catch (err) {
@@ -238,6 +299,234 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Pricing Plan CRUD Handlers
+  const handleOpenAddPlan = () => {
+    setEditingPlanId(null);
+    setFeatureInput('');
+    setPlanForm({
+      id: `plan_${Date.now()}`,
+      name: '',
+      tagline: '',
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      currency: '₹',
+      billingCycle: '/ month',
+      trialDays: 0,
+      isActive: true,
+      isRecommended: false,
+      badge: '',
+      ctaText: 'Get Started',
+      ctaAction: 'signup',
+      order: pricingPlans.length,
+      features: ['Store link', 'Basic storefront', 'WhatsApp orders'],
+      limits: {
+        catalogueItems: 50,
+        monthlyOrders: 200,
+        customerRecords: 500,
+        hasCustomDomain: false,
+        hasAiPromotions: false,
+        hasDigitalCard: true,
+      },
+    });
+    setIsPlanModalOpen(true);
+  };
+
+  const handleOpenEditPlan = (plan: PlatformPricingPlan) => {
+    setEditingPlanId(plan.id);
+    setFeatureInput('');
+    setPlanForm({
+      ...plan,
+      currency: plan.currency || '₹',
+      billingCycle: plan.billingCycle || '/ month',
+      ctaText: plan.ctaText || (plan.monthlyPrice === 0 ? 'Start Free' : 'Get Started'),
+      ctaAction: plan.ctaAction || 'signup',
+      order: plan.order ?? 0,
+      features: Array.isArray(plan.features) ? [...plan.features] : [],
+      limits: {
+        catalogueItems: plan.limits?.catalogueItems ?? 100,
+        monthlyOrders: plan.limits?.monthlyOrders ?? 500,
+        customerRecords: plan.limits?.customerRecords ?? 1000,
+        hasCustomDomain: plan.limits?.hasCustomDomain ?? false,
+        hasAiPromotions: plan.limits?.hasAiPromotions ?? false,
+        hasDigitalCard: plan.limits?.hasDigitalCard ?? true,
+      },
+    });
+    setIsPlanModalOpen(true);
+  };
+
+  const handleDuplicatePlan = async (plan: PlatformPricingPlan) => {
+    const clonedPlan: PlatformPricingPlan = {
+      ...plan,
+      id: `plan_${Date.now()}`,
+      name: `${plan.name} (Copy)`,
+      badge: plan.badge ? `${plan.badge}` : '',
+      isRecommended: false,
+      order: pricingPlans.length,
+    };
+    await adminSavePricingPlan(clonedPlan);
+    await adminRecordAuditLog({
+      adminEmail,
+      action: 'DUPLICATE_PRICING_PLAN',
+      target: clonedPlan.name,
+      details: `Duplicated from ${plan.name} (${plan.id})`,
+    });
+    await loadPlatformData();
+  };
+
+  const handleTogglePlanActive = async (plan: PlatformPricingPlan) => {
+    const updated = { ...plan, isActive: plan.isActive === false ? true : false };
+    await adminSavePricingPlan(updated);
+    await adminRecordAuditLog({
+      adminEmail,
+      action: 'TOGGLE_PLAN_ACTIVE',
+      target: plan.name,
+      details: `Plan active state set to ${updated.isActive}`,
+    });
+    await loadPlatformData();
+  };
+
+  const handleTogglePlanRecommended = async (plan: PlatformPricingPlan) => {
+    const updated = { ...plan, isRecommended: !plan.isRecommended, badge: !plan.isRecommended ? (plan.badge || 'Recommended') : '' };
+    await adminSavePricingPlan(updated);
+    await adminRecordAuditLog({
+      adminEmail,
+      action: 'TOGGLE_PLAN_RECOMMENDED',
+      target: plan.name,
+      details: `Recommended state set to ${updated.isRecommended}`,
+    });
+    await loadPlatformData();
+  };
+
+  const handleMovePlan = async (planId: string, direction: 'up' | 'down') => {
+    const index = pricingPlans.findIndex((p) => p.id === planId);
+    if (index === -1) return;
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === pricingPlans.length - 1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const reordered = [...pricingPlans];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    const orderedIds = reordered.map((p) => p.id);
+    await adminReorderPricingPlans(orderedIds);
+    await loadPlatformData();
+  };
+
+  const handleDeletePlan = (plan: PlatformPricingPlan) => {
+    setConfirmModal({
+      isOpen: true,
+      title: `Delete ${plan.name} Plan?`,
+      message: `Are you sure you want to delete the "${plan.name}" pricing plan? This will remove it from the platform landing page and registration options.`,
+      onConfirm: async () => {
+        await adminDeletePricingPlan(plan.id);
+        await adminRecordAuditLog({
+          adminEmail,
+          action: 'DELETE_PRICING_PLAN',
+          target: plan.name,
+          details: `Deleted plan ID ${plan.id}`,
+        });
+        await loadPlatformData();
+      },
+    });
+  };
+
+  const handleSavePlanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!planForm.name.trim()) {
+      alert('Please provide a Plan Name.');
+      return;
+    }
+
+    setIsSavingPlan(true);
+    try {
+      const planToSave: PlatformPricingPlan = {
+        ...planForm,
+        name: planForm.name.trim(),
+        monthlyPrice: Number(planForm.monthlyPrice) || 0,
+        yearlyPrice: Number(planForm.yearlyPrice) || 0,
+        currency: planForm.currency || '₹',
+        billingCycle: planForm.billingCycle || '/ month',
+        tagline: planForm.tagline.trim(),
+        badge: planForm.badge?.trim() || '',
+        features: planForm.features.filter((f) => f.trim().length > 0),
+        order: planForm.order ?? pricingPlans.length,
+      };
+
+      await adminSavePricingPlan(planToSave);
+      await adminRecordAuditLog({
+        adminEmail,
+        action: editingPlanId ? 'UPDATE_PRICING_PLAN' : 'CREATE_PRICING_PLAN',
+        target: planToSave.name,
+        details: `${editingPlanId ? 'Updated' : 'Created'} pricing tier with price ₹${planToSave.monthlyPrice}`,
+      });
+
+      setIsPlanModalOpen(false);
+      await loadPlatformData();
+    } catch (err: any) {
+      console.error('Error saving pricing plan:', err);
+      alert('Failed to save pricing plan: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
+  const handleAddFeature = () => {
+    if (!featureInput.trim()) return;
+    setPlanForm((prev) => ({
+      ...prev,
+      features: [...prev.features, featureInput.trim()],
+    }));
+    setFeatureInput('');
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    setPlanForm((prev) => ({
+      ...prev,
+      features: prev.features.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSaveCMS = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCmsSaving(true);
+    try {
+      await adminSavePricingCMS(cmsForm);
+      setPricingCMS(cmsForm);
+      await adminRecordAuditLog({
+        adminEmail,
+        action: 'UPDATE_PRICING_CMS',
+        target: 'Landing Page Pricing Section',
+        details: `Updated title to: "${cmsForm.title}"`,
+      });
+      alert('Pricing section copy updated and published live!');
+    } catch (err: any) {
+      console.error('Error saving pricing CMS:', err);
+      alert('Failed to update pricing CMS: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsCmsSaving(false);
+    }
+  };
+
+  const handleResetToOfficialDefaults = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reset to Official Pricing Defaults?',
+      message: 'This will reset all platform pricing plans to the official tiers (FREE ₹0 and PRO ₹199/month) and restore the landing page copy to defaults. Are you sure?',
+      onConfirm: async () => {
+        await adminResetPricingToDefaults();
+        await adminRecordAuditLog({
+          adminEmail,
+          action: 'RESET_PRICING_DEFAULTS',
+          target: 'Platform Pricing',
+          details: 'Restored FREE ₹0 and PRO ₹199 base tiers and landing page CMS',
+        });
+        await loadPlatformData();
+        alert('Pricing successfully reset to official FREE ₹0 & PRO ₹199 defaults!');
+      },
+    });
   };
 
   useEffect(() => {
@@ -265,6 +554,7 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
     { id: 'pricing', label: 'Pricing Plans', icon: Tag },
     { id: 'payments', label: 'Payments & Finance', icon: DollarSign },
+    { id: 'clients', label: 'Happy Clients', icon: Users },
     { id: 'reviews', label: 'Reviews Moderation', icon: Star, badge: totalReviewsCount.toString() },
     { id: 'landing_cms', label: 'Landing Page CMS', icon: FileText },
     { id: 'branding', label: 'Global Branding', icon: Palette },
@@ -274,7 +564,7 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     { id: 'business_types', label: 'Business Types', icon: Layers },
     { id: 'support', label: 'Support & Leads', icon: MessageSquare },
     { id: 'announcements', label: 'Announcements', icon: Bell },
-    { id: 'audit_logs', label: 'Audit Logs', icon: ShieldAlert },
+    { id: 'activity_log', label: 'Activity Log', icon: Activity },
     { id: 'system_logs', label: 'System Logs', icon: FileText, badge: 'Live' },
     { id: 'system_health', label: 'System Health', icon: Activity },
     { id: 'settings', label: 'Global Settings', icon: Settings },
@@ -422,6 +712,14 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 pl-9 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
               />
             </div>
+
+            <button
+              onClick={() => window.open('/', '_blank')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Preview Landing Page
+            </button>
 
             <button
               type="button"
@@ -840,61 +1138,18 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                 </div>
               )}
 
-              {/* PRICING PLANS TAB */}
-              {activeTab === 'pricing' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-slate-900">Storelly SaaS Pricing Tiers</h3>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const newPlan: PlatformPricingPlan = {
-                          id: 'plan_' + Date.now(),
-                          name: 'Custom Tier',
-                          tagline: 'Configured by Master Admin',
-                          monthlyPrice: 799,
-                          yearlyPrice: 7999,
-                          trialDays: 14,
-                          isActive: true,
-                          features: ['Unlimited Catalogs', 'Custom Features'],
-                          limits: { catalogueItems: 9999, monthlyOrders: 99999, customerRecords: 10000, hasCustomDomain: true, hasAiPromotions: true, hasDigitalCard: true },
-                        };
-                        await adminSavePricingPlan(newPlan);
-                        loadPlatformData();
-                      }}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" /> Add Pricing Plan
-                    </button>
-                  </div>
+              {/* PRICING & PAYMENTS MANAGER */}
+              {(activeTab === 'pricing' || activeTab === 'payments') && (
+                <AdminPricingManager onNotify={(m) => alert(m)} />
+              )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    {pricingPlans.map((plan) => (
-                      <div key={plan.id} className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-sm flex flex-col justify-between">
-                        <div className="space-y-2">
-                          <h4 className="font-extrabold text-lg text-slate-900">{plan.name}</h4>
-                          <p className="text-xs text-slate-500">{plan.tagline}</p>
-                          <div className="pt-2">
-                            <span className="text-3xl font-black text-slate-900">₹{plan.monthlyPrice}</span>
-                            <span className="text-xs text-slate-400 font-medium"> / month</span>
-                          </div>
-                        </div>
-                        <ul className="space-y-2 text-xs text-slate-600">
-                          {plan.features.map((f, idx) => (
-                            <li key={idx} className="flex items-center gap-2">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>{f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {/* HAPPY CLIENTS MANAGER */}
+              {activeTab === 'clients' && (
+                <AdminClientsManager onNotify={(m) => alert(m)} />
               )}
 
               {/* AUDIT LOGS TAB */}
-              {activeTab === 'audit_logs' && (
+              {activeTab === 'activity_log' && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900">Master Admin Security & Action Audit Trail</h3>
                   <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -1530,6 +1785,464 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
               >
                 Confirm Action
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Edit & Create Modal */}
+      {isPlanModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 overflow-hidden my-auto">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {editingPlanId ? `Edit Plan: ${planForm.name}` : 'Create New Pricing Tier'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Set prices, custom limits, features, and call-to-action controls for this tier.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPlanModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body with Form & Live Preview */}
+            <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Form Controls (8 cols) */}
+              <form id="plan-form" onSubmit={handleSavePlanSubmit} className="lg:col-span-7 space-y-5">
+                {/* Basic Details */}
+                <div className="space-y-3">
+                  <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Basic Information</h5>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Plan Name *</label>
+                      <input
+                        type="text"
+                        value={planForm.name}
+                        onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                        placeholder="e.g. FREE, PRO, BUSINESS"
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Badge / Ribbon Text</label>
+                      <input
+                        type="text"
+                        value={planForm.badge || ''}
+                        onChange={(e) => setPlanForm({ ...planForm, badge: e.target.value })}
+                        placeholder="e.g. Recommended, Popular"
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Tagline / Subtitle</label>
+                    <input
+                      type="text"
+                      value={planForm.tagline}
+                      onChange={(e) => setPlanForm({ ...planForm, tagline: e.target.value })}
+                      placeholder="e.g. Get started without upfront cost."
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Pricing & Billing */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Pricing & Billing</h5>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Monthly Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">{planForm.currency || '₹'}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={planForm.monthlyPrice}
+                          onChange={(e) => setPlanForm({ ...planForm, monthlyPrice: Number(e.target.value) })}
+                          className="w-full text-xs p-2.5 pl-7 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Yearly Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">{planForm.currency || '₹'}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={planForm.yearlyPrice || 0}
+                          onChange={(e) => setPlanForm({ ...planForm, yearlyPrice: Number(e.target.value) })}
+                          className="w-full text-xs p-2.5 pl-7 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Billing Label</label>
+                      <input
+                        type="text"
+                        value={planForm.billingCycle || ''}
+                        onChange={(e) => setPlanForm({ ...planForm, billingCycle: e.target.value })}
+                        placeholder="e.g. / month"
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Checkboxes */}
+                  <div className="flex items-center gap-6 pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={planForm.isActive !== false}
+                        onChange={(e) => setPlanForm({ ...planForm, isActive: e.target.checked })}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                      />
+                      Active & Visible on Storefront
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={planForm.isRecommended || false}
+                        onChange={(e) => setPlanForm({ 
+                          ...planForm, 
+                          isRecommended: e.target.checked,
+                          badge: e.target.checked ? (planForm.badge || 'Recommended') : planForm.badge 
+                        })}
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                      />
+                      Highlight as Recommended
+                    </label>
+                  </div>
+                </div>
+
+                {/* Call to Action (CTA) */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Button / Call to Action</h5>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">CTA Button Text</label>
+                      <input
+                        type="text"
+                        value={planForm.ctaText || ''}
+                        onChange={(e) => setPlanForm({ ...planForm, ctaText: e.target.value })}
+                        placeholder="e.g. Start Free, Get Started"
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Action Type</label>
+                      <select
+                        value={planForm.ctaAction || 'signup'}
+                        onChange={(e) => setPlanForm({ ...planForm, ctaAction: e.target.value as any })}
+                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      >
+                        <option value="signup">Open Signup Modal</option>
+                        <option value="login">Open Login Modal</option>
+                        <option value="contact">Contact Support</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Features Manager */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Features List ({planForm.features.length})
+                    </h5>
+                    <span className="text-[11px] text-slate-500">Add or click presets below</span>
+                  </div>
+
+                  {/* Add Feature input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={featureInput}
+                      onChange={(e) => setFeatureInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddFeature();
+                        }
+                      }}
+                      placeholder="Type a feature and click Add (e.g. Priority Support)"
+                      className="flex-1 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddFeature}
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {/* Quick-add preset buttons */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {[
+                      'Store link',
+                      'Basic storefront',
+                      'Limited products',
+                      'More products',
+                      'QR code',
+                      'WhatsApp orders',
+                      'UPI payments',
+                      'Advanced storefront features',
+                      'Digital products',
+                      'Booking',
+                      'Link hub',
+                      'Analytics',
+                      'Priority support',
+                      'Custom domain',
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (!planForm.features.includes(preset)) {
+                            setPlanForm({ ...planForm, features: [...planForm.features, preset] });
+                          }
+                        }}
+                        disabled={planForm.features.includes(preset)}
+                        className={`text-[11px] px-2 py-1 rounded-lg border transition cursor-pointer ${
+                          planForm.features.includes(preset)
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 opacity-60 cursor-default'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
+                        }`}
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Feature Pills */}
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                    {planForm.features.map((feat, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-800"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate">{feat}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeature(idx)}
+                          className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
+                          title="Remove feature"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Usage Limits */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Account Limits</h5>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Max Products</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={planForm.limits?.catalogueItems ?? 100}
+                        onChange={(e) => setPlanForm({
+                          ...planForm,
+                          limits: { ...planForm.limits, catalogueItems: Number(e.target.value) }
+                        })}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Monthly Orders</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={planForm.limits?.monthlyOrders ?? 500}
+                        onChange={(e) => setPlanForm({
+                          ...planForm,
+                          limits: { ...planForm.limits, monthlyOrders: Number(e.target.value) }
+                        })}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Customer CRM Limit</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={planForm.limits?.customerRecords ?? 1000}
+                        onChange={(e) => setPlanForm({
+                          ...planForm,
+                          limits: { ...planForm.limits, customerRecords: Number(e.target.value) }
+                        })}
+                        className="w-full text-xs p-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={planForm.limits?.hasCustomDomain ?? false}
+                        onChange={(e) => setPlanForm({
+                          ...planForm,
+                          limits: { ...planForm.limits, hasCustomDomain: e.target.checked }
+                        })}
+                        className="rounded text-emerald-600"
+                      />
+                      Custom Domain
+                    </label>
+
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={planForm.limits?.hasAiPromotions ?? false}
+                        onChange={(e) => setPlanForm({
+                          ...planForm,
+                          limits: { ...planForm.limits, hasAiPromotions: e.target.checked }
+                        })}
+                        className="rounded text-emerald-600"
+                      />
+                      AI Marketing
+                    </label>
+
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={planForm.limits?.hasDigitalCard ?? true}
+                        onChange={(e) => setPlanForm({
+                          ...planForm,
+                          limits: { ...planForm.limits, hasDigitalCard: e.target.checked }
+                        })}
+                        className="rounded text-emerald-600"
+                      />
+                      Digital Card
+                    </label>
+                  </div>
+                </div>
+              </form>
+
+              {/* Right Column: Live Landing Page Card Preview (5 cols) */}
+              <div className="lg:col-span-5 bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5" /> Live Public Preview
+                    </span>
+                    <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">
+                      Landing Page View
+                    </span>
+                  </div>
+
+                  {/* Public Card Mockup */}
+                  <div
+                    className={`rounded-3xl p-6 relative transition-all shadow-md ${
+                      planForm.isRecommended || planForm.badge === 'Recommended'
+                        ? 'bg-white border-2 border-emerald-600 shadow-xl'
+                        : 'bg-white border border-slate-200'
+                    }`}
+                  >
+                    {(planForm.badge || planForm.isRecommended) && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                        <Star className="w-3 h-3 fill-white" /> {planForm.badge || 'Recommended'}
+                      </div>
+                    )}
+
+                    <h4 className="text-xl font-black text-slate-900 mb-1">{planForm.name || 'PLAN NAME'}</h4>
+                    
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-4xl font-black text-slate-900">
+                        {planForm.currency || '₹'}{planForm.monthlyPrice}
+                      </span>
+                      {planForm.billingCycle && (
+                        <span className="text-xs text-slate-500 font-semibold">{planForm.billingCycle}</span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-500 mb-6">{planForm.tagline || 'Short descriptive tagline'}</p>
+
+                    <ul className="space-y-2.5 text-xs text-slate-700 mb-6">
+                      {planForm.features.length === 0 && (
+                        <li className="text-slate-400 italic">No features added yet</li>
+                      )}
+                      {planForm.features.map((feat, idx) => (
+                        <li key={idx} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-medium">{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div
+                      className={`w-full py-3 rounded-full text-center text-xs font-bold transition shadow-xs ${
+                        planForm.isRecommended || planForm.badge === 'Recommended'
+                          ? 'bg-emerald-600 text-white'
+                          : 'border-2 border-emerald-200 text-emerald-700 bg-emerald-50'
+                      }`}
+                    >
+                      {planForm.ctaText || (planForm.monthlyPrice === 0 ? 'Start Free' : 'Get Started')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-200 text-center">
+                  <p className="text-[11px] text-slate-400">
+                    Saves instantly to Firestore database and syncs across all live vendor storefronts.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsPlanModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="plan-form"
+                disabled={isSavingPlan}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50 active:scale-95"
+              >
+                {isSavingPlan ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {editingPlanId ? 'Update & Publish Tier' : 'Create & Publish Tier'}
               </button>
             </div>
           </div>
