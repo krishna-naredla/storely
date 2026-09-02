@@ -12,7 +12,8 @@ import {
   limit,
   onSnapshot,
   addDoc,
-  writeBatch
+  writeBatch,
+  runTransaction
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { deleteImageFromStorage } from './cloudinary';
@@ -20,6 +21,9 @@ import {
   BusinessProfile,
   Category,
   CatalogItem,
+  DigitalProduct,
+  DigitalProductStatus,
+  DigitalProductType,
   Order,
   Booking,
   Customer,
@@ -28,6 +32,15 @@ import {
   AnalyticsSummary,
   OrderStatus,
   BookingStatus,
+  PortfolioItem,
+  Testimonial,
+  PortfolioSettings,
+  EventItem,
+  EventTicket,
+  CustomQuoteRequest,
+  EventStatus,
+  EventFormat,
+  QuoteRequestStatus,
 } from '../types';
 
 /**
@@ -538,6 +551,178 @@ export async function duplicateCatalogItem(businessId: string, originalItem: Cat
     ...rest,
     name: rest.name,
     slug: generateSlug(`${rest.name}-${Date.now().toString().slice(-4)}`),
+  });
+}
+
+/**
+ * Digital Products CRUD (PDF, Courses, Graphic Assets, Templates, etc.)
+ */
+export async function getDigitalProducts(businessId: string, activeOnly = false): Promise<DigitalProduct[]> {
+  try {
+    const colRef = collection(db, 'businesses', businessId, 'digital_products');
+    const snap = await getDocs(colRef);
+    let list = snap.docs.map((d) => d.data() as DigitalProduct);
+
+    if (activeOnly) {
+      list = list.filter((p) => p.status === 'active');
+    }
+    return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } catch (err) {
+    console.error('Error getting digital products:', err);
+    return [];
+  }
+}
+
+export async function getDigitalProductById(businessId: string, productId: string): Promise<DigitalProduct | null> {
+  try {
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as DigitalProduct;
+    }
+  } catch (err) {
+    console.error('Error getting digital product by id:', err);
+  }
+  return null;
+}
+
+export async function createDigitalProduct(
+  businessId: string,
+  data: Omit<DigitalProduct, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>
+): Promise<DigitalProduct> {
+  const productId = 'digi_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  const now = Date.now();
+  const product: DigitalProduct = {
+    ...data,
+    id: productId,
+    businessId,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    const sanitized = sanitizeForFirestore(product);
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    await setDoc(docRef, sanitized);
+
+    // Also mirror into catalog collection with type 'product' and productType 'digital_file' for unified storefront queries
+    const catalogPayload: CatalogItem = {
+      id: productId,
+      businessId,
+      name: data.title,
+      slug: generateSlug(data.title),
+      type: 'product',
+      categoryId: 'digital',
+      shortDescription: data.description?.slice(0, 160) || '',
+      detailedDescription: data.description || '',
+      price: data.price,
+      salePrice: data.salePrice,
+      isFree: data.isFree || data.price === 0,
+      images: data.coverImage ? [data.coverImage] : [],
+      inStock: data.status === 'active',
+      isActive: data.status === 'active',
+      productType: 'digital_file',
+      digitalFileType: data.type.toLowerCase() === 'course' ? 'course' : data.type.toLowerCase() === 'pdf' ? 'pdf' : data.type.toLowerCase() === 'image' ? 'images' : 'other',
+      digitalFileUrl: data.fileUrls?.[0] || '',
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      downloadLimit: data.downloadLimit,
+      salesCount: data.salesCount || 0,
+      digitalFiles: data.courseLessons?.map((l) => ({
+        id: l.id,
+        title: l.title,
+        url: l.url,
+        fileType: l.fileType,
+        fileSize: l.fileSize,
+      })),
+      createdAt: now,
+      updatedAt: now,
+    };
+    await setDoc(doc(db, 'businesses', businessId, 'catalog', productId), sanitizeForFirestore(catalogPayload));
+  } catch (err) {
+    console.warn('Firestore createDigitalProduct warning:', err);
+  }
+  return product;
+}
+
+export async function updateDigitalProduct(
+  businessId: string,
+  productId: string,
+  data: Partial<DigitalProduct>
+): Promise<void> {
+  try {
+    const sanitized = sanitizeForFirestore({
+      ...data,
+      updatedAt: Date.now(),
+    });
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    await setDoc(docRef, sanitized, { merge: true });
+
+    // Sync mirrored catalog item if title/price/coverImage/status changed
+    const catalogDocRef = doc(db, 'businesses', businessId, 'catalog', productId);
+    const catalogSnap = await getDoc(catalogDocRef);
+    if (catalogSnap.exists()) {
+      const catalogUpdates: Partial<CatalogItem> = {
+        updatedAt: Date.now(),
+      };
+      if (data.title !== undefined) catalogUpdates.name = data.title;
+      if (data.description !== undefined) {
+        catalogUpdates.detailedDescription = data.description;
+        catalogUpdates.shortDescription = data.description.slice(0, 160);
+      }
+      if (data.price !== undefined) catalogUpdates.price = data.price;
+      if (data.salePrice !== undefined) catalogUpdates.salePrice = data.salePrice;
+      if (data.isFree !== undefined) catalogUpdates.isFree = data.isFree;
+      if (data.coverImage !== undefined) catalogUpdates.images = [data.coverImage];
+      if (data.status !== undefined) {
+        catalogUpdates.isActive = data.status === 'active';
+        catalogUpdates.inStock = data.status === 'active';
+      }
+      if (data.fileUrls !== undefined && data.fileUrls.length > 0) {
+        catalogUpdates.digitalFileUrl = data.fileUrls[0];
+      }
+      if (data.fileName !== undefined) catalogUpdates.fileName = data.fileName;
+      if (data.fileSize !== undefined) catalogUpdates.fileSize = data.fileSize;
+      if (data.courseLessons !== undefined) {
+        catalogUpdates.digitalFiles = data.courseLessons;
+      }
+      await setDoc(catalogDocRef, sanitizeForFirestore(catalogUpdates), { merge: true });
+    }
+  } catch (err) {
+    console.warn('Firestore updateDigitalProduct warning:', err);
+  }
+}
+
+export async function deleteDigitalProduct(businessId: string, productId: string): Promise<void> {
+  try {
+    // Delete from digital_products subcollection
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    await deleteDoc(docRef);
+
+    // Also delete mirrored catalog doc
+    const catalogDocRef = doc(db, 'businesses', businessId, 'catalog', productId);
+    await deleteDoc(catalogDocRef);
+  } catch (err) {
+    console.warn('Firestore deleteDigitalProduct warning:', err);
+  }
+}
+
+export async function toggleDigitalProductStatus(
+  businessId: string,
+  productId: string,
+  currentStatus: DigitalProductStatus
+): Promise<DigitalProductStatus> {
+  const nextStatus: DigitalProductStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  await updateDigitalProduct(businessId, productId, { status: nextStatus });
+  return nextStatus;
+}
+
+export async function duplicateDigitalProduct(businessId: string, original: DigitalProduct): Promise<DigitalProduct> {
+  const { id, createdAt, updatedAt, ...rest } = original;
+  return createDigitalProduct(businessId, {
+    ...rest,
+    title: `${rest.title} (Copy)`,
+    salesCount: 0,
   });
 }
 
@@ -1148,3 +1333,850 @@ export const getBioLinkAnalytics = async (businessId: string) => {
     return { views: 0, clicks: 0, clicksPerLink: {} };
   }
 };
+
+// ==========================================
+// MODULE 3: WORK PORTFOLIO & SHOWCASE SERVICE
+// ==========================================
+
+/**
+ * Fetch all portfolio items for a business.
+ */
+export async function getPortfolioItems(
+  businessId: string,
+  activeOnly = false
+): Promise<PortfolioItem[]> {
+  try {
+    const portfolioRef = collection(db, 'businesses', businessId, 'portfolio');
+    let q = query(portfolioRef, orderBy('order', 'asc'));
+
+    if (activeOnly) {
+      q = query(portfolioRef, where('isActive', '==', true), orderBy('order', 'asc'));
+    }
+
+    const snap = await getDocs(q);
+    const items: PortfolioItem[] = [];
+    snap.forEach((docSnap) => {
+      items.push({
+        id: docSnap.id,
+        businessId,
+        ...docSnap.data(),
+      } as PortfolioItem);
+    });
+
+    // Client-side fallback sort if orderBy didn't apply
+    return items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  } catch (err) {
+    console.error('Error fetching portfolio items:', err);
+    return [];
+  }
+}
+
+/**
+ * Create a new portfolio work sample.
+ */
+export async function createPortfolioItem(
+  businessId: string,
+  data: Omit<PortfolioItem, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>
+): Promise<PortfolioItem> {
+  const portfolioRef = collection(db, 'businesses', businessId, 'portfolio');
+  const now = Date.now();
+
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const docRef = await addDoc(portfolioRef, cleanData);
+
+  return {
+    id: docRef.id,
+    businessId,
+    ...cleanData,
+  } as PortfolioItem;
+}
+
+/**
+ * Update an existing portfolio item.
+ */
+export async function updatePortfolioItem(
+  businessId: string,
+  itemId: string,
+  data: Partial<PortfolioItem>
+): Promise<void> {
+  const itemRef = doc(db, 'businesses', businessId, 'portfolio', itemId);
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    updatedAt: Date.now(),
+  });
+
+  await updateDoc(itemRef, cleanData);
+}
+
+/**
+ * Delete a portfolio item and cleanup associated Cloudinary images/videos.
+ */
+export async function deletePortfolioItem(
+  businessId: string,
+  itemId: string,
+  itemData?: PortfolioItem
+): Promise<void> {
+  // Delete from Cloudinary if media exists
+  if (itemData) {
+    if (itemData.coverImage) {
+      deleteImageFromStorage(itemData.coverImage).catch(() => {});
+    }
+    if (itemData.mediaUrls && itemData.mediaUrls.length > 0) {
+      itemData.mediaUrls.forEach((url) => {
+        const isVideo = itemData.mediaType === 'video_file' || url.includes('/video/');
+        deleteImageFromStorage(url, isVideo ? 'video' : 'image').catch(() => {});
+      });
+    }
+    if (itemData.cloudinaryPublicIds && itemData.cloudinaryPublicIds.length > 0) {
+      itemData.cloudinaryPublicIds.forEach((pid) => {
+        deleteImageFromStorage(pid).catch(() => {});
+      });
+    }
+  }
+
+  const itemRef = doc(db, 'businesses', businessId, 'portfolio', itemId);
+  await deleteDoc(itemRef);
+}
+
+/**
+ * Batch reorder portfolio items.
+ */
+export async function reorderPortfolioItems(
+  businessId: string,
+  items: { id: string; order: number }[]
+): Promise<void> {
+  const batch = writeBatch(db);
+  items.forEach((item) => {
+    const itemRef = doc(db, 'businesses', businessId, 'portfolio', item.id);
+    batch.update(itemRef, { order: item.order, updatedAt: Date.now() });
+  });
+  await batch.commit();
+}
+
+/**
+ * Fetch testimonials for a business.
+ */
+export async function getTestimonials(
+  businessId: string,
+  activeOnly = false
+): Promise<Testimonial[]> {
+  try {
+    const testimonialsRef = collection(db, 'businesses', businessId, 'testimonials');
+    let q = query(testimonialsRef, orderBy('order', 'asc'));
+
+    if (activeOnly) {
+      q = query(testimonialsRef, where('isActive', '==', true), orderBy('order', 'asc'));
+    }
+
+    const snap = await getDocs(q);
+    const testimonials: Testimonial[] = [];
+    snap.forEach((docSnap) => {
+      testimonials.push({
+        id: docSnap.id,
+        businessId,
+        ...docSnap.data(),
+      } as Testimonial);
+    });
+
+    return testimonials.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  } catch (err) {
+    console.error('Error fetching testimonials:', err);
+    return [];
+  }
+}
+
+/**
+ * Create a new client testimonial.
+ */
+export async function createTestimonial(
+  businessId: string,
+  data: Omit<Testimonial, 'id' | 'businessId' | 'createdAt'>
+): Promise<Testimonial> {
+  const testimonialsRef = collection(db, 'businesses', businessId, 'testimonials');
+  const now = Date.now();
+
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const docRef = await addDoc(testimonialsRef, cleanData);
+
+  return {
+    id: docRef.id,
+    businessId,
+    ...cleanData,
+  } as Testimonial;
+}
+
+/**
+ * Update a testimonial.
+ */
+export async function updateTestimonial(
+  businessId: string,
+  testimonialId: string,
+  data: Partial<Testimonial>
+): Promise<void> {
+  const testimonialRef = doc(db, 'businesses', businessId, 'testimonials', testimonialId);
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    updatedAt: Date.now(),
+  });
+
+  await updateDoc(testimonialRef, cleanData);
+}
+
+/**
+ * Delete a testimonial.
+ */
+export async function deleteTestimonial(
+  businessId: string,
+  testimonialId: string,
+  photoUrl?: string
+): Promise<void> {
+  if (photoUrl) {
+    deleteImageFromStorage(photoUrl).catch(() => {});
+  }
+  const testimonialRef = doc(db, 'businesses', businessId, 'testimonials', testimonialId);
+  await deleteDoc(testimonialRef);
+}
+
+/**
+ * Batch reorder testimonials.
+ */
+export async function reorderTestimonials(
+  businessId: string,
+  testimonials: { id: string; order: number }[]
+): Promise<void> {
+  const batch = writeBatch(db);
+  testimonials.forEach((t) => {
+    const tRef = doc(db, 'businesses', businessId, 'testimonials', t.id);
+    batch.update(tRef, { order: t.order, updatedAt: Date.now() });
+  });
+  await batch.commit();
+}
+
+/**
+ * Update portfolio showcase settings on BusinessProfile.
+ */
+export async function updatePortfolioSettings(
+  businessId: string,
+  settings: Partial<PortfolioSettings>
+): Promise<void> {
+  const bizRef = doc(db, 'businesses', businessId);
+  const cleanSettings = sanitizeForFirestore(settings);
+  await updateDoc(bizRef, {
+    portfolioSettings: cleanSettings,
+    updatedAt: Date.now(),
+  });
+}
+
+// ==========================================
+// MODULE 4: EVENT & WEBINAR TICKETING SERVICES
+// ==========================================
+
+/**
+ * Fetch all events for a business
+ */
+export async function getEvents(businessId: string): Promise<EventItem[]> {
+  try {
+    const eventsRef = collection(db, 'businesses', businessId, 'events');
+    const q = query(eventsRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as EventItem[];
+  } catch (err) {
+    console.error('Error fetching events:', err);
+    return [];
+  }
+}
+
+/**
+ * Real-time subscription to events
+ */
+export function subscribeToEvents(
+  businessId: string,
+  callback: (events: EventItem[]) => void
+): () => void {
+  const eventsRef = collection(db, 'businesses', businessId, 'events');
+  const q = query(eventsRef, orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as EventItem[];
+      callback(items);
+    },
+    (err) => {
+      console.error('Error in subscribeToEvents:', err);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Create a new event
+ */
+export async function createEvent(
+  businessId: string,
+  data: Omit<EventItem, 'id' | 'businessId' | 'ticketsSold' | 'seatsRemaining' | 'createdAt' | 'updatedAt'>
+): Promise<EventItem> {
+  const eventsRef = collection(db, 'businesses', businessId, 'events');
+  const newDocRef = doc(eventsRef);
+
+  const capacity = Number(data.capacity) || 50;
+  const newEvent: EventItem = {
+    ...data,
+    id: newDocRef.id,
+    businessId,
+    capacity,
+    seatsRemaining: capacity,
+    ticketsSold: 0,
+    status: data.status || 'upcoming',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  const cleanData = sanitizeForFirestore(newEvent);
+  await setDoc(newDocRef, cleanData);
+  return newEvent;
+}
+
+/**
+ * Update an existing event
+ */
+export async function updateEvent(
+  businessId: string,
+  eventId: string,
+  data: Partial<EventItem>
+): Promise<void> {
+  const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    updatedAt: Date.now(),
+  });
+  await updateDoc(eventRef, cleanData);
+}
+
+/**
+ * Delete an event
+ */
+export async function deleteEvent(
+  businessId: string,
+  eventId: string,
+  coverImage?: string
+): Promise<void> {
+  if (coverImage) {
+    deleteImageFromStorage(coverImage).catch(() => {});
+  }
+  const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
+  await deleteDoc(eventRef);
+}
+
+/**
+ * Cancel an event and update tickets to refunded
+ */
+export async function cancelEvent(
+  businessId: string,
+  eventId: string,
+  cancellationReason?: string
+): Promise<{ event: EventItem; tickets: EventTicket[] }> {
+  const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
+  const eventSnap = await getDoc(eventRef);
+  if (!eventSnap.exists()) {
+    throw new Error('Event not found');
+  }
+
+  const eventData = { id: eventSnap.id, ...eventSnap.data() } as EventItem;
+
+  // 1. Mark event as cancelled
+  await updateDoc(eventRef, {
+    status: 'cancelled',
+    cancellationReason: cancellationReason || 'Cancelled by organizer',
+    updatedAt: Date.now(),
+  });
+
+  // 2. Fetch all tickets for this event and mark as refunded
+  const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
+  const q = query(ticketsRef, where('eventId', '==', eventId));
+  const ticketSnaps = await getDocs(q);
+
+  const batch = writeBatch(db);
+  const updatedTickets: EventTicket[] = [];
+
+  ticketSnaps.docs.forEach((tDoc) => {
+    const tData = { id: tDoc.id, ...tDoc.data() } as EventTicket;
+    if (tData.paymentStatus !== 'refunded') {
+      batch.update(tDoc.ref, {
+        paymentStatus: 'refunded',
+        updatedAt: Date.now(),
+      });
+      updatedTickets.push({ ...tData, paymentStatus: 'refunded' });
+    } else {
+      updatedTickets.push(tData);
+    }
+  });
+
+  await batch.commit();
+
+  return {
+    event: { ...eventData, status: 'cancelled', cancellationReason },
+    tickets: updatedTickets,
+  };
+}
+
+/**
+ * Fetch all tickets for an event or entire business
+ */
+export async function getEventTickets(
+  businessId: string,
+  eventId?: string
+): Promise<EventTicket[]> {
+  try {
+    const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
+    let q = query(ticketsRef, orderBy('createdAt', 'desc'));
+    if (eventId) {
+      q = query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
+    }
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as EventTicket[];
+  } catch (err) {
+    console.error('Error fetching event tickets:', err);
+    return [];
+  }
+}
+
+/**
+ * Real-time subscription to tickets of an event
+ */
+export function subscribeToEventTickets(
+  businessId: string,
+  eventId: string,
+  callback: (tickets: EventTicket[]) => void
+): () => void {
+  const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
+  const q = query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as EventTicket[];
+      callback(items);
+    },
+    (err) => {
+      console.error('Error in subscribeToEventTickets:', err);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * CRITICAL SEAT MANAGEMENT TRANSACTION:
+ * Purchases / claims an event ticket atomically.
+ * Ensures seatsRemaining > 0 and ticketsSold < capacity before decrementing.
+ */
+export async function purchaseEventTicketTransaction(
+  businessId: string,
+  eventId: string,
+  buyerDetails: {
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    paymentStatus?: 'paid' | 'free';
+    paymentId?: string;
+    razorpayOrderId?: string;
+    notes?: string;
+  }
+): Promise<{ ticket: EventTicket; updatedEvent: EventItem }> {
+  const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
+  const ticketRef = doc(collection(db, 'businesses', businessId, 'tickets'));
+
+  const randomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const ticketCode = `TKT-${Date.now().toString(36).toUpperCase().slice(-4)}-${randomCode}`;
+
+  return await runTransaction(db, async (transaction) => {
+    const eventSnap = await transaction.get(eventRef);
+    if (!eventSnap.exists()) {
+      throw new Error('Event not found or has been deleted');
+    }
+
+    const event = eventSnap.data() as EventItem;
+
+    if (event.status === 'cancelled') {
+      throw new Error('This event has been cancelled by the organizer');
+    }
+
+    const capacity = Number(event.capacity) || 1;
+    const currentSold = Number(event.ticketsSold) || 0;
+    const seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - currentSold;
+
+    if (seatsRemaining <= 0 || currentSold >= capacity || event.status === 'sold_out') {
+      throw new Error('Sold Out - No seats remaining for this event');
+    }
+
+    const nextSold = currentSold + 1;
+    const nextRemaining = seatsRemaining - 1;
+    const nextStatus: EventStatus = nextRemaining <= 0 ? 'sold_out' : event.status || 'upcoming';
+
+    // 1. Decrement seats atomically
+    transaction.update(eventRef, {
+      ticketsSold: nextSold,
+      seatsRemaining: nextRemaining,
+      status: nextStatus,
+      updatedAt: Date.now(),
+    });
+
+    // 2. Create the ticket document
+    const newTicket: EventTicket = {
+      id: ticketRef.id,
+      ticketId: ticketCode,
+      eventId,
+      eventTitle: event.title,
+      businessId,
+      customerName: buyerDetails.customerName.trim(),
+      customerPhone: buyerDetails.customerPhone.trim(),
+      customerEmail: buyerDetails.customerEmail?.trim(),
+      format: event.format,
+      eventDate: event.eventDate,
+      eventTime: event.eventTime,
+      price: event.price || 0,
+      paymentStatus: buyerDetails.paymentStatus || (event.price === 0 ? 'free' : 'paid'),
+      paymentId: buyerDetails.paymentId,
+      razorpayOrderId: buyerDetails.razorpayOrderId,
+      checkedIn: false,
+      meetingUrl: event.meetingUrl,
+      venueAddress: event.venueAddress,
+      venueCity: event.venueCity,
+      notes: buyerDetails.notes,
+      createdAt: Date.now(),
+    };
+
+    const cleanTicket = sanitizeForFirestore(newTicket);
+    transaction.set(ticketRef, cleanTicket);
+
+    const updatedEvent: EventItem = {
+      ...event,
+      ticketsSold: nextSold,
+      seatsRemaining: nextRemaining,
+      status: nextStatus,
+    };
+
+    return { ticket: newTicket, updatedEvent };
+  });
+}
+
+/**
+ * Toggle check-in status for an attendee ticket
+ */
+export async function checkInTicket(
+  businessId: string,
+  ticketId: string,
+  checkedIn: boolean
+): Promise<void> {
+  const ticketRef = doc(db, 'businesses', businessId, 'tickets', ticketId);
+  await updateDoc(ticketRef, {
+    checkedIn,
+    checkedInAt: checkedIn ? Date.now() : null,
+    updatedAt: Date.now(),
+  });
+}
+
+// ==========================================
+// MODULE 5: CUSTOM ORDER & QUOTE REQUEST SERVICES
+// ==========================================
+
+/**
+ * Fetch all quote requests for a business
+ */
+export async function getCustomQuoteRequests(
+  businessId: string,
+  includeArchived: boolean = false
+): Promise<CustomQuoteRequest[]> {
+  try {
+    const quotesRef = collection(db, 'businesses', businessId, 'quote_requests');
+    const q = query(quotesRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    const all = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as CustomQuoteRequest[];
+
+    if (includeArchived) return all;
+    return all.filter((r) => !r.isArchived);
+  } catch (err) {
+    console.error('Error fetching custom quote requests:', err);
+    return [];
+  }
+}
+
+/**
+ * Real-time subscription to quote requests
+ */
+export function subscribeToCustomQuoteRequests(
+  businessId: string,
+  callback: (requests: CustomQuoteRequest[]) => void,
+  includeArchived: boolean = false
+): () => void {
+  const quotesRef = collection(db, 'businesses', businessId, 'quote_requests');
+  const q = query(quotesRef, orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const all = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as CustomQuoteRequest[];
+      callback(includeArchived ? all : all.filter((r) => !r.isArchived));
+    },
+    (err) => {
+      console.error('Error in subscribeToCustomQuoteRequests:', err);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Submit a new custom quote request (Customer side)
+ */
+export async function createCustomQuoteRequest(
+  businessId: string,
+  data: {
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+    description: string;
+    budgetRange?: string;
+    referenceImages?: string[];
+  }
+): Promise<CustomQuoteRequest> {
+  const quotesRef = collection(db, 'businesses', businessId, 'quote_requests');
+  const newDocRef = doc(quotesRef);
+
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const requestNumber = `REQ-${randomNum}`;
+
+  const newRequest: CustomQuoteRequest = {
+    id: newDocRef.id,
+    businessId,
+    requestNumber,
+    customerName: data.customerName.trim(),
+    customerPhone: data.customerPhone.trim(),
+    customerEmail: data.customerEmail?.trim(),
+    description: data.description.trim(),
+    budgetRange: data.budgetRange,
+    referenceImages: data.referenceImages || [],
+    status: 'new',
+    isArchived: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  const cleanData = sanitizeForFirestore(newRequest);
+  await setDoc(newDocRef, cleanData);
+  return newRequest;
+}
+
+/**
+ * Creator sends a custom price quote & generates one-time payment link
+ */
+export async function submitQuoteOffer(
+  businessId: string,
+  requestId: string,
+  quoteDetails: {
+    quotedPrice: number;
+    quoteNotes?: string;
+    estimatedDeliveryDays?: number;
+  }
+): Promise<{ request: CustomQuoteRequest; paymentUrl: string; paymentLinkId: string }> {
+  const quoteRef = doc(db, 'businesses', businessId, 'quote_requests', requestId);
+  const quoteSnap = await getDoc(quoteRef);
+  if (!quoteSnap.exists()) {
+    throw new Error('Quote request not found');
+  }
+
+  const paymentLinkId = `paylink_qr_${requestId}_${Date.now()}`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const paymentUrl = `${origin}/quote-pay/${businessId}/${requestId}`;
+
+  const updatePayload = {
+    quotedPrice: quoteDetails.quotedPrice,
+    quoteNotes: quoteDetails.quoteNotes || '',
+    estimatedDeliveryDays: quoteDetails.estimatedDeliveryDays || 3,
+    quotedAt: Date.now(),
+    paymentLinkId,
+    paymentLinkUrl: paymentUrl,
+    paymentStatus: 'pending' as const,
+    status: 'quoted' as QuoteRequestStatus,
+    updatedAt: Date.now(),
+  };
+
+  await updateDoc(quoteRef, updatePayload);
+
+  const updatedReq: CustomQuoteRequest = {
+    ...(quoteSnap.data() as CustomQuoteRequest),
+    ...updatePayload,
+    id: requestId,
+  };
+
+  return { request: updatedReq, paymentUrl, paymentLinkId };
+}
+
+/**
+ * Mark payment completed on custom quote request
+ */
+export async function acceptQuotePayment(
+  businessId: string,
+  requestId: string,
+  paymentDetails: {
+    paymentId?: string;
+    razorpayOrderId?: string;
+    amountPaid?: number;
+  }
+): Promise<CustomQuoteRequest> {
+  const quoteRef = doc(db, 'businesses', businessId, 'quote_requests', requestId);
+  const quoteSnap = await getDoc(quoteRef);
+  if (!quoteSnap.exists()) {
+    throw new Error('Quote request not found');
+  }
+
+  const current = quoteSnap.data() as CustomQuoteRequest;
+  const updatePayload = {
+    status: 'accepted' as QuoteRequestStatus,
+    paymentStatus: 'paid' as const,
+    paymentId: paymentDetails.paymentId || `pay_${Date.now()}`,
+    paidAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  await updateDoc(quoteRef, updatePayload);
+  return { ...current, ...updatePayload };
+}
+
+/**
+ * Update custom quote request status / fields
+ */
+export async function updateCustomQuoteRequest(
+  businessId: string,
+  requestId: string,
+  data: Partial<CustomQuoteRequest>
+): Promise<void> {
+  const quoteRef = doc(db, 'businesses', businessId, 'quote_requests', requestId);
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    updatedAt: Date.now(),
+  });
+  await updateDoc(quoteRef, cleanData);
+}
+
+/**
+ * Toggle archive on custom quote request
+ */
+export async function archiveCustomQuoteRequest(
+  businessId: string,
+  requestId: string,
+  isArchived: boolean = true
+): Promise<void> {
+  const quoteRef = doc(db, 'businesses', businessId, 'quote_requests', requestId);
+  await updateDoc(quoteRef, {
+    isArchived,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Delete custom quote request
+ */
+export async function deleteCustomQuoteRequest(
+  businessId: string,
+  requestId: string
+): Promise<void> {
+  const quoteRef = doc(db, 'businesses', businessId, 'quote_requests', requestId);
+  await deleteDoc(quoteRef);
+}
+
+/**
+ * Fetch a single quote request by ID
+ */
+export async function getCustomQuoteRequest(
+  businessId: string,
+  requestId: string
+): Promise<CustomQuoteRequest | null> {
+  try {
+    const quoteRef = doc(db, 'businesses', businessId, 'quote_requests', requestId);
+    const snap = await getDoc(quoteRef);
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() } as CustomQuoteRequest;
+  } catch (err) {
+    console.error('Error fetching custom quote request:', err);
+    return null;
+  }
+}
+
+/**
+ * Check and automatically expire custom quotes that are unpaid after 48 hours
+ */
+export async function checkAndExpireOldQuotes(
+  businessId: string,
+  expiryHours: number = 48
+): Promise<CustomQuoteRequest[]> {
+  try {
+    const quoteColl = collection(db, 'businesses', businessId, 'quote_requests');
+    const q = query(quoteColl, where('status', '==', 'quoted'));
+    const snap = await getDocs(q);
+    const now = Date.now();
+    const expiryMs = expiryHours * 60 * 60 * 1000;
+    const expiredList: CustomQuoteRequest[] = [];
+
+    for (const d of snap.docs) {
+      const data = d.data() as CustomQuoteRequest;
+      if (data.paymentStatus === 'paid') continue;
+
+      const quotedTime = data.quotedAt || data.updatedAt || data.createdAt;
+      if (quotedTime && now - quotedTime >= expiryMs) {
+        const docRef = doc(db, 'businesses', businessId, 'quote_requests', d.id);
+        const reason = `Quote Expired: Customer did not complete payment within ${expiryHours} hours.`;
+        await updateDoc(docRef, {
+          status: 'rejected' as QuoteRequestStatus,
+          rejectionReason: reason,
+          updatedAt: now,
+        });
+
+        expiredList.push({
+          ...data,
+          id: d.id,
+          status: 'rejected',
+          rejectionReason: reason,
+          updatedAt: now,
+        });
+      }
+    }
+
+    return expiredList;
+  } catch (err) {
+    console.error('Error checking and expiring old quotes:', err);
+    return [];
+  }
+}
+
+/**
+ * Submit a new custom quote request (Customer side alias)
+ */
+export const submitCustomQuoteRequest = createCustomQuoteRequest;
+
+
+

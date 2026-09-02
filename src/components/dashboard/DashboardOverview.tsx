@@ -107,16 +107,28 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center shrink-0 shadow-sm">
+              <button
+                type="button"
+                onClick={onOpenStorefront}
+                title="Click to open live storefront"
+                className="w-12 h-12 rounded-2xl bg-white border border-emerald-200 hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 flex items-center justify-center shrink-0 shadow-sm transition group cursor-pointer overflow-hidden"
+              >
                 {business.logo ? (
-                  <SafeImage fallbackType="avatar" src={business.logo} alt={business.name} referrerPolicy="no-referrer" className="w-10 h-10 object-contain rounded-xl" />
+                  <SafeImage fallbackType="avatar" src={business.logo} alt={business.name} referrerPolicy="no-referrer" className="w-10 h-10 object-contain rounded-xl group-hover:scale-110 transition duration-300" />
                 ) : (
-                  <Store className="w-6 h-6 text-emerald-700" />
+                  <Store className="w-6 h-6 text-emerald-700 group-hover:scale-110 transition duration-300" />
                 )}
+              </button>
+              <div
+                onClick={onOpenStorefront}
+                className="cursor-pointer group"
+                title="Click to open live storefront"
+              >
+                <h1 className="text-xl sm:text-2xl font-black font-heading leading-tight text-slate-900 group-hover:text-emerald-700 transition flex items-center gap-2">
+                  <span>{business.name} is Live &amp; Ready to Sell</span>
+                  <ExternalLink className="w-4 h-4 text-emerald-600 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition shrink-0" />
+                </h1>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black font-heading leading-tight text-slate-900">
-                {business.name} is Live & Ready to Sell
-              </h1>
             </div>
             
             <div className="flex items-center gap-2 pt-1">
@@ -424,18 +436,31 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center space-y-3">
-              <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-xs mx-auto overflow-hidden">
+              <button
+                type="button"
+                onClick={onOpenStorefront}
+                title="Click to open live storefront"
+                className="w-14 h-14 rounded-xl bg-white border border-slate-200 hover:border-emerald-400 hover:ring-2 hover:ring-emerald-300 shadow-xs mx-auto overflow-hidden block cursor-pointer group transition duration-300"
+              >
                 {business.logo ? (
-                  <SafeImage fallbackType="avatar" src={business.logo} alt="Logo" className="w-full h-full object-cover" />
+                  <SafeImage fallbackType="avatar" src={business.logo} alt="Logo" className="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
                 ) : (
-                  <div className="w-full h-full bg-emerald-100 text-emerald-800 font-bold text-lg flex items-center justify-center">
+                  <div className="w-full h-full bg-emerald-100 text-emerald-800 font-bold text-lg flex items-center justify-center group-hover:bg-emerald-200 transition">
                     {business.name.slice(0, 2).toUpperCase()}
                   </div>
                 )}
-              </div>
+              </button>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 truncate">{business.name}</h4>
+                <button
+                  type="button"
+                  onClick={onOpenStorefront}
+                  title="Click to open live storefront"
+                  className="text-xs font-bold text-slate-900 hover:text-emerald-700 transition truncate max-w-full inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="truncate">{business.name}</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400 hover:text-emerald-600 shrink-0" />
+                </button>
                 <p className="text-[10px] text-emerald-700 font-medium">{bizMeta.label}</p>
               </div>
 
@@ -469,10 +494,22 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
 
             {/* Showcase Image Banner */}
-            <div className="relative rounded-xl overflow-hidden border border-emerald-500/30 shadow-sm group mt-3">
-              <img src="/storelly6.jpg.jpeg" alt="Storelly Commerce Showcase" className="w-full h-32 object-cover group-hover:scale-105 transition duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex items-end p-2.5">
-                <span className="text-[11px] font-bold text-white flex items-center gap-1">
+            <div className="relative rounded-xl overflow-hidden border border-emerald-500/30 shadow-sm group mt-3 bg-slate-900">
+              <img
+                src="/storelly6.jpg"
+                alt="Storelly Commerce Showcase"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (!img.src.includes('storelly6.jpg.jpeg')) {
+                    img.src = '/storelly6.jpg.jpeg';
+                  } else if (!img.src.includes('storelly1.jpg.jpeg')) {
+                    img.src = '/storelly1.jpg.jpeg';
+                  }
+                }}
+                className="w-full h-32 object-cover group-hover:scale-105 transition duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex items-end p-2.5 pointer-events-none">
+                <span className="text-[11px] font-bold text-white flex items-center gap-1 drop-shadow-sm">
                   ✨ Storelly Commerce Engine
                 </span>
               </div>

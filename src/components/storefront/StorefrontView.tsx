@@ -29,6 +29,8 @@ import {
   QrCode,
   SlidersHorizontal,
   Wrench,
+  Ticket,
+  FileText,
 } from 'lucide-react';
 import {
   BusinessProfile,
@@ -36,12 +38,14 @@ import {
   Category,
   Offer,
   Review,
+  EventItem,
 } from '../../types';
 import {
   getCatalogItems,
   getCategories,
   getOffers,
   getReviews,
+  getEvents,
   recordAnalyticsEvent,
   incrementShareCount,
 } from '../../services/firebaseService';
@@ -53,7 +57,12 @@ import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
 import { BookingModal } from './BookingModal';
 import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
+import { DigitalCheckoutModal } from './DigitalCheckoutModal';
 import { VerifiedBadge } from '../common/VerifiedBadge';
+import { PortfolioShowcase } from './PortfolioShowcase';
+import { EventsShowcase } from './EventsShowcase';
+import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
+import { Briefcase } from 'lucide-react';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -172,6 +181,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter & Search states
@@ -184,118 +194,31 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<CatalogItem | null>(null);
   const [selectedItemForBooking, setSelectedItemForBooking] = useState<CatalogItem | null>(null);
   const [selectedItemForDigital, setSelectedItemForDigital] = useState<CatalogItem | null>(null);
-  const [digitalPurchaseStatus, setDigitalPurchaseStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
-  const [digitalDownloadUrl, setDigitalDownloadUrl] = useState<string | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isCustomerOrdersOpen, setIsCustomerOrdersOpen] = useState(false);
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [bannerError, setBannerError] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
+  // Reset image errors on business or image URL change
+  useEffect(() => {
+    setLogoError(false);
+    setBannerError(false);
+  }, [business.id, business.logo, business.banner, business.coverImage]);
+
+  const hasPortfolioModule =
+    business.type === 'creator' ||
+    Boolean(business.modules?.work_portfolio) ||
+    Boolean(business.modules?.portfolio);
+  const [creatorTab, setCreatorTab] = useState<'portfolio' | 'store' | 'events'>(
+    business.type === 'creator' ? 'portfolio' : 'store'
+  );
+
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
-
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handleDigitalPurchase = async (item: CatalogItem) => {
+  const handleDigitalPurchase = (item: CatalogItem) => {
     setSelectedItemForDigital(item);
-    setDigitalPurchaseStatus("processing");
-    setDigitalDownloadUrl(null);
-    try {
-      if (item.price <= 0) {
-        // Free flow
-        const res = await fetch("/api/digital/free", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ itemId: item.id })
-        });
-        const data = await res.json();
-        if (data.success) {
-          setDigitalPurchaseStatus("success");
-          setDigitalDownloadUrl(data.downloadUrl);
-        } else {
-          setDigitalPurchaseStatus("error");
-          alert(data.error || "Failed to get free product");
-        }
-        return;
-      }
-
-      // Paid Flow
-      const isLoaded = await loadRazorpay();
-      if (!isLoaded) {
-        setDigitalPurchaseStatus("error");
-        alert("Payment gateway failed to load.");
-        return;
-      }
-
-      const res = await fetch("/api/digital/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: item.id })
-      });
-      const order = await res.json();
-      if (order.error) {
-        setDigitalPurchaseStatus("error");
-        alert(order.error);
-        return;
-      }
-
-      const options = {
-        key: 'rzp_test_dummy', // Will be ignored by real Razorpay if order_id is valid, but required.
-        amount: order.amount,
-        currency: order.currency,
-        name: business.name,
-        description: item.name,
-        order_id: order.id,
-        handler: async function (response: any) {
-          try {
-            const verifyRes = await fetch("/api/digital/verify-payment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                itemId: item.id
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (verifyData.success) {
-              setDigitalPurchaseStatus("success");
-              setDigitalDownloadUrl(verifyData.downloadUrl);
-            } else {
-              setDigitalPurchaseStatus("error");
-              alert(verifyData.error || "Payment verification failed");
-            }
-          } catch(e) {
-            setDigitalPurchaseStatus("error");
-          }
-        },
-        theme: { color: "#10b981" }
-      };
-      
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function () {
-        setDigitalPurchaseStatus("error");
-      });
-      rzp.open();
-
-    } catch (e) {
-      setDigitalPurchaseStatus("error");
-      console.error(e);
-    }
   };
 
 
@@ -365,6 +288,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         setCategories(parsed.categories || []);
         setOffers(parsed.offers || []);
         setReviews(parsed.reviews || []);
+        setEvents(parsed.events || []);
         setIsLoading(false);
       } catch (e) {
         // ignore parse errors
@@ -375,21 +299,24 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       if (!cachedData) {
         setIsLoading(true);
       }
-      const [fetchedItems, fetchedCategories, fetchedOffers, fetchedReviews] = await Promise.all([
+      const [fetchedItems, fetchedCategories, fetchedOffers, fetchedReviews, fetchedEvents] = await Promise.all([
         getCatalogItems(business.id, true),
         getCategories(business.id),
         getOffers(business.id),
         getReviews(business.id),
+        getEvents(business.id),
       ]);
 
       const activeCategories = fetchedCategories.filter((c) => c.isActive !== false);
       const activeOffers = fetchedOffers.filter((o) => o.isActive);
       const publishedReviews = fetchedReviews.filter((r) => r.status === 'published');
+      const activeEvents = fetchedEvents.filter((e) => e.status !== 'cancelled');
 
       setCatalogItems(fetchedItems);
       setCategories(activeCategories);
       setOffers(activeOffers);
       setReviews(publishedReviews);
+      setEvents(activeEvents);
 
       // Save to cache for next instant load
       localStorage.setItem(
@@ -399,6 +326,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           categories: activeCategories,
           offers: activeOffers,
           reviews: publishedReviews,
+          events: activeEvents,
           timestamp: Date.now(),
         })
       );
@@ -683,6 +611,61 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         </div>
       </header>
 
+      {/* Creator View Switcher (Portfolio vs Store Catalog vs Events) */}
+      {hasPortfolioModule && business.status !== 'maintenance' && (
+        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between sm:justify-start gap-2 sm:gap-3 py-2.5 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setCreatorTab('portfolio')}
+                className={`px-4 sm:px-5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                  creatorTab === 'portfolio'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>Work Portfolio</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatorTab('store')}
+                className={`px-4 sm:px-5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                  creatorTab === 'store'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Services & Products ({catalogItems.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatorTab('events')}
+                className={`px-4 sm:px-5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 ${
+                  creatorTab === 'events'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                <span>Events & Webinars ({events.length})</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsQuoteModalOpen(true)}
+              className="px-3.5 py-2 rounded-2xl text-xs font-black bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition flex items-center gap-1.5 cursor-pointer shrink-0 sm:ml-auto"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-600" />
+              <span>Request Custom Quote</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Store Content Area / Maintenance Mode View */}
       {business.status === 'maintenance' ? (
         <main className="max-w-3xl mx-auto px-4 py-12 sm:py-16 text-center space-y-6">
@@ -731,6 +714,34 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               </button>
             </div>
           </div>
+        </main>
+      ) : hasPortfolioModule && creatorTab === 'portfolio' ? (
+        <PortfolioShowcase
+          business={business}
+          onBookConsultation={(item) => {
+            const target = item || catalogItems.find(i => i.productType === 'consultation_slot' || i.type === 'service') || catalogItems[0];
+            if (target) {
+              setSelectedItemForBooking(target);
+            }
+          }}
+        />
+      ) : hasPortfolioModule && creatorTab === 'events' ? (
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
+          {events.length > 0 ? (
+            <EventsShowcase events={events} business={business} />
+          ) : (
+            <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto">
+                <Ticket className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 font-heading">
+                No Upcoming Events Right Now
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Check back soon for upcoming masterclasses, workshops, and exclusive live webinars.
+              </p>
+            </div>
+          )}
         </main>
       ) : (
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
@@ -1322,68 +1333,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       />
 
       
-      {/* Digital Purchase Status Modal */}
-      {selectedItemForDigital && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
-            <button 
-              onClick={() => setSelectedItemForDigital(null)} 
-              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            {digitalPurchaseStatus === 'processing' && (
-              <div className="py-6 space-y-4">
-                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto" />
-                <h3 className="text-xl font-bold text-slate-900">Processing Request...</h3>
-                <p className="text-sm text-slate-500">Please wait while we prepare your digital file.</p>
-              </div>
-            )}
-            
-            {digitalPurchaseStatus === 'success' && (
-              <div className="py-6 space-y-6">
-                <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border-4 border-white shadow-xl">
-                  <Check className="w-10 h-10" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-extrabold text-slate-900 font-heading">Success!</h3>
-                  <p className="text-sm text-slate-600 mt-2">Your file is ready to download.</p>
-                </div>
-                {digitalDownloadUrl && (
-                  <a 
-                    href={digitalDownloadUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-md transition flex items-center justify-center gap-2"
-                  >
-                    <Download className="w-5 h-5" />
-                    <span>Download File Now</span>
-                  </a>
-                )}
-              </div>
-            )}
-            
-            {digitalPurchaseStatus === 'error' && (
-              <div className="py-6 space-y-6">
-                <div className="w-20 h-20 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto border-4 border-white shadow-xl">
-                  <X className="w-10 h-10" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">Payment Failed</h3>
-                  <p className="text-sm text-slate-600 mt-2">There was an issue processing your request.</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedItemForDigital(null)}
-                  className="w-full py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition"
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* 1-Click Buy / Instant Claim Digital Checkout Modal */}
+      <DigitalCheckoutModal
+        item={selectedItemForDigital}
+        business={business}
+        isOpen={!!selectedItemForDigital}
+        onClose={() => setSelectedItemForDigital(null)}
+      />
 
       {/* Write Review Modal */}
       <ReviewSubmitModal
@@ -1398,6 +1354,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         business={business}
         isOpen={isCustomerOrdersOpen}
         onClose={() => setIsCustomerOrdersOpen(false)}
+      />
+
+      {/* Custom Quote Request Modal */}
+      <CustomQuoteRequestModal
+        business={business}
+        isOpen={isQuoteModalOpen}
+        onClose={() => setIsQuoteModalOpen(false)}
       />
     </div>
   );

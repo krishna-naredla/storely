@@ -43,6 +43,42 @@ service cloud.firestore {
         allow write: if isAuthenticated();
       }
 
+      // Business Subcollection: Digital Products (PDF, Course, Image, etc.)
+      match /digital_products/{digitalProductId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      // Business Subcollection: Events & Masterclass Ticketing
+      match /events/{eventId} {
+        allow read: if true;
+        allow write: if true; // Allows atomic seat decrements & creator updates
+      }
+
+      // Business Subcollection: Event Tickets
+      match /tickets/{ticketId} {
+        allow read: if true;
+        allow write: if true; // Allows ticket purchase generation and check-in toggles
+      }
+
+      // Business Subcollection: Custom Quote Requests
+      match /quote_requests/{requestId} {
+        allow read: if true;
+        allow write: if true; // Allows customer submissions & creator quotes/status changes
+      }
+
+      // Business Subcollection: Work Portfolio & Showcase Items
+      match /portfolio/{portfolioId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
+      // Business Subcollection: Testimonials
+      match /testimonials/{testimonialId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+
       // Business Subcollection: Categories
       match /categories/{categoryId} {
         allow read: if true;
@@ -88,6 +124,17 @@ service cloud.firestore {
       // Business Subcollection: Analytics Events
       match /analyticsEvents/{eventId} {
         allow read, write: if true;
+      }
+
+      // Business Subcollection: Bio Links & Community
+      match /biolinks/{linkId} {
+        allow read: if true;
+        allow write: if true;
+      }
+
+      match /communityLinks/{linkId} {
+        allow read: if true;
+        allow write: if true;
       }
     }
   }

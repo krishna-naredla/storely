@@ -35,6 +35,7 @@ import { BusinessProfile } from './types';
 import {
   getUserBusinesses,
   getBusinessBySlug,
+  getBusinessById,
   createBusiness,
   getStorefrontUrl,
   subscribeToOrders,
@@ -50,6 +51,9 @@ import { BioProfileManager } from './components/biolink/BioProfileManager';
 import { BioProfileView } from './components/biolink/BioProfileView';
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { CatalogManager } from './components/dashboard/CatalogManager';
+import { PortfolioManager } from './components/dashboard/PortfolioManager';
+import { EventManager } from './components/dashboard/EventManager';
+import { CustomQuoteManager } from './components/dashboard/CustomQuoteManager';
 import { CategoryManager } from './components/dashboard/CategoryManager';
 import { OrderManager } from './components/dashboard/OrderManager';
 import { BookingManager } from './components/dashboard/BookingManager';
@@ -65,12 +69,32 @@ import { DigitalCardPreview } from './components/common/DigitalCardPreview';
 import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingWizard } from './components/auth/OnboardingWizard';
 import { StorefrontView } from './components/storefront/StorefrontView';
+import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { MasterAdminDashboard } from './components/admin/MasterAdminDashboard';
 import { MasterAdminLogin } from './components/admin/MasterAdminLogin';
 import { isUserAuthorizedAdmin } from './services/adminService';
+
+/**
+ * Extract quote payment parameters from URL
+ */
+function parseQuotePayFromUrl(): { businessId: string; requestId: string } | null {
+  if (typeof window === 'undefined') return null;
+  const urlParams = new URLSearchParams(window.location.search);
+  const qBiz = urlParams.get('quote_biz');
+  const qReq = urlParams.get('quote_req');
+  if (qBiz && qReq) {
+    return { businessId: qBiz.trim(), requestId: qReq.trim() };
+  }
+  const pathname = window.location.pathname;
+  const match = pathname.match(/^\/quote-pay\/([^/?#]+)\/([^/?#]+)/i);
+  if (match && match[1] && match[2]) {
+    return { businessId: decodeURIComponent(match[1]).trim(), requestId: decodeURIComponent(match[2]).trim() };
+  }
+  return null;
+}
 
 /**
  * Extract store slug from current URL query parameters or pathname
@@ -273,6 +297,27 @@ function MainContent() {
   const [isLoadingPublicStore, setIsLoadingPublicStore] = useState(false);
   const [publicStoreNotFound, setPublicStoreNotFound] = useState(false);
 
+  // Quote Pay Direct Route States
+  const [quotePayInfo, setQuotePayInfo] = useState<{ businessId: string; requestId: string } | null>(parseQuotePayFromUrl);
+  const [quotePayBusiness, setQuotePayBusiness] = useState<BusinessProfile | null>(null);
+  const [loadingQuotePay, setLoadingQuotePay] = useState(false);
+
+  useEffect(() => {
+    if (quotePayInfo) {
+      setLoadingQuotePay(true);
+      getBusinessById(quotePayInfo.businessId)
+        .then((biz) => {
+          setQuotePayBusiness(biz);
+        })
+        .catch((err) => {
+          console.error('Error fetching quote pay business:', err);
+        })
+        .finally(() => setLoadingQuotePay(false));
+    } else {
+      setQuotePayBusiness(null);
+    }
+  }, [quotePayInfo]);
+
   // Invoke injectStoreMetadata whenever publicBusiness changes
   useEffect(() => {
     if (publicBusiness) {
@@ -332,9 +377,12 @@ function MainContent() {
   // Sync state with browser URL popstate navigation (Back / Forward)
   useEffect(() => {
     const handlePopState = () => {
+      const quoteInfo = parseQuotePayFromUrl();
+      setQuotePayInfo(quoteInfo);
+
       const slug = parseStoreSlugFromUrl();
       setPublicStoreSlug(slug);
-      if (!slug) {
+      if (!slug && !quoteInfo) {
         setPublicBusiness(null);
         setPublicStoreNotFound(false);
         setViewMode('dashboard');
@@ -350,7 +398,7 @@ function MainContent() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [publicBusiness]);
 
   // Fetch and resolve public business whenever publicStoreSlug changes
   const resolvePublicStore = useCallback(async (slug: string) => {
@@ -546,6 +594,34 @@ function MainContent() {
         onBackToApp={() => setIsMasterAdminMode(false)}
       />
     );
+  }
+
+  // ==========================================
+  // ROUTE: DIRECT CUSTOM QUOTE PAYMENT
+  // ==========================================
+  if (quotePayInfo) {
+    if (loadingQuotePay) {
+      return (
+        <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6">
+          <div className="flex items-center gap-3 text-sm font-bold text-slate-300">
+            <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+            <span>Loading Custom Quote Payment...</span>
+          </div>
+        </div>
+      );
+    }
+    if (quotePayBusiness) {
+      return (
+        <QuotePaymentView
+          business={quotePayBusiness}
+          requestId={quotePayInfo.requestId}
+          onBackToStorefront={() => {
+            setQuotePayInfo(null);
+            navigateToStorefront(quotePayBusiness.slug);
+          }}
+        />
+      );
+    }
   }
 
   // ==========================================
@@ -817,6 +893,22 @@ function MainContent() {
           )}
 
           {activeTab === 'catalog' && <CatalogManager business={biz} />}
+
+          {activeTab === 'portfolio' && (
+            <PortfolioManager
+              business={biz}
+              onBusinessUpdated={(updated) => {
+                setSelectedBusiness(updated);
+                setBusinesses((prev) =>
+                  prev.map((b) => (b.id === updated.id ? updated : b))
+                );
+              }}
+            />
+          )}
+
+          {activeTab === 'events' && <EventManager business={biz} />}
+
+          {activeTab === 'quotes' && <CustomQuoteManager business={biz} />}
 
           {activeTab === 'categories' && <CategoryManager business={biz} />}
 

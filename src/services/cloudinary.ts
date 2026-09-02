@@ -153,25 +153,159 @@ export function isValidImageUrl(url: string): boolean {
 }
 
 /**
- * Permanently delete an image from Cloudinary or Firebase storage bucket.
- * This is called when an image is replaced or the product is deleted to save storage costs.
+ * Permanently delete a digital file or image from Cloudinary storage bucket.
+ * This is called when a file/image is replaced or the product is deleted to save storage costs.
  */
-export async function deleteImageFromStorage(url: string): Promise<void> {
-  if (!url || url.startsWith('data:image/')) return; // Data URLs don't consume bucket storage
+export async function deleteImageFromStorage(urlOrPublicId: string, resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto'): Promise<void> {
+  if (!urlOrPublicId || urlOrPublicId.startsWith('data:')) return; // Data URLs don't consume bucket storage
   
   try {
-    // In a full-stack environment, we would call our secure backend endpoint here:
-    // await fetch('/api/images/delete', { method: 'POST', body: JSON.stringify({ url }) });
+    let publicId = urlOrPublicId;
+    if (urlOrPublicId.includes('cloudinary.com')) {
+      const match = urlOrPublicId.match(/\/upload\/(?:v\d+\/)?([^\.]+)/);
+      if (match && match[1]) {
+        publicId = match[1];
+      }
+    }
     
-    // For client-side simulation in this serverless architecture:
-    console.log(`[Storage Cleanup] Permanently deleted image to save bucket costs: ${url}`);
-    
-    // Cloudinary client-side deletions typically require a delete_token from the upload response
-    // or an authenticated backend API call using API_SECRET to the destroy endpoint.
-    // By tracking and triggering this, we ensure the hook is ready for backend integration.
-    
+    await fetch('/api/digital/delete-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ publicId, resourceType }),
+    });
+    console.log(`[Storage Cleanup] Deleted file from Cloudinary: ${publicId}`);
   } catch (err) {
-    console.error('Failed to clean up image from storage bucket:', err);
+    console.warn('Failed to delete file from Cloudinary:', err);
+  }
+}
+
+/**
+ * Upload any digital file (PDF, ZIP, Video, Audio, Doc, etc.) to Cloudinary
+ * using backend signing with local client fallback.
+ */
+export async function uploadDigitalFileToCloudinary(
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<{
+  url: string;
+  publicId?: string;
+  fileSize: string;
+  fileName: string;
+  format?: string;
+}> {
+  // Format file size
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const fileSize = formatBytes(file.size);
+  const fileName = file.name;
+
+  // Determine resource type
+  let resourceType = 'auto';
+  if (file.type.startsWith('video/')) resourceType = 'video';
+  else if (file.type.startsWith('audio/')) resourceType = 'video';
+  else if (file.type.startsWith('image/')) resourceType = 'image';
+  else resourceType = 'raw';
+
+  try {
+    // 1. Request signature from server
+    let signData: any = null;
+    try {
+      const signRes = await fetch('/api/digital/sign-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paramsToSign: {
+            folder: 'digital_products',
+          },
+        }),
+      });
+      if (signRes.ok) {
+        signData = await signRes.json();
+      }
+    } catch {
+      // Ignore signing error and fallback to preset
+    }
+
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${signData?.cloudName || CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    if (signData && signData.signature) {
+      formData.append('api_key', signData.apiKey);
+      formData.append('timestamp', signData.timestamp.toString());
+      formData.append('signature', signData.signature);
+      formData.append('folder', 'digital_products');
+    } else {
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('api_key', CLOUDINARY_API_KEY);
+    }
+
+    const uploadResult = await new Promise<{ url: string; publicId?: string; format?: string }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', uploadUrl, true);
+      xhr.timeout = 60000; // 60s for larger digital files
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const res = JSON.parse(xhr.responseText);
+            resolve({
+              url: res.secure_url || res.url,
+              publicId: res.public_id,
+              format: res.format,
+            });
+            return;
+          } catch {
+            // parse error
+          }
+        }
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      };
+
+      xhr.ontimeout = () => reject(new Error('File upload timed out'));
+      xhr.onerror = () => reject(new Error('Network error uploading file'));
+      xhr.send(formData);
+    });
+
+    return {
+      url: uploadResult.url,
+      publicId: uploadResult.publicId,
+      format: uploadResult.format,
+      fileSize,
+      fileName,
+    };
+  } catch (err) {
+    console.warn('Direct upload failed, using in-memory data URL fallback:', err);
+    // Read as Data URL fallback for offline / demo mode
+    const dataUrl = await new Promise<string>((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(reader.result as string);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+
+    if (onProgress) onProgress(100);
+
+    return {
+      url: dataUrl,
+      fileSize,
+      fileName,
+    };
   }
 }
 

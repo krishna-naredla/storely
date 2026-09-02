@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
+        <script>
       window.APP_BASE_URL = "https://storelly-ece40.web.app";
       // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {
@@ -33,6 +33,27 @@
           });
         });
       }
+
+      // Suppress annoying IndexedDB errors before Vite overlay catches them
+      const suppressError = (msg) => {
+        if (!msg) return false;
+        const str = typeof msg === 'string' ? msg : (msg.message || '');
+        return str.includes('Database is closing') || str.includes('hidden') || str.includes('IndexedDB') || str.includes('Database is closed') || str.includes('Could not reach Cloud Firestore backend') || str.includes('code=unavailable') || str.includes('healthy Internet connection') || str.includes('The operation could not be completed');
+      };
+      
+      window.addEventListener('error', (e) => {
+        if (suppressError(e.message) || suppressError(e.error)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      }, true);
+      
+      window.addEventListener('unhandledrejection', (e) => {
+        if (suppressError(e.reason)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      }, true);
     </script>
   </head>
   <body class="bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">

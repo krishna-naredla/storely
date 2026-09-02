@@ -16,6 +16,7 @@ import {
   BedDouble,
   Car,
   Layers,
+  Briefcase,
 } from 'lucide-react';
 import { BusinessProfile, BusinessModules } from '../../types';
 import { updateBusinessProfile } from '../../services/firebaseService';
@@ -124,6 +125,13 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     description: 'Display percentage/flat promo banners and discount codes on storefront.',
     category: 'Marketing',
     icon: <Tag className="w-4 h-4 text-emerald-600" />,
+  },
+  {
+    key: 'work_portfolio',
+    title: 'Work Portfolio / Showcase',
+    description: 'Showcase showreels, galleries, case studies, client reviews, and media kit stats.',
+    category: 'Marketing',
+    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
   },
 ];
 

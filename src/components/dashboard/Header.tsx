@@ -80,9 +80,21 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setBizDropdownOpen(!bizDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold transition shadow-2xs"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold transition shadow-2xs cursor-pointer"
           >
-            <Store className="w-3.5 h-3.5 text-emerald-600" />
+            {business?.logo ? (
+              <img
+                src={business.logo}
+                alt={business.name}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+                className="w-4 h-4 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <Store className="w-3.5 h-3.5 text-emerald-600" />
+            )}
             <span className="max-w-[140px] sm:max-w-[200px] truncate">
               {business ? business.name : t("header.selectStore")}
             </span>
@@ -109,7 +121,14 @@ export const Header: React.FC<HeaderProps> = ({
                         : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="truncate">{b.name}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {b.logo ? (
+                        <img src={b.logo} alt={b.name} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      )}
+                      <span className="truncate">{b.name}</span>
+                    </div>
                     {business?.id === b.id && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                   </button>
                 ))}
@@ -121,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                     setBizDropdownOpen(false);
                     onCreateNewBusiness();
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-xl transition"
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-xl transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{t("header.createNewStore")}</span>
@@ -131,12 +150,18 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Live Storefront Status Pill */}
+        {/* Live Storefront Status Pill - Click to Open */}
         {business && (
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold">
+          <button
+            type="button"
+            onClick={onOpenStorefront}
+            title="Click to visit live public storefront"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 hover:border-emerald-300 text-[11px] font-semibold transition cursor-pointer group"
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>{t("header.storeLive")}</span>
-          </div>
+            <ExternalLink className="w-2.5 h-2.5 text-emerald-600 opacity-60 group-hover:opacity-100 transition ml-0.5" />
+          </button>
         )}
       </div>
 

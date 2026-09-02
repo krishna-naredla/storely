@@ -36,6 +36,9 @@ export type ModuleKey =
   | 'inventory_tracking'
   | 'digital_products'
   | 'universal_links'
+  | 'work_portfolio'
+  | 'events_ticketing'
+  | 'custom_quotes'
   | 'analytics';
 
 export interface BusinessModuleConfig {
@@ -56,6 +59,10 @@ export interface BusinessModuleConfig {
   inventory_tracking?: boolean;
   digital_products?: boolean;
   universal_links?: boolean;
+  work_portfolio?: boolean;
+  portfolio?: boolean;
+  events_ticketing?: boolean;
+  custom_quotes?: boolean;
   analytics?: boolean;
 
   
@@ -146,6 +153,7 @@ export interface BusinessProfile {
   accentColor?: string; // Specific for creators
   publicProfileStatus?: 'published' | 'draft'; // Specific for creators
   shareCount?: number;
+  portfolioSettings?: PortfolioSettings;
   createdAt: number;
   updatedAt: number;
 }
@@ -231,11 +239,21 @@ export interface CatalogItem {
   // Digital Creator extensions
   productType?: 'physical' | 'digital_file' | 'consultation_slot';
   isFree?: boolean;
-  digitalFileType?: 'pdf' | 'zip' | 'video' | 'audio' | 'document' | 'template' | 'course' | 'other';
+  digitalFileType?: 'pdf' | 'zip' | 'video' | 'audio' | 'document' | 'template' | 'course' | 'images' | 'other';
   digitalFileUrl?: string; // Secure Cloudinary URL or Signed URL
   digitalFileId?: string; // Cloudinary Public ID
+  fileName?: string;
   fileSize?: string;
   downloadLimit?: number;
+  salesCount?: number;
+  digitalFiles?: {
+    id: string;
+    title: string;
+    url: string;
+    fileId?: string;
+    fileType?: string;
+    fileSize?: string;
+  }[];
   
   // Booking/Consultation extensions
   consultationDuration?: number; // minutes
@@ -436,6 +454,248 @@ export interface BioLink {
   icon?: string;
   order: number;
   enabled: boolean;
+  clickCount?: number;
   createdAt: number;
   updatedAt: number;
 }
+
+export type DigitalProductType = 'PDF' | 'Course' | 'Image' | 'ZIP' | 'Video' | 'Audio' | 'Template' | 'Other';
+export type DigitalProductStatus = 'active' | 'inactive';
+
+export interface DigitalFileItem {
+  id: string;
+  title: string;
+  url: string;
+  fileId?: string;
+  fileType?: string;
+  fileSize?: string;
+  duration?: string;
+}
+
+export interface DigitalProduct {
+  id: string;
+  businessId: string;
+  title: string;
+  description: string;
+  price: number;
+  salePrice?: number;
+  isFree?: boolean;
+  coverImage: string;
+  fileUrls: string[]; // List of downloadable file URLs
+  type: DigitalProductType; // 'PDF' | 'Course' | 'Image' | 'ZIP' etc.
+  status: DigitalProductStatus; // 'active' | 'inactive'
+  
+  // File metadata & course structures
+  fileName?: string;
+  fileSize?: string;
+  downloadLimit?: number;
+  salesCount?: number;
+  cloudinaryPublicIds?: string[];
+  courseLessons?: DigitalFileItem[];
+  
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ==========================================
+// MODULE 3: WORK PORTFOLIO & SHOWCASE TYPES
+// ==========================================
+
+export type PortfolioCategory =
+  | 'Photography'
+  | 'Video/Motion'
+  | 'Design'
+  | 'Development'
+  | 'Writing'
+  | 'Coaching'
+  | 'Events'
+  | 'Beauty'
+  | 'Handmade/Art'
+  | 'Other';
+
+export type PortfolioMediaType =
+  | 'image'
+  | 'gallery'
+  | 'video_file'
+  | 'external_video'
+  | 'external_link';
+
+export interface PortfolioItem {
+  id: string;
+  businessId: string;
+  title: string;
+  category: PortfolioCategory;
+  coverImage: string; // Required cover thumbnail
+  mediaType: PortfolioMediaType;
+  mediaUrls?: string[]; // For single image, gallery images, or uploaded video file
+  externalUrl?: string; // For YouTube/Vimeo embed, Figma, GitHub, live site, article
+  description: string;
+  tags?: string[];
+  order: number;
+  isActive: boolean;
+  clientName?: string;
+  projectOutcome?: string;
+  cloudinaryPublicIds?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PlatformStat {
+  id: string;
+  platform: string; // e.g., 'Instagram', 'YouTube', 'TikTok', 'Twitter / X', 'LinkedIn', 'Spotify', 'Other'
+  count: string; // e.g., '120K', '45.2K', '1.5M'
+  engagementRate?: string; // e.g., '4.8%'
+  label?: string; // e.g., 'Followers', 'Subscribers', 'Monthly Readers'
+  profileUrl?: string;
+}
+
+export interface BrandCollab {
+  id: string;
+  brandName: string;
+  description: string;
+  logoUrl?: string;
+  collabYear?: string;
+  linkUrl?: string;
+}
+
+export interface Testimonial {
+  id: string;
+  businessId: string;
+  clientName: string;
+  clientPhoto?: string;
+  clientRole?: string; // e.g. "Bride & Groom", "Founder at Acme Corp"
+  quote: string;
+  rating?: number; // 1 to 5
+  order: number;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface PortfolioSettings {
+  ctaMode: 'whatsapp' | 'booking' | 'custom_quote'; // Enquiry mode
+  customCtaText?: string;
+  whatsappMessage?: string;
+  bookingItemId?: string; // Optional link to specific consultation service item
+  headline?: string;
+  subheadline?: string;
+  enableCustomQuotes?: boolean;
+  customQuoteTitle?: string;
+  customQuoteDescription?: string;
+  mediaKit?: {
+    enabled?: boolean;
+    heading?: string;
+    subheading?: string;
+    platformStats?: PlatformStat[];
+    brandCollabs?: BrandCollab[];
+  };
+}
+
+// ==========================================
+// MODULE 4: EVENT & WEBINAR TICKETING TYPES
+// ==========================================
+
+export type EventFormat = 'online' | 'offline';
+export type EventStatus = 'upcoming' | 'past' | 'sold_out' | 'cancelled';
+export type MeetingPlatform = 'google_meet' | 'zoom' | 'teams' | 'youtube_live' | 'other';
+
+export interface EventItem {
+  id: string;
+  businessId: string;
+  title: string;
+  description: string;
+  coverImage: string;
+  eventDate: string; // YYYY-MM-DD
+  eventTime: string; // e.g. "18:00" or "06:00 PM"
+  eventDurationMinutes?: number;
+  format: EventFormat;
+  meetingUrl?: string; // Google Meet / Zoom link (private, sent only on ticket delivery)
+  meetingPlatform?: MeetingPlatform;
+  venueAddress?: string;
+  venueCity?: string;
+  price: number; // 0 = Free
+  isFree?: boolean;
+  capacity: number; // e.g. 50
+  seatsRemaining: number; // Atomic tracking
+  ticketsSold: number;
+  status: EventStatus;
+  cancellationReason?: string;
+  sendMeetingLinkTiming?: 'immediately' | 'closer_to_event';
+  sortOrder?: number;
+  isActive?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface EventTicket {
+  id: string;
+  ticketId: string; // Short readable code like "TKT-8X92-A1B4"
+  eventId: string;
+  eventTitle: string;
+  businessId: string;
+  customerName: string;
+  customerPhone: string; // WhatsApp number
+  customerEmail?: string;
+  format: EventFormat;
+  eventDate: string;
+  eventTime: string;
+  price: number;
+  paymentStatus: 'paid' | 'free' | 'refunded';
+  paymentId?: string;
+  razorpayOrderId?: string;
+  checkedIn: boolean;
+  checkedInAt?: number;
+  meetingUrl?: string; // Private link stored upon confirmed ticket
+  venueAddress?: string;
+  venueCity?: string;
+  qrCodeUrl?: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+// ==========================================
+// MODULE 5: CUSTOM ORDER / QUOTE REQUEST TYPES
+// ==========================================
+
+export type QuoteRequestStatus =
+  | 'new'
+  | 'quoted'
+  | 'accepted'
+  | 'completed'
+  | 'rejected'
+  | 'archived';
+
+export interface CustomQuoteRequest {
+  id: string;
+  businessId: string;
+  requestNumber: string; // e.g. "REQ-1042"
+  customerName: string;
+  customerPhone: string; // WhatsApp number
+  customerEmail?: string;
+  description: string;
+  budgetRange?: string; // e.g. "₹2,000 - ₹5,000", "Under ₹1,000", "Not sure / Open to quote"
+  referenceImages?: string[]; // Cloudinary image URLs
+  
+  // Creator Quote details
+  quotedPrice?: number;
+  quoteNotes?: string;
+  estimatedDeliveryDays?: number;
+  quotedAt?: number;
+  
+  // Payment & Link details
+  paymentLinkId?: string;
+  paymentLinkUrl?: string;
+  paymentStatus?: 'pending' | 'paid';
+  paymentId?: string;
+  paidAt?: number;
+  
+  status: QuoteRequestStatus;
+  isArchived?: boolean;
+  rejectionReason?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+
+
