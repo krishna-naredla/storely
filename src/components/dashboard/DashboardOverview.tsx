@@ -48,7 +48,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const storeUrl = getStorefrontUrl(business);
   const isCreator = !!business.modules?.universal_links;
-  const displayUrl = storeUrl.replace(/^https?:\/\//, '').replace(window.location.host, 'storelly.in');
+  const displayUrl = storeUrl.replace(/^https?:\/\//, '');
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `👋 Check out our digital catalog and order directly on WhatsApp from *${business.name}*:\n\n${displayUrl}`
+      `👋 Check out our digital catalog and order directly on WhatsApp from *${business.name}*:\n\n${storeUrl}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };

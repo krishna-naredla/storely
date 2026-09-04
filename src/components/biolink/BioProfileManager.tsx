@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BusinessProfile } from '../../types';
-import { getBioLinks, createBioLink, updateBioLink, deleteBioLink, updateBioLinksOrder, updateBusinessProfile, getBioLinkAnalytics } from '../../services/firebaseService';
-import { Plus, GripVertical, Edit2, Trash2, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Mail, Phone, Palette, Copy, Share2, QrCode, BarChart2, Eye, MousePointerClick } from 'lucide-react';
+import { getBioLinks, createBioLink, updateBioLink, deleteBioLink, updateBioLinksOrder, updateBusinessProfile, getBioLinkAnalytics, getBioLinkUrl } from '../../services/firebaseService';
+import { Plus, GripVertical, Edit2, Trash2, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Mail, Phone, Palette, Copy, Share2, QrCode, BarChart2, Eye, MousePointerClick, MessageCircle, Send, Linkedin, MessageSquare, FileText, Folder, Globe, Briefcase, ShoppingBag } from 'lucide-react';
 import QRCode from 'qrcode';
 
 interface Props {
@@ -9,20 +9,22 @@ interface Props {
 }
 
 const LINK_TYPES = [
-  { id: 'whatsapp', label: 'WhatsApp Messenger', icon: Smartphone },
-  { id: 'whatsapp_community', label: 'WhatsApp Community / Group', icon: Smartphone },
-  { id: 'telegram', label: 'Telegram Channel / Group', icon: ExternalLink },
+  { id: 'whatsapp', label: 'WhatsApp Messenger', icon: MessageCircle },
+  { id: 'whatsapp_community', label: 'WhatsApp Community / Group', icon: MessageCircle },
+  { id: 'telegram', label: 'Telegram Channel / Group', icon: Send },
   { id: 'instagram', label: 'Instagram Profile', icon: Instagram },
   { id: 'youtube', label: 'YouTube Channel', icon: Youtube },
   { id: 'facebook', label: 'Facebook Page', icon: Facebook },
   { id: 'twitter', label: 'X (Twitter)', icon: Twitter },
-  { id: 'linkedin', label: 'LinkedIn Profile', icon: ExternalLink },
-  { id: 'discord', label: 'Discord Server', icon: ExternalLink },
-  { id: 'google_form', label: 'Google Form', icon: LinkIcon },
-  { id: 'google_sheet', label: 'Google Sheet', icon: LinkIcon },
-  { id: 'google_doc', label: 'Google Doc', icon: LinkIcon },
-  { id: 'gdrive', label: 'Google Drive Link', icon: LinkIcon },
-  { id: 'website', label: 'Website / Portfolio', icon: ExternalLink },
+  { id: 'linkedin', label: 'LinkedIn Profile', icon: Linkedin },
+  { id: 'discord', label: 'Discord Server', icon: MessageSquare },
+  { id: 'google_form', label: 'Google Form', icon: FileText },
+  { id: 'google_sheet', label: 'Google Sheet', icon: FileText },
+  { id: 'google_doc', label: 'Google Doc', icon: FileText },
+  { id: 'gdrive', label: 'Google Drive Link', icon: Folder },
+  { id: 'website', label: 'Website / Other', icon: Globe },
+  { id: 'portfolio', label: 'Portfolio', icon: Briefcase },
+  { id: 'digital_store', label: 'Digital Store', icon: ShoppingBag },
   { id: 'email', label: 'Email Address', icon: Mail },
   { id: 'phone', label: 'Phone Number', icon: Phone },
   { id: 'custom', label: 'Custom Link', icon: LinkIcon },
@@ -45,7 +47,7 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
   const [url, setUrl] = useState('');
 
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const publicUrl = `https://storelly.in/@${business.slug}`;
+  const publicUrl = getBioLinkUrl(business.slug);
 
   useEffect(() => {
     loadLinks();

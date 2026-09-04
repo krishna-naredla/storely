@@ -10,7 +10,8 @@ service cloud.firestore {
     function isBusinessOwner(businessId) {
       return isAuthenticated() && (
         (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
-        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+        (exists(/databases/$(database)/documents/businesses/$(businessId)) &&
+         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid)
       );
     }
     

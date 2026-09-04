@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Link as LinkIcon, Briefcase, ExternalLink, Copy, QrCode, Eye, Check, Loader2 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
-import { updateBusinessProfile } from '../../services/firebaseService';
+import { updateBusinessProfile, getDigitalStoreUrl, getBioLinkUrl, getPortfolioUrl } from '../../services/firebaseService';
 
 interface Props {
   business: BusinessProfile;
@@ -36,7 +36,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       title: 'Digital Store',
       description: 'Sell digital files, courses, and consulting slots.',
       icon: ShoppingBag,
-      url: `https://storelly.in/store/${business.slug}`,
+      url: getDigitalStoreUrl(business.slug),
       enabled: !!business.modules?.digital_products || !!business.modules?.digitalProducts
     },
     {
@@ -44,7 +44,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       title: 'Universal Bio Link',
       description: 'Your one link for all socials, resources, and communities.',
       icon: LinkIcon,
-      url: `https://storelly.in/@${business.slug}`,
+      url: getBioLinkUrl(business.slug),
       enabled: !!business.modules?.universal_links
     },
     {
@@ -52,7 +52,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       title: 'Professional Portfolio',
       description: 'Showcase your work, case studies, and resume.',
       icon: Briefcase,
-      url: `https://storelly.in/portfolio/${business.slug}`,
+      url: getPortfolioUrl(business.slug),
       enabled: !!business.modules?.work_portfolio || !!business.modules?.portfolio
     }
   ];

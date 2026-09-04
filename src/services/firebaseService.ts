@@ -81,11 +81,26 @@ export function generateSlug(text: string): string {
  */
 export function getStorefrontUrl(businessOrSlug: any): string {
   const slug = typeof businessOrSlug === 'string' ? businessOrSlug : businessOrSlug?.slug || '';
-  const isCreator = typeof businessOrSlug === 'object' && businessOrSlug?.modules?.universal_links;
-  
-  if (typeof window === 'undefined') return isCreator ? `/@${slug}` : `/store/${slug}`;
-  const origin = window.location.origin;
-  return `${origin}${isCreator ? '/@' : '/store/'}${encodeURIComponent(slug)}`;
+  return getDigitalStoreUrl(slug);
+}
+
+export function getBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'https://storely-omega.vercel.app';
+}
+
+export function getBioLinkUrl(slug: string): string {
+  return `${getBaseUrl()}/@${encodeURIComponent(slug)}`;
+}
+
+export function getPortfolioUrl(slug: string): string {
+  return `${getBaseUrl()}/portfolio/${encodeURIComponent(slug)}`;
+}
+
+export function getDigitalStoreUrl(slug: string): string {
+  return `${getBaseUrl()}/store/${encodeURIComponent(slug)}`;
 }
 
 // Local Storage Business Cache Helpers
