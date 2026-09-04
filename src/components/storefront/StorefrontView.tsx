@@ -211,9 +211,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     business.type === 'creator' ||
     Boolean(business.modules?.work_portfolio) ||
     Boolean(business.modules?.portfolio);
-  const [creatorTab, setCreatorTab] = useState<'portfolio' | 'store' | 'events'>(
-    business.type === 'creator' ? 'portfolio' : 'store'
-  );
+  const [creatorTab, setCreatorTab] = useState<'store' | 'events'>('store');
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
@@ -225,7 +223,37 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   // Dynamic Browser Title, Favicon & Open Graph Meta Tags Injection for Rich WhatsApp Cards
   useEffect(() => {
     if (business.name) {
-      document.title = `${business.name} - Official Store | Storelly`;
+      
+    document.title = `${business.name} - Official Store | Storelly`;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', business.description || `Shop digital products, services, and exclusive content from ${business.name}.`);
+    
+    // Advanced SEO
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', window.location.href);
+
+    const ogTags = [
+      { property: 'og:title', content: `${business.name} - Official Store` },
+      { property: 'og:description', content: business.description || `Shop digital products from ${business.name}` },
+      { property: 'og:url', content: window.location.href },
+      { property: 'og:type', content: 'website' }
+    ];
+    
+    ogTags.forEach(tag => {
+      let el = document.querySelector(`meta[property="${tag.property}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute('property', tag.property);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', tag.content);
+    });
+
       
       const updateMetaTag = (property: string, content: string, isProperty = true) => {
         const selector = isProperty ? `meta[property='${property}']` : `meta[name='${property}']`;
@@ -715,16 +743,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             </div>
           </div>
         </main>
-      ) : hasPortfolioModule && creatorTab === 'portfolio' ? (
-        <PortfolioShowcase
-          business={business}
-          onBookConsultation={(item) => {
-            const target = item || catalogItems.find(i => i.productType === 'consultation_slot' || i.type === 'service') || catalogItems[0];
-            if (target) {
-              setSelectedItemForBooking(target);
-            }
-          }}
-        />
       ) : hasPortfolioModule && creatorTab === 'events' ? (
         <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
           {events.length > 0 ? (

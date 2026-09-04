@@ -536,6 +536,7 @@ export interface Testimonial {
 }
 
 export interface PortfolioSettings {
+  template?: 'default' | 'developer' | 'designer' | 'photographer';
   ctaMode: 'whatsapp' | 'booking' | 'custom_quote'; // Enquiry mode
   customCtaText?: string;
   whatsappMessage?: string;

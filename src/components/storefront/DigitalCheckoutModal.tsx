@@ -31,6 +31,20 @@ interface DigitalCheckoutModalProps {
   onClose: () => void;
 }
 
+export 
+const safeJsonFetch = async (url: string, options?: RequestInit) => {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (err) {
+    if (!res.ok) throw new Error(`Server error (${res.status}): ${text.substring(0, 100)}`);
+    data = {};
+  }
+  return { res, data };
+};
+
 export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
   item,
   business,
@@ -157,7 +171,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
 
     try {
       // 1. Request secure download link from backend
-      const res = await fetch('/api/digital/free', {
+      const { res, data } = await safeJsonFetch('/api/digital/free', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,8 +183,6 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
           customerEmail: customerEmail.trim() || undefined,
         }),
       });
-
-      const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to claim digital product');
       }
@@ -231,7 +243,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
 
     try {
       // 1. Create Razorpay order on backend
-      const orderRes = await fetch('/api/digital/create-order', {
+      const { res: orderRes, data: orderData } = await safeJsonFetch('/api/digital/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -242,8 +254,6 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
           customerEmail: customerEmail.trim() || undefined,
         }),
       });
-
-      const orderData = await orderRes.json();
       if (!orderRes.ok || !orderData.id) {
         throw new Error(orderData.error || 'Failed to initialize payment');
       }
@@ -252,7 +262,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
       const RazorpayClass = (window as any).Razorpay;
 
       const completeOrderVerification = async (paymentDetails: any) => {
-        const verifyRes = await fetch('/api/digital/verify-payment', {
+        const { res: verifyRes, data: verifyData } = await safeJsonFetch('/api/digital/verify-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -268,8 +278,6 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
             amount: price || 0,
           }),
         });
-
-        const verifyData = await verifyRes.json();
         if (!verifyRes.ok || !verifyData.success) {
           throw new Error(verifyData.error || 'Payment verification failed');
         }
@@ -363,7 +371,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
     if (!purchasedOrder && !customerPhone) return;
     setIsResending(true);
     try {
-      const res = await fetch('/api/digital/resend-link', {
+      const { res, data } = await safeJsonFetch('/api/digital/resend-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -374,7 +382,6 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
           phone: customerPhone,
         }),
       });
-      const data = await res.json();
       if (data.success && data.downloadUrl) {
         setDownloadUrl(data.downloadUrl);
         setExpiresAt(data.expiresAt);

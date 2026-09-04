@@ -1,4 +1,7 @@
-rules_version = '2';
+const fs = require('fs');
+let code = fs.readFileSync('firestore.rules', 'utf8');
+
+const newRules = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAuthenticated() {
@@ -136,3 +139,7 @@ service cloud.firestore {
     }
   }
 }
+`;
+
+fs.writeFileSync('firestore.rules', newRules);
+console.log('patched firestore.rules');

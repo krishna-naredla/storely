@@ -1,3 +1,4 @@
+import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store,
@@ -62,6 +63,7 @@ import { ReviewsManager } from './components/dashboard/ReviewsManager';
 import { OffersManager } from './components/dashboard/OffersManager';
 import { AnalyticsView } from './components/dashboard/AnalyticsView';
 import { ModuleManager } from './components/dashboard/ModuleManager';
+import { CreatorModulesManager } from './components/dashboard/CreatorModulesManager';
 import { StorePaymentsManager } from './components/dashboard/StorePaymentsManager';
 import { StoreSettings } from './components/dashboard/StoreSettings';
 import { NotificationHistoryView } from './components/dashboard/NotificationHistoryView';
@@ -69,6 +71,7 @@ import { DigitalCardPreview } from './components/common/DigitalCardPreview';
 import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingWizard } from './components/auth/OnboardingWizard';
 import { StorefrontView } from './components/storefront/StorefrontView';
+import { PortfolioShowcase } from './components/storefront/PortfolioShowcase';
 import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
@@ -102,24 +105,27 @@ function parseQuotePayFromUrl(): { businessId: string; requestId: string } | nul
 function parseStoreSlugFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
-  // 1. Check query parameter e.g. ?store=myshop or ?store=nmk-restent
-  const urlParams = new URLSearchParams(window.location.search);
-  const storeParam = urlParams.get('store');
-  if (storeParam && storeParam.trim()) {
-    return storeParam.trim();
-  }
-
-  // 2. Check path e.g. /@username or /store/myshop/
   const pathname = window.location.pathname;
   
   const bioMatch = pathname.match(/^\/@([^/?#]+)/i);
   if (bioMatch && bioMatch[1]) {
     return decodeURIComponent(bioMatch[1]).trim();
   }
+  
+  const portMatch = pathname.match(/^\/portfolio\/([^/?#]+)/i);
+  if (portMatch && portMatch[1]) {
+    return decodeURIComponent(portMatch[1]).trim();
+  }
 
   const match = pathname.match(/^\/store\/([^/?#]+)/i);
   if (match && match[1]) {
     return decodeURIComponent(match[1]).trim();
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const storeParam = urlParams.get('store');
+  if (storeParam && storeParam.trim()) {
+    return storeParam.trim();
   }
 
   return null;
@@ -673,25 +679,52 @@ function MainContent() {
     if (targetBusiness && !publicStoreNotFound) {
       const isOwner = currentUser && selectedBusiness && selectedBusiness.id === targetBusiness.id;
       
-      // Check if it's a bio link
+      // Check if it's a bio link or portfolio
       const pathname = window.location.pathname;
       const isBioLink = pathname.startsWith('/@');
-
+      const isPortfolio = pathname.startsWith('/portfolio');
+      
       if (isBioLink) {
         return (
-          <BioProfileView
-            business={targetBusiness}
-            onBackToDashboard={isOwner ? navigateToDashboard : undefined}
-          />
+          <CreatorAuthGuard business={targetBusiness} moduleName="bio" isOwner={!!isOwner}>
+            <BioProfileView
+              business={targetBusiness}
+              onBackToDashboard={isOwner ? navigateToDashboard : undefined}
+            />
+          </CreatorAuthGuard>
         );
       }
 
+      if (isPortfolio) {
+        return (
+          <CreatorAuthGuard business={targetBusiness} moduleName="portfolio" isOwner={!!isOwner}>
+            <div className="bg-slate-50 min-h-screen">
+              {isOwner && (
+                <div className="bg-slate-900 text-white p-3 flex justify-between items-center z-50 sticky top-0">
+                  <span className="text-xs font-bold">Previewing your Portfolio</span>
+                  <button onClick={navigateToDashboard} className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition">
+                    Back to Dashboard
+                  </button>
+                </div>
+              )}
+              <PortfolioShowcase business={targetBusiness} />
+            </div>
+          </CreatorAuthGuard>
+        );
+      }
+
+      // Default to Storefront
       return (
-        <StorefrontView
-          business={targetBusiness}
-          onBackToDashboard={isOwner ? navigateToDashboard : undefined}
-          onOpenDigitalCard={() => setIsShareModalOpen(true)}
-        />
+        <CreatorAuthGuard business={targetBusiness} moduleName="store" isOwner={!!isOwner}>
+          <StorefrontView
+            business={targetBusiness}
+            onBackToDashboard={isOwner ? navigateToDashboard : undefined}
+            onOpenDigitalCard={() => {
+              setSelectedBusiness(targetBusiness);
+              setIsShareModalOpen(true);
+            }}
+          />
+        </CreatorAuthGuard>
       );
     }
 
@@ -924,7 +957,17 @@ function MainContent() {
 
           {activeTab === 'analytics' && <AnalyticsView business={biz} />}
 
-          {activeTab === 'modules' && (
+          {activeTab === 'modules' && biz.type === 'creator' ? (
+            <CreatorModulesManager
+              business={biz}
+              onBusinessUpdated={(updated) => {
+                setSelectedBusiness(updated);
+                setBusinesses((prev) =>
+                  prev.map((b) => (b.id === updated.id ? updated : b))
+                );
+              }}
+            />
+          ) : activeTab === 'modules' && (
             <ModuleManager
               business={biz}
               onBusinessUpdated={(updated) => {

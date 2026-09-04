@@ -914,11 +914,19 @@ async function startServer() {
           const payload =
             req.body.payload?.payment?.entity ||
             req.body.payload?.subscription?.entity;
+            
           // In a real DB, we would look up the vendor by notes.vendorId and set plan to 'pro'
           console.log(
             `[Webhook] Processing upgrade for vendor:`,
             payload?.notes?.vendorId || "Unknown",
           );
+          
+          // Secure server-side entitlement processing for digital files
+          if (payload?.notes?.orderId) {
+             console.log(`[Webhook] Payment confirmed for digital order ${payload.notes.orderId}. Proceeding to grant file access entitlements.`);
+             // Here we would use Firebase Admin to securely update the pending order's paymentStatus to 'paid' 
+             // and attach the generated download token, completely bypassing client-side interference.
+          }
         }
 
         res.json({ status: "ok" });

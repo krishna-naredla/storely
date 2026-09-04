@@ -213,7 +213,12 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
       });
 
       if (response.ok) {
-        const data = await response.json();
+                let data;
+        try {
+          data = JSON.parse(await response.text());
+        } catch (e) {
+          throw new Error('Invalid response from server.');
+        }
         if (data.whatsAppUrl) {
           window.open(data.whatsAppUrl, '_blank');
         }

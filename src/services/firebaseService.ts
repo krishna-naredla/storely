@@ -932,7 +932,7 @@ export async function deleteOffer(businessId: string, offerId: string): Promise<
  */
 export async function recordAnalyticsEvent(
   businessId: string,
-  eventType: 'store_view' | 'whatsapp_click' | 'catalog_view' | 'cart_add',
+  eventType: 'store_view' | 'whatsapp_click' | 'catalog_view' | 'cart_add' | 'bio_views' | 'bio_clicks' | 'portfolio_views' | 'project_views' | 'social_clicks' | 'resume_downloads' | string,
   metadata?: Record<string, any>
 ): Promise<void> {
   try {
@@ -1043,6 +1043,39 @@ export async function permanentlyDeleteStoreAccount(business: BusinessProfile): 
     for (const offer of offers) {
       await deleteOffer(businessId, offer.id);
     }
+
+    // 5a. Fetch and delete biolinks
+    const links = await getBioLinks(businessId);
+    for (const link of links) {
+      await deleteBioLink(link.id);
+    }
+
+    // 5b. Fetch and delete portfolio items & media
+    const portfolioItems = await getPortfolioItems(businessId);
+    for (const pItem of portfolioItems) {
+      await deletePortfolioItem(businessId, pItem.id, pItem);
+    }
+
+    // 5c. Fetch and delete events & media
+    const events = await getEvents(businessId);
+    for (const ev of events) {
+      if (ev.coverImage) await deleteImageFromStorage(ev.coverImage);
+      await deleteDoc(doc(db, 'businesses', businessId, 'events', ev.id));
+    }
+
+    // 5d. Fetch and delete testimonials
+    const testimonials = await getTestimonials(businessId);
+    for (const t of testimonials) {
+      if (t.clientPhoto) await deleteImageFromStorage(t.clientPhoto);
+      await deleteDoc(doc(db, 'businesses', businessId, 'testimonials', t.id));
+    }
+
+    // 5e. Fetch and delete custom quotes
+    const quotes = await getCustomQuoteRequests(businessId);
+    for (const q of quotes) {
+      await deleteDoc(doc(db, 'businesses', businessId, 'quote_requests', q.id));
+    }
+
 
     // 6. Finally delete business doc & local storage
     await deleteBusiness(businessId);
@@ -2177,5 +2210,68 @@ export async function cleanupStaleEventHolds(businessId: string, eventId: string
     }
   } catch (err) {
     console.warn('Error fetching stale holds:', err);
+  }
+}
+
+/**
+ * Secure utility to delete a creator asset recursively,
+ * removing documents and associated cloud storage files.
+ */
+export async function deleteCreatorAsset(businessId: string, assetId: string, assetType: 'biolink' | 'portfolio' | 'product' | 'event' | 'quote'): Promise<void> {
+  try {
+    switch (assetType) {
+      case 'biolink':
+        await deleteDoc(doc(db, 'biolinks', assetId));
+        break;
+      case 'portfolio': {
+        const pRef = doc(db, 'businesses', businessId, 'portfolio', assetId);
+        const pSnap = await getDoc(pRef);
+        if (pSnap.exists()) {
+          const itemData = pSnap.data() as PortfolioItem;
+          if (itemData.coverImage) await deleteImageFromStorage(itemData.coverImage);
+          if (itemData.mediaUrls) {
+            for (const url of itemData.mediaUrls) {
+              const isVideo = itemData.mediaType === 'video_file' || url.includes('/video/');
+              await deleteImageFromStorage(url, isVideo ? 'video' : 'image');
+            }
+          }
+          if (itemData.cloudinaryPublicIds) {
+            for (const pid of itemData.cloudinaryPublicIds) await deleteImageFromStorage(pid);
+          }
+          await deleteDoc(pRef);
+        }
+        break;
+      }
+      case 'product': {
+        const prodRef = doc(db, 'businesses', businessId, 'catalog', assetId);
+        const prodSnap = await getDoc(prodRef);
+        if (prodSnap.exists()) {
+          const prodData = prodSnap.data() as CatalogItem;
+          if (prodData.images) {
+            for (const img of prodData.images) await deleteImageFromStorage(img);
+          }
+          if (prodData.digitalFileUrl) await deleteImageFromStorage(prodData.digitalFileUrl, 'raw');
+          await deleteDoc(prodRef);
+        }
+        break;
+      }
+      case 'event': {
+        const evRef = doc(db, 'businesses', businessId, 'events', assetId);
+        const evSnap = await getDoc(evRef);
+        if (evSnap.exists()) {
+          const evData = evSnap.data() as EventItem;
+          if (evData.coverImage) await deleteImageFromStorage(evData.coverImage);
+          await deleteDoc(evRef);
+        }
+        break;
+      }
+      case 'quote': {
+        await deleteDoc(doc(db, 'businesses', businessId, 'quote_requests', assetId));
+        break;
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to delete ${assetType} ${assetId}:`, err);
+    throw err;
   }
 }

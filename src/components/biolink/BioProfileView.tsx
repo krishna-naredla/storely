@@ -1,3 +1,4 @@
+import { recordAnalyticsEvent } from '../../services/firebaseService';
 import React, { useState, useEffect } from 'react';
 import { SafeImage } from '../common/SafeImage';
 import { BusinessProfile, CatalogItem } from '../../types';
@@ -55,7 +56,36 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     const description = business.seoMetaDescription || business.tagline || business.description || '';
     const image = business.seoMetaImage || business.logo || '';
     
+    
     document.title = title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', business.description || `Official links and resources for ${business.name}.`);
+    
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', window.location.href);
+
+    const ogTags = [
+      { property: 'og:title', content: title },
+      { property: 'og:description', content: business.description || `Links for ${business.name}` },
+      { property: 'og:url', content: window.location.href },
+      { property: 'og:type', content: 'profile' }
+    ];
+    
+    ogTags.forEach(tag => {
+      let el = document.querySelector(`meta[property="${tag.property}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute('property', tag.property);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', tag.content);
+    });
+
     
     // Meta tags helper
     const updateMeta = (name: string, content: string, isProperty = false) => {
@@ -90,6 +120,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   const loadLinks = async () => {
     const data = await getBioLinks(business.id);
     setLinks(data.filter((l: any) => l.enabled));
+    recordAnalyticsEvent(business.id, 'bio_views', { slug: business.slug }).catch(() => {});
     
     // Load top 3 catalog items to feature
     const items = await getCatalogItems(business.id);

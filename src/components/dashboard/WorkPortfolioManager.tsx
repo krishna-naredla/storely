@@ -171,6 +171,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   );
   const [isSavingCta, setIsSavingCta] = useState(false);
   const [ctaSuccessMessage, setCtaSuccessMessage] = useState(false);
+  const [portfolioTemplate, setPortfolioTemplate] = useState<'default' | 'developer' | 'designer' | 'photographer'>(business.portfolioSettings?.template || 'default');
 
   // Load Portfolio Data
   const loadPortfolioData = async () => {
@@ -551,6 +552,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       const currentSettings = business.portfolioSettings || { ctaMode: 'whatsapp' };
       const updatedSettings: PortfolioSettings = {
         ...currentSettings,
+        template: portfolioTemplate,
         mediaKit: {
           enabled: mediaKitEnabled,
           platformStats,
@@ -584,6 +586,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       const currentSettings = business.portfolioSettings || { ctaMode: 'whatsapp' };
       const updatedSettings: PortfolioSettings = {
         ...currentSettings,
+        template: portfolioTemplate,
         ctaMode,
         customCtaText: customCtaText.trim() || undefined,
         whatsappMessage: whatsappMessage.trim() || undefined,

@@ -89,13 +89,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : BUSINESS_TYPES.retail;
   const modules = business?.modules;
 
+  const isCreator = business?.type === 'creator';
+  
   const navItems: {
     id: DashboardTab;
     label: string;
     icon: React.ElementType;
     badge?: string;
     visible: boolean;
-  }[] = [
+  }[] = isCreator ? [
+    { id: "overview", label: "Overview", icon: LayoutDashboard, visible: true },
+    { id: "modules", label: "My Modules", icon: Layers, visible: true },
+    { id: "catalog", label: "Digital Store", icon: ShoppingBag, visible: !!modules?.digital_products || !!modules?.digitalProducts },
+    { id: "orders", label: "Downloads & Orders", icon: Package, visible: !!modules?.digital_products || !!modules?.digitalProducts },
+    { id: "biolink", label: "Universal Bio Link", icon: Link, visible: !!modules?.universal_links },
+    { id: "portfolio", label: "Portfolio", icon: Briefcase, visible: !!modules?.work_portfolio || !!modules?.portfolio },
+    { id: "events", label: "Events & Ticketing", icon: Ticket, visible: !!modules?.events_ticketing },
+    { id: "quotes", label: "Custom Quotes", icon: FileText, visible: !!modules?.custom_quotes },
+    { id: "reviews", label: "Reviews", icon: Star, visible: true },
+    { id: "analytics", label: "Analytics", icon: BarChart3, visible: true },
+    { id: "settings", label: "Settings", icon: Settings, visible: true },
+  ] : [
     {
       id: "overview",
       label: t("sidebar.dashboard"),

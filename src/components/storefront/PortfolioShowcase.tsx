@@ -39,6 +39,7 @@ import {
 } from '../../types';
 import {
   getPortfolioItems,
+  recordAnalyticsEvent,
   getTestimonials,
 } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
@@ -82,6 +83,7 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
           getTestimonials(business.id, true), // active only
         ]);
         setItems(fetchedItems);
+        recordAnalyticsEvent(business.id, 'portfolio_views', { slug: business.slug }).catch(() => {});
         setTestimonials(fetchedTestimonials);
       } catch (err) {
         console.error('Error fetching public portfolio:', err);
@@ -189,8 +191,29 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
     business.portfolioSettings?.customCtaText ||
     (ctaMode === 'booking' ? 'Book a Consultation Slot' : 'Enquire on WhatsApp');
 
+  const template = business.portfolioSettings?.template || 'default';
+  
+  const getContainerClass = () => {
+    switch(template) {
+      case 'developer': return 'bg-slate-950 text-slate-100 selection:bg-emerald-500 font-mono';
+      case 'photographer': return 'bg-white text-slate-900 selection:bg-rose-500';
+      case 'designer': return 'bg-[#F9F9F8] text-[#111111] selection:bg-indigo-500 font-sans';
+      default: return 'bg-slate-50 text-slate-900 selection:bg-indigo-500';
+    }
+  };
+
+  const getCardClass = () => {
+    switch(template) {
+      case 'developer': return 'bg-slate-900 border-slate-800 hover:border-emerald-500/50';
+      case 'photographer': return 'bg-white border-transparent hover:shadow-2xl';
+      case 'designer': return 'bg-white border-slate-200 hover:shadow-xl rounded-3xl';
+      default: return 'bg-white border-slate-200/60 hover:border-slate-300';
+    }
+  };
+
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 selection:bg-indigo-500 selection:text-white">
+    <div className={`min-h-screen pb-24 ${getContainerClass()}`}>
       {/* ===================================================== */}
       {/* 1. CREATOR HERO HEADER */}
       {/* ===================================================== */}

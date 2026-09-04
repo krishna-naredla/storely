@@ -31,6 +31,7 @@ const LINK_TYPES = [
 export const BioProfileManager: React.FC<Props> = ({ business }) => {
   const [links, setLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingLink, setEditingLink] = useState<any>(null);
   
@@ -44,7 +45,7 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
   const [url, setUrl] = useState('');
 
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const publicUrl = `${window.location.origin}/@${business.slug}`;
+  const publicUrl = `https://storelly.in/@${business.slug}`;
 
   useEffect(() => {
     loadLinks();
@@ -65,6 +66,7 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     
     // URL Validation and Sanitization
     let safeUrl = url.trim();
@@ -73,23 +75,28 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
       return;
     }
     
-    if (editingLink) {
-      await updateBioLink(editingLink.id, { type, title, url: safeUrl });
-    } else {
-      await createBioLink(business.id, {
-        type,
-        title,
-        url: safeUrl,
-        enabled: true,
-        order: links.length
-      });
+    setIsSaving(true);
+    try {
+      if (editingLink) {
+        await updateBioLink(editingLink.id, { type, title, url: safeUrl });
+      } else {
+        await createBioLink(business.id, {
+          type,
+          title,
+          url: safeUrl,
+          enabled: true,
+          order: links.length
+        });
+      }
+      setIsEditing(false);
+      setEditingLink(null);
+      setTitle('');
+      setUrl('');
+      setType('custom');
+      await loadLinks();
+    } finally {
+      setIsSaving(false);
     }
-    setIsEditing(false);
-    setEditingLink(null);
-    setTitle('');
-    setUrl('');
-    setType('custom');
-    loadLinks();
   };
 
   const handleEdit = (link: any) => {
