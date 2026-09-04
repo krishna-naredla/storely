@@ -459,43 +459,6 @@ export interface BioLink {
   updatedAt: number;
 }
 
-export type DigitalProductType = 'PDF' | 'Course' | 'Image' | 'ZIP' | 'Video' | 'Audio' | 'Template' | 'Other';
-export type DigitalProductStatus = 'active' | 'inactive';
-
-export interface DigitalFileItem {
-  id: string;
-  title: string;
-  url: string;
-  fileId?: string;
-  fileType?: string;
-  fileSize?: string;
-  duration?: string;
-}
-
-export interface DigitalProduct {
-  id: string;
-  businessId: string;
-  title: string;
-  description: string;
-  price: number;
-  salePrice?: number;
-  isFree?: boolean;
-  coverImage: string;
-  fileUrls: string[]; // List of downloadable file URLs
-  type: DigitalProductType; // 'PDF' | 'Course' | 'Image' | 'ZIP' etc.
-  status: DigitalProductStatus; // 'active' | 'inactive'
-  
-  // File metadata & course structures
-  fileName?: string;
-  fileSize?: string;
-  downloadLimit?: number;
-  salesCount?: number;
-  cloudinaryPublicIds?: string[];
-  courseLessons?: DigitalFileItem[];
-  
-  createdAt: number;
-  updatedAt: number;
-}
 
 // ==========================================
 // MODULE 3: WORK PORTFOLIO & SHOWCASE TYPES

@@ -1,3 +1,4 @@
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import {
   collection,
   doc,
@@ -15,16 +16,13 @@ import {
   writeBatch,
   runTransaction
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, storage } from '../config/firebase';
 import { deleteImageFromStorage } from './cloudinary';
 import {
   BusinessProfile,
   Category,
   CatalogItem,
-  DigitalProduct,
-  DigitalProductStatus,
-  DigitalProductType,
-  Order,
+    Order,
   Booking,
   Customer,
   Review,
@@ -551,178 +549,6 @@ export async function duplicateCatalogItem(businessId: string, originalItem: Cat
     ...rest,
     name: rest.name,
     slug: generateSlug(`${rest.name}-${Date.now().toString().slice(-4)}`),
-  });
-}
-
-/**
- * Digital Products CRUD (PDF, Courses, Graphic Assets, Templates, etc.)
- */
-export async function getDigitalProducts(businessId: string, activeOnly = false): Promise<DigitalProduct[]> {
-  try {
-    const colRef = collection(db, 'businesses', businessId, 'digital_products');
-    const snap = await getDocs(colRef);
-    let list = snap.docs.map((d) => d.data() as DigitalProduct);
-
-    if (activeOnly) {
-      list = list.filter((p) => p.status === 'active');
-    }
-    return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  } catch (err) {
-    console.error('Error getting digital products:', err);
-    return [];
-  }
-}
-
-export async function getDigitalProductById(businessId: string, productId: string): Promise<DigitalProduct | null> {
-  try {
-    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return snap.data() as DigitalProduct;
-    }
-  } catch (err) {
-    console.error('Error getting digital product by id:', err);
-  }
-  return null;
-}
-
-export async function createDigitalProduct(
-  businessId: string,
-  data: Omit<DigitalProduct, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>
-): Promise<DigitalProduct> {
-  const productId = 'digi_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
-  const now = Date.now();
-  const product: DigitalProduct = {
-    ...data,
-    id: productId,
-    businessId,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  try {
-    const sanitized = sanitizeForFirestore(product);
-    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
-    await setDoc(docRef, sanitized);
-
-    // Also mirror into catalog collection with type 'product' and productType 'digital_file' for unified storefront queries
-    const catalogPayload: CatalogItem = {
-      id: productId,
-      businessId,
-      name: data.title,
-      slug: generateSlug(data.title),
-      type: 'product',
-      categoryId: 'digital',
-      shortDescription: data.description?.slice(0, 160) || '',
-      detailedDescription: data.description || '',
-      price: data.price,
-      salePrice: data.salePrice,
-      isFree: data.isFree || data.price === 0,
-      images: data.coverImage ? [data.coverImage] : [],
-      inStock: data.status === 'active',
-      isActive: data.status === 'active',
-      productType: 'digital_file',
-      digitalFileType: data.type.toLowerCase() === 'course' ? 'course' : data.type.toLowerCase() === 'pdf' ? 'pdf' : data.type.toLowerCase() === 'image' ? 'images' : 'other',
-      digitalFileUrl: data.fileUrls?.[0] || '',
-      fileName: data.fileName,
-      fileSize: data.fileSize,
-      downloadLimit: data.downloadLimit,
-      salesCount: data.salesCount || 0,
-      digitalFiles: data.courseLessons?.map((l) => ({
-        id: l.id,
-        title: l.title,
-        url: l.url,
-        fileType: l.fileType,
-        fileSize: l.fileSize,
-      })),
-      createdAt: now,
-      updatedAt: now,
-    };
-    await setDoc(doc(db, 'businesses', businessId, 'catalog', productId), sanitizeForFirestore(catalogPayload));
-  } catch (err) {
-    console.warn('Firestore createDigitalProduct warning:', err);
-  }
-  return product;
-}
-
-export async function updateDigitalProduct(
-  businessId: string,
-  productId: string,
-  data: Partial<DigitalProduct>
-): Promise<void> {
-  try {
-    const sanitized = sanitizeForFirestore({
-      ...data,
-      updatedAt: Date.now(),
-    });
-    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
-    await setDoc(docRef, sanitized, { merge: true });
-
-    // Sync mirrored catalog item if title/price/coverImage/status changed
-    const catalogDocRef = doc(db, 'businesses', businessId, 'catalog', productId);
-    const catalogSnap = await getDoc(catalogDocRef);
-    if (catalogSnap.exists()) {
-      const catalogUpdates: Partial<CatalogItem> = {
-        updatedAt: Date.now(),
-      };
-      if (data.title !== undefined) catalogUpdates.name = data.title;
-      if (data.description !== undefined) {
-        catalogUpdates.detailedDescription = data.description;
-        catalogUpdates.shortDescription = data.description.slice(0, 160);
-      }
-      if (data.price !== undefined) catalogUpdates.price = data.price;
-      if (data.salePrice !== undefined) catalogUpdates.salePrice = data.salePrice;
-      if (data.isFree !== undefined) catalogUpdates.isFree = data.isFree;
-      if (data.coverImage !== undefined) catalogUpdates.images = [data.coverImage];
-      if (data.status !== undefined) {
-        catalogUpdates.isActive = data.status === 'active';
-        catalogUpdates.inStock = data.status === 'active';
-      }
-      if (data.fileUrls !== undefined && data.fileUrls.length > 0) {
-        catalogUpdates.digitalFileUrl = data.fileUrls[0];
-      }
-      if (data.fileName !== undefined) catalogUpdates.fileName = data.fileName;
-      if (data.fileSize !== undefined) catalogUpdates.fileSize = data.fileSize;
-      if (data.courseLessons !== undefined) {
-        catalogUpdates.digitalFiles = data.courseLessons;
-      }
-      await setDoc(catalogDocRef, sanitizeForFirestore(catalogUpdates), { merge: true });
-    }
-  } catch (err) {
-    console.warn('Firestore updateDigitalProduct warning:', err);
-  }
-}
-
-export async function deleteDigitalProduct(businessId: string, productId: string): Promise<void> {
-  try {
-    // Delete from digital_products subcollection
-    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
-    await deleteDoc(docRef);
-
-    // Also delete mirrored catalog doc
-    const catalogDocRef = doc(db, 'businesses', businessId, 'catalog', productId);
-    await deleteDoc(catalogDocRef);
-  } catch (err) {
-    console.warn('Firestore deleteDigitalProduct warning:', err);
-  }
-}
-
-export async function toggleDigitalProductStatus(
-  businessId: string,
-  productId: string,
-  currentStatus: DigitalProductStatus
-): Promise<DigitalProductStatus> {
-  const nextStatus: DigitalProductStatus = currentStatus === 'active' ? 'inactive' : 'active';
-  await updateDigitalProduct(businessId, productId, { status: nextStatus });
-  return nextStatus;
-}
-
-export async function duplicateDigitalProduct(businessId: string, original: DigitalProduct): Promise<DigitalProduct> {
-  const { id, createdAt, updatedAt, ...rest } = original;
-  return createDigitalProduct(businessId, {
-    ...rest,
-    title: `${rest.title} (Copy)`,
-    salesCount: 0,
   });
 }
 
@@ -1801,6 +1627,7 @@ export async function purchaseEventTicketTransaction(
     paymentId?: string;
     razorpayOrderId?: string;
     notes?: string;
+    holdId?: string;
   }
 ): Promise<{ ticket: EventTicket; updatedEvent: EventItem }> {
   const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
@@ -1823,20 +1650,40 @@ export async function purchaseEventTicketTransaction(
 
     const capacity = Number(event.capacity) || 1;
     const currentSold = Number(event.ticketsSold) || 0;
-    const seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - currentSold;
+    let seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - currentSold;
 
-    if (seatsRemaining <= 0 || currentSold >= capacity || event.status === 'sold_out') {
-      throw new Error('Sold Out - No seats remaining for this event');
+    // Check if we have an active hold
+    if (buyerDetails.holdId) {
+      const holdRef = doc(db, 'businesses', businessId, 'events', eventId, 'seat_holds', buyerDetails.holdId);
+      const holdSnap = await transaction.get(holdRef);
+      if (holdSnap.exists() && holdSnap.data().status === 'active') {
+        // Seat already decremented in reserveEventSeat, just finalize the hold
+        transaction.update(holdRef, {
+          status: 'completed',
+          completedAt: Date.now()
+        });
+      } else {
+        // Hold expired/released, decrement now if available
+        if (seatsRemaining <= 0 || currentSold >= capacity || event.status === 'sold_out') {
+          throw new Error('Sold Out - No seats remaining for this event (hold expired)');
+        }
+        seatsRemaining -= 1;
+      }
+    } else {
+      // Normal flow without hold
+      if (seatsRemaining <= 0 || currentSold >= capacity || event.status === 'sold_out') {
+        throw new Error('Sold Out - No seats remaining for this event');
+      }
+      seatsRemaining -= 1;
     }
 
     const nextSold = currentSold + 1;
-    const nextRemaining = seatsRemaining - 1;
-    const nextStatus: EventStatus = nextRemaining <= 0 ? 'sold_out' : event.status || 'upcoming';
+    const nextStatus: EventStatus = seatsRemaining <= 0 ? 'sold_out' : (event.status !== 'sold_out' ? event.status || 'upcoming' : 'upcoming');
 
-    // 1. Decrement seats atomically
+    // 1. Update seats atomically
     transaction.update(eventRef, {
       ticketsSold: nextSold,
-      seatsRemaining: nextRemaining,
+      seatsRemaining: seatsRemaining,
       status: nextStatus,
       updatedAt: Date.now(),
     });
@@ -1872,7 +1719,7 @@ export async function purchaseEventTicketTransaction(
     const updatedEvent: EventItem = {
       ...event,
       ticketsSold: nextSold,
-      seatsRemaining: nextRemaining,
+      seatsRemaining: seatsRemaining,
       status: nextStatus,
     };
 
@@ -2180,3 +2027,155 @@ export const submitCustomQuoteRequest = createCustomQuoteRequest;
 
 
 
+
+
+/**
+ * Securely uploads a file (PDF, Image, etc.) to Firebase Storage and returns the public download URL.
+ * Automatically handles MIME types.
+ */
+export const uploadFileToStorage = (file: File, pathFolder: string = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('No file provided'));
+    
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
+    const storageRef = ref(storage, `${pathFolder}/${fileName}`);
+
+    const metadata = {
+      contentType: file.type || 'application/octet-stream',
+    };
+
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        if (onProgress) {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          onProgress(progress);
+        }
+      },
+      (error) => {
+        reject(error);
+      },
+      async () => {
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadUrl);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    );
+  });
+};
+
+
+
+// ============================================================================
+// EVENT SEAT HOLD MECHANISM
+// ============================================================================
+
+/**
+ * Reserve a seat before opening checkout to prevent race conditions.
+ */
+export async function reserveEventSeat(businessId: string, eventId: string, holdId: string, holdDurationMs = 10 * 60 * 1000): Promise<boolean> {
+  const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
+  const holdRef = doc(db, 'businesses', businessId, 'events', eventId, 'seat_holds', holdId);
+  
+  return await runTransaction(db, async (transaction) => {
+    const eventSnap = await transaction.get(eventRef);
+    if (!eventSnap.exists()) throw new Error('Event not found');
+    
+    const event = eventSnap.data() as EventItem;
+    if (event.status === 'cancelled') throw new Error('Event is cancelled');
+    
+    const capacity = Number(event.capacity) || 1;
+    const currentSold = Number(event.ticketsSold) || 0;
+    const seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - currentSold;
+    
+    if (seatsRemaining <= 0 || event.status === 'sold_out') {
+      throw new Error('Sold Out - No seats remaining');
+    }
+    
+    const nextRemaining = seatsRemaining - 1;
+    const nextStatus = nextRemaining <= 0 ? 'sold_out' : (event.status || 'upcoming');
+    
+    transaction.update(eventRef, {
+      seatsRemaining: nextRemaining,
+      status: nextStatus,
+      updatedAt: Date.now()
+    });
+    
+    transaction.set(holdRef, {
+      id: holdId,
+      heldUntil: Date.now() + holdDurationMs,
+      status: 'active',
+      createdAt: Date.now()
+    });
+    
+    return true;
+  });
+}
+
+/**
+ * Release a seat if checkout is dismissed or payment fails.
+ */
+export async function releaseEventSeat(businessId: string, eventId: string, holdId: string): Promise<void> {
+  const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
+  const holdRef = doc(db, 'businesses', businessId, 'events', eventId, 'seat_holds', holdId);
+  
+  return await runTransaction(db, async (transaction) => {
+    const holdSnap = await transaction.get(holdRef);
+    if (!holdSnap.exists()) return; // Nothing to release
+    
+    const hold = holdSnap.data();
+    if (hold.status !== 'active') return; // Already completed or released
+    
+    const eventSnap = await transaction.get(eventRef);
+    if (eventSnap.exists()) {
+      const event = eventSnap.data() as EventItem;
+      const capacity = Number(event.capacity) || 1;
+      let seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - (Number(event.ticketsSold) || 0);
+      
+      const nextRemaining = seatsRemaining + 1;
+      const nextStatus = nextRemaining > 0 && event.status === 'sold_out' ? 'upcoming' : event.status;
+      
+      transaction.update(eventRef, {
+        seatsRemaining: nextRemaining,
+        status: nextStatus,
+        updatedAt: Date.now()
+      });
+    }
+    
+    transaction.update(holdRef, {
+      status: 'released',
+      releasedAt: Date.now()
+    });
+  });
+}
+
+/**
+ * Cleanup stale holds that were never confirmed or released.
+ * Safe to call periodically from the client side (e.g. when loading the event page).
+ */
+export async function cleanupStaleEventHolds(businessId: string, eventId: string): Promise<void> {
+  const holdsRef = collection(db, 'businesses', businessId, 'events', eventId, 'seat_holds');
+  const q = query(holdsRef, where('status', '==', 'active'), where('heldUntil', '<', Date.now()));
+  
+  try {
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+    
+    // Process each stale hold
+    for (const holdDoc of snap.docs) {
+      try {
+        await releaseEventSeat(businessId, eventId, holdDoc.id);
+      } catch (err) {
+        console.warn('Failed to clean up hold:', holdDoc.id, err);
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching stale holds:', err);
+  }
+}

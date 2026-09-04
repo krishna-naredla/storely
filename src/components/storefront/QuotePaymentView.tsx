@@ -61,7 +61,7 @@ export const QuotePaymentView: React.FC<QuotePaymentViewProps> = ({
     try {
       setPaying(true);
 
-      const razorpayKey = (window as any).RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
+      const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
       const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
 
       if (razorpayKey && hasRazorpayScript) {
@@ -101,13 +101,7 @@ export const QuotePaymentView: React.FC<QuotePaymentViewProps> = ({
         });
         rzp.open();
       } else {
-        // Direct confirmation fallback
-        const updated = await acceptQuotePayment(business.id, request.id, {
-          paymentId: `pay_quote_${Date.now()}`,
-          amountPaid: request.quotedPrice,
-        });
-        setRequest(updated);
-        setPaymentSuccess(true);
+        throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
       }
     } catch (err: any) {
       console.error('Payment failure:', err);

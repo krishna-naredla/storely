@@ -9,7 +9,8 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react';
-import { uploadToCloudinary, compressImageToDataUrl, isValidImageUrl } from '../../services/cloudinary';
+import { compressImageToDataUrl, isValidImageUrl } from '../../services/cloudinary';
+import { uploadFileToStorage } from '../../services/firebaseService';
 
 // Curated high quality royalty-free presets
 const SAMPLE_PRESETS: { title: string; category: string; url: string }[] = [
@@ -146,7 +147,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
 
       if (isLogoOrBanner) {
         // Upload to Cloudinary CDN specifically for vendor logo and banner
-        finalUrl = await uploadToCloudinary(file, (percent) => {
+        finalUrl = await uploadFileToStorage(file, 'images', (percent) => {
           setUploadProgress(percent);
         });
       } else {
@@ -179,7 +180,7 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
       const blob = await res.blob();
       const file = new File([blob], 'store-brand.jpg', { type: blob.type || 'image/jpeg' });
       setUploadProgress(50);
-      const secureUrl = await uploadToCloudinary(file, (p) => setUploadProgress(p));
+      const secureUrl = await uploadFileToStorage(file, 'images', (p) => setUploadProgress(p));
       onChange(secureUrl);
       setUrlInput(secureUrl);
     } catch (err: any) {

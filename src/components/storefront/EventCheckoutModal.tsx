@@ -1,28 +1,24 @@
 import React, { useState } from 'react';
 import {
   X,
-  Ticket,
+  CheckCircle,
   Calendar,
   Clock,
   MapPin,
   Video,
-  CheckCircle2,
-  Phone,
-  User,
-  Mail,
-  ShieldCheck,
+  Ticket,
+  Users,
   Sparkles,
-  ExternalLink,
-  Download,
-  Copy,
-  Check,
-  AlertTriangle,
+  ChevronRight,
+  ShieldCheck,
+  CheckCircle2,
+  Lock,
   QrCode,
   RefreshCw,
   MessageSquare,
 } from 'lucide-react';
 import { BusinessProfile, EventItem, EventTicket } from '../../types';
-import { purchaseEventTicketTransaction } from '../../services/firebaseService';
+import { purchaseEventTicketTransaction, reserveEventSeat, releaseEventSeat } from '../../services/firebaseService';
 
 interface EventCheckoutModalProps {
   event: EventItem | null;
@@ -44,36 +40,28 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
   const [customerEmail, setCustomerEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Success Confirmation State
   const [confirmedTicket, setConfirmedTicket] = useState<EventTicket | null>(null);
   const [whatsAppUrl, setWhatsAppUrl] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
   if (!isOpen || !event) return null;
 
-  const seatsLeft = event.seatsRemaining ?? Math.max(0, event.capacity - event.ticketsSold);
-  const isSoldOut = event.status === 'sold_out' || seatsLeft <= 0;
-  const isFree = event.price === 0 || event.isFree;
-
-  const handleCheckoutSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
+  const handlePurchase = async () => {
+    if (!customerName || !customerPhone || !event) return;
+    
+    // Auto-prefix with 91 for WhatsApp if 10 digits
     const cleanPhone = customerPhone.replace(/[^0-9]/g, '');
-    if (!customerName.trim()) {
-      setErrorMessage('Please enter your full name');
-      return;
-    }
     if (cleanPhone.length < 10) {
-      setErrorMessage('Please enter a valid 10-digit WhatsApp phone number');
+      setErrorMessage('Please enter a valid phone number');
       return;
     }
+
+    setErrorMessage(null);
+    setLoading(true);
 
     try {
-      setLoading(true);
+      const isFree = event.price === 0 || event.isFree;
 
-      // Handle Free Event vs Paid Event
       if (isFree) {
         // Atomic transaction to claim free ticket
         const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
@@ -82,16 +70,25 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           customerEmail: customerEmail.trim() || undefined,
           paymentStatus: 'free',
         });
-
         setConfirmedTicket(ticket);
         prepareWhatsAppConfirmation(ticket);
         if (onSuccess) onSuccess(ticket);
       } else {
-        // Paid Event Checkout via Razorpay or simulated payment flow
-        const razorpayKey = (window as any).RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
+        // Paid Event Checkout via Razorpay
+        const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
         const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
 
         if (razorpayKey && hasRazorpayScript) {
+          // 1. Reserve the seat before payment
+          const holdId = `hold_${Date.now()}`;
+          try {
+            await reserveEventSeat(business.id, event.id, holdId, 10 * 60 * 1000);
+          } catch (reserveErr: any) {
+            setErrorMessage(reserveErr.message || 'Sold Out. Unable to reserve seat.');
+            setLoading(false);
+            return;
+          }
+
           const options = {
             key: razorpayKey,
             amount: event.price * 100, // in paise
@@ -101,6 +98,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             image: business.logo || undefined,
             handler: async function (response: any) {
               try {
+                // 3. Finalize payment and convert hold to ticket
                 const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
                   customerName: customerName.trim(),
                   customerPhone: cleanPhone,
@@ -108,6 +106,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                   paymentStatus: 'paid',
                   paymentId: response.razorpay_payment_id,
                   razorpayOrderId: response.razorpay_order_id,
+                  holdId: holdId, // Pass holdId to utilize reserved seat
                 });
 
                 setConfirmedTicket(ticket);
@@ -125,26 +124,33 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             theme: {
               color: '#059669',
             },
+            modal: {
+              ondismiss: async function () {
+                // 2. Release seat if user closes checkout
+                try {
+                  await releaseEventSeat(business.id, event.id, holdId);
+                } catch (e) {
+                  console.error('Failed to release seat hold on dismiss', e);
+                }
+                setLoading(false);
+              }
+            }
           };
 
           const rzp = new (window as any).Razorpay(options);
-          rzp.on('payment.failed', function (resp: any) {
+          rzp.on('payment.failed', async function (resp: any) {
             setErrorMessage(resp.error.description || 'Payment failed. Please try again.');
+            // Release seat on payment failure
+            try {
+              await releaseEventSeat(business.id, event.id, holdId);
+            } catch (e) {
+              console.error('Failed to release seat hold on failure', e);
+            }
+            setLoading(false);
           });
           rzp.open();
         } else {
-          // Instant direct confirmation with mock transaction
-          const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
-            customerName: customerName.trim(),
-            customerPhone: cleanPhone,
-            customerEmail: customerEmail.trim() || undefined,
-            paymentStatus: 'paid',
-            paymentId: `pay_direct_${Date.now()}`,
-          });
-
-          setConfirmedTicket(ticket);
-          prepareWhatsAppConfirmation(ticket);
-          if (onSuccess) onSuccess(ticket);
+          throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
         }
       }
     } catch (err: any) {
@@ -175,7 +181,6 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           merchantName: business.name,
         }),
       });
-
       if (response.ok) {
         const data = await response.json();
         if (data.whatsAppUrl) {
@@ -239,263 +244,164 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                   className="w-full h-full object-cover"
                 />
               </div>
-
-              <div className="flex-1 min-w-0 space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                      event.format === 'online'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}
-                  >
-                    {event.format === 'online' ? '🌐 Online' : '📍 In-Person'}
+              <div className="flex-1 min-w-0 py-1">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-semibold text-slate-600 shadow-xs">
+                    {event.format === 'online' ? 'Online' : 'In-Person'}
                   </span>
-
-                  <span className="text-xs font-black text-slate-900">
-                    {isFree ? 'Free Registration' : `₹${event.price}`}
+                  <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                    {event.price === 0 ? 'Free' : `₹${event.price}`}
                   </span>
                 </div>
-
-                <h3 className="font-bold text-sm text-slate-900 font-heading line-clamp-1">
+                <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
                   {event.title}
                 </h3>
-
-                <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{event.eventDate} at {event.eventTime}</span>
+                <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 font-medium">
+                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {event.eventDate}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {event.eventTime}</span>
                 </div>
               </div>
             </div>
 
-            {/* Live Seat Scarcity Alert */}
-            {seatsLeft <= 10 && seatsLeft > 0 && (
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0 animate-pulse" />
-                <span>Only {seatsLeft} seat{seatsLeft > 1 ? 's' : ''} left for this session!</span>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition shadow-xs"
+                  required
+                />
               </div>
-            )}
-
-            {isSoldOut ? (
-              <div className="p-6 text-center space-y-3 bg-slate-50 rounded-2xl border border-slate-200">
-                <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
-                  <Ticket className="w-6 h-6" />
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">WhatsApp Number</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">+91</span>
+                  <input
+                    type="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="10-digit mobile number"
+                    className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition shadow-xs"
+                    required
+                  />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900">This Event is Sold Out</h4>
-                <p className="text-xs text-slate-500">
-                  All {event.capacity} seats have been reserved. Stay tuned for future batches!
+                <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  Your ticket & links will be sent here
                 </p>
               </div>
-            ) : (
-              <form onSubmit={handleCheckoutSubmit} className="space-y-4 text-xs">
-                {errorMessage && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-                    <span>{errorMessage}</span>
-                  </div>
-                )}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address <span className="text-slate-400 font-normal">(Optional)</span></label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="For calendar invites"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition shadow-xs"
+                />
+              </div>
+            </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-800 flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Your Full Name <span className="text-rose-500">*</span></span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. John Doe"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-800 flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>WhatsApp Phone Number <span className="text-rose-500">*</span></span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">+91</span>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="9876543210"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full pl-12 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                    Your digital ticket and access details will be sent directly to this WhatsApp number.
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-800 flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Email Address (Optional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="name@example.com"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
-
-                <div className="pt-3">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Securing Your Seat...</span>
-                      </>
-                    ) : isFree ? (
-                      <>
-                        <Ticket className="w-4 h-4" />
-                        <span>Claim Free Ticket Pass</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Pay ₹{event.price} & Get Ticket</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium pt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Instant E-Ticket Delivery • 100% Verified Session</span>
-                </div>
-              </form>
+            {errorMessage && (
+              <div className="p-3.5 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </div>
             )}
+
+            <button
+              onClick={handlePurchase}
+              disabled={loading || !customerName || !customerPhone}
+              className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  {event.price === 0 ? 'Claim Free Ticket' : `Pay ₹${event.price} & Book Seat`}
+                </>
+              )}
+            </button>
           </div>
         ) : (
-          /* STEP 2: CONFIRMED E-TICKET PASS & SHARE OPTIONS */
-          <div className="space-y-5 animate-in fade-in zoom-in-95 duration-300">
-            <div className="text-center space-y-1.5">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-sm">
-                <CheckCircle2 className="w-7 h-7" />
-              </div>
-              <h3 className="text-lg font-black text-slate-900 font-heading">
-                Seat Confirmed!
-              </h3>
-              <p className="text-xs text-slate-500">
-                You're officially registered for <span className="font-bold text-slate-800">{event.title}</span>
+          /* STEP 2: SUCCESS & TICKET CONFIRMATION */
+          <div className="text-center space-y-6 py-2">
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 ring-8 ring-emerald-50">
+              <CheckCircle className="w-8 h-8 text-emerald-600" />
+            </div>
+            
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">You're Going! 🎉</h2>
+              <p className="text-slate-500 text-sm">
+                Your ticket for <strong className="text-slate-700">{event.title}</strong> is confirmed.
               </p>
             </div>
 
-            {/* Digital E-Ticket Pass Card */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white shadow-xl space-y-4 border border-slate-700 relative overflow-hidden">
-              {/* Decorative ticket notch patterns */}
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border border-slate-300" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border border-slate-300" />
-
-              <div className="flex items-center justify-between border-b border-slate-700/80 pb-3">
-                <div className="flex items-center gap-2">
-                  {business.logo && (
-                    <img
-                      src={business.logo}
-                      alt={business.name}
-                      referrerPolicy="no-referrer"
-                      className="w-6 h-6 rounded-md object-cover"
-                    />
-                  )}
-                  <span className="text-xs font-bold text-emerald-400">{business.name}</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">Ticket Code</p>
+                  <p className="text-lg font-bold text-slate-900 font-mono tracking-tight">{confirmedTicket.ticketId}</p>
                 </div>
-
                 <button
-                  type="button"
                   onClick={handleCopyTicketCode}
-                  className="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono font-bold text-slate-300 flex items-center gap-1 border border-slate-700 cursor-pointer"
+                  className="p-2 hover:bg-slate-200 text-slate-500 rounded-lg transition"
+                  title="Copy Code"
                 >
-                  <span>{confirmedTicket.ticketId}</span>
-                  {copiedCode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                  {copiedCode ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <QrCode className="w-5 h-5" />}
                 </button>
               </div>
-
-              <div className="space-y-1">
-                <h4 className="text-sm font-black font-heading leading-tight">{event.title}</h4>
-                <div className="text-xs text-slate-300 flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{event.eventDate} at {event.eventTime}</span>
+              
+              <div className="h-px bg-slate-200 w-full" />
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-sm text-slate-700">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span className="font-medium">{event.eventDate} at {event.eventTime}</span>
                 </div>
-              </div>
-
-              {/* Format / Join Info */}
-              <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs space-y-1.5">
-                {event.format === 'online' ? (
-                  <>
-                    <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                      <Video className="w-4 h-4" />
-                      <span>Online Webinar Pass</span>
-                    </div>
-                    {event.meetingUrl ? (
-                      <a
-                        href={event.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:underline font-bold"
-                      >
-                        <span>Join Meeting Link: {event.meetingUrl}</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    ) : (
-                      <p className="text-[11px] text-slate-400">
-                        Meeting link will be dispatched to your WhatsApp prior to start.
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                      <MapPin className="w-4 h-4" />
-                      <span>In-Person Venue</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300">
-                      {event.venueAddress || 'Venue'}{event.venueCity ? `, ${event.venueCity}` : ''}
-                    </p>
-                  </>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-700/80">
-                <span>Attendee: <strong className="text-white">{confirmedTicket.customerName}</strong></span>
-                <span>{confirmedTicket.paymentStatus === 'paid' ? `₹${confirmedTicket.price} Paid` : 'Free Pass'}</span>
+                <div className="flex items-start gap-3 text-sm text-slate-700">
+                  {event.format === 'online' ? (
+                    <>
+                      <Video className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-900">Online Masterclass</span>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {event.sendMeetingLinkTiming === 'immediately' 
+                            ? 'Link sent to your WhatsApp' 
+                            : 'Link will be sent closer to the event'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-900">{event.venueCity}</span>
+                        <p className="text-xs text-slate-500 mt-0.5">{event.venueAddress}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Action Buttons: WhatsApp Delivery & Add to Calendar */}
-            <div className="space-y-2 pt-1 text-xs font-bold">
-              {whatsAppUrl ? (
+            <div className="space-y-3 pt-2">
+              {whatsAppUrl && (
                 <a
                   href={whatsAppUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+                  className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Receive E-Ticket on WhatsApp</span>
-                </a>
-              ) : (
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`I registered for ${event.title}! Ticket: ${confirmedTicket.ticketId}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Share Ticket on WhatsApp</span>
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Get Ticket on WhatsApp</span>
                 </a>
               )}
-
+              
               <a
                 href={buildGoogleCalendarUrl()}
                 target="_blank"

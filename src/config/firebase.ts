@@ -1,3 +1,4 @@
+import { getStorage } from 'firebase/storage';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
@@ -91,3 +92,5 @@ googleProvider.setCustomParameters({
 export const APP_BASE_URL = typeof window !== 'undefined'
   ? ((window as any).APP_BASE_URL || window.location.origin)
   : "https://storelly-ece40.web.app";
+
+export const storage = getStorage(app);

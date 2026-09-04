@@ -14,6 +14,7 @@ import {
   Sparkles,
   Bell,
   ShieldAlert,
+  Trash2, Plus, Share2,
 } from 'lucide-react';
 import { BusinessProfile, BusinessType } from '../../types';
 import { updateBusinessProfile, permanentlyDeleteStoreAccount } from '../../services/firebaseService';
@@ -53,8 +54,8 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
     business.enableOnlinePayment ?? false
   );
   const [upiId, setUpiId] = useState(business.upiId || '');
-  const [socialInstagram, setSocialInstagram] = useState(business.socials?.instagram || '');
-  const [socialFacebook, setSocialFacebook] = useState(business.socials?.facebook || '');
+  const [socialLinks, setSocialLinks] = useState<{platform: string, url: string}[]>(business.socialLinks || []);
+  const platforms = ['instagram', 'facebook', 'youtube', 'linkedin', 'twitter', 'website'];
   const [seoMetaTitle, setSeoMetaTitle] = useState(business.seoMetaTitle || '');
   const [seoMetaDescription, setSeoMetaDescription] = useState(business.seoMetaDescription || '');
   const [seoMetaImage, setSeoMetaImage] = useState(business.seoMetaImage || '');
@@ -122,10 +123,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
         enableCod,
         enableOnlinePayment,
         upiId: upiId.trim() || undefined,
-        socials: {
-          instagram: socialInstagram.trim() || undefined,
-          facebook: socialFacebook.trim() || undefined,
-        },
+        socialLinks: socialLinks.filter(l => l.url.trim() !== ''),
         seoMetaTitle: seoMetaTitle.trim() || undefined,
         seoMetaDescription: seoMetaDescription.trim() || undefined,
         seoMetaImage: seoMetaImage.trim() || undefined,
@@ -418,7 +416,60 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </div>
         </div>
 
-        {/* Commerce & Pricing Terms */}
+                
+        {/* Social Media Links */}
+        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-4">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <Share2 className="w-4 h-4 text-blue-600" />
+            Social Media Links
+          </h3>
+          <div className="space-y-3">
+            {socialLinks.map((link, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <select
+                  value={link.platform}
+                  onChange={(e) => {
+                    const newLinks = [...socialLinks];
+                    newLinks[idx].platform = e.target.value;
+                    setSocialLinks(newLinks);
+                  }}
+                  className="w-32 px-3 py-2 text-xs border border-slate-200 rounded-xl"
+                >
+                  {platforms.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                </select>
+                <input
+                  type="url"
+                  value={link.url}
+                  onChange={(e) => {
+                    const newLinks = [...socialLinks];
+                    newLinks[idx].url = e.target.value;
+                    setSocialLinks(newLinks);
+                  }}
+                  placeholder="https://..."
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newLinks = socialLinks.filter((_, i) => i !== idx);
+                    setSocialLinks(newLinks);
+                  }}
+                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSocialLinks([...socialLinks, { platform: 'instagram', url: '' }])}
+              className="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition flex items-center gap-2"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Social Link
+            </button>
+          </div>
+        </div>
+{/* Commerce & Pricing Terms */}
         <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-2xs space-y-4">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-emerald-600" />

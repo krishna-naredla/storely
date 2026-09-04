@@ -1,23 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
-
     function isUser(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-
     function isBusinessOwner(businessId) {
       return isAuthenticated() && (
-        resource.data.ownerId == request.auth.uid ||
+        (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
       );
     }
-
+    
     // User profile documents
     match /users/{userId} {
       allow read, write: if isUser(userId);
@@ -27,68 +24,74 @@ service cloud.firestore {
     match /businesses/{businessId} {
       // Anyone can view business public details (needed for public storefronts)
       allow read: if true;
-
       // Authenticated users can create new businesses
       allow create: if isAuthenticated();
-
       // Only the business owner can update or delete
       allow update, delete: if isAuthenticated() && (
-        resource.data.ownerId == request.auth.uid ||
-        request.resource.data.ownerId == request.auth.uid
+        (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
+        ('ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid)
       );
 
       // Business Subcollection: Catalog Items (Products, Services, Rooms, Vehicles)
       match /catalog/{itemId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Digital Products (PDF, Course, Image, etc.)
       match /digital_products/{digitalProductId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Events & Masterclass Ticketing
       match /events/{eventId} {
         allow read: if true;
-        allow write: if true; // Allows atomic seat decrements & creator updates
+        allow create, delete: if isBusinessOwner(businessId);
+        allow update: if isBusinessOwner(businessId) || (
+          // Allows atomic seat decrements
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketsSold', 'seatsRemaining', 'status', 'updatedAt'])
+        );
+        
+        match /seat_holds/{holdId} {
+          allow read, write: if true;
+        }
       }
 
       // Business Subcollection: Event Tickets
       match /tickets/{ticketId} {
-        allow read: if true;
-        allow write: if true; // Allows ticket purchase generation and check-in toggles
+        allow create: if true; // Allows ticket purchase generation
+        allow read, update, delete: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Custom Quote Requests
       match /quote_requests/{requestId} {
-        allow read: if true;
-        allow write: if true; // Allows customer submissions & creator quotes/status changes
+        allow create: if true; // Allows customer submissions
+        allow read, update, delete: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Work Portfolio & Showcase Items
       match /portfolio/{portfolioId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Testimonials
       match /testimonials/{testimonialId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Categories
       match /categories/{categoryId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Offers & Coupons
       match /offers/{offerId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Reviews & Ratings
@@ -97,7 +100,7 @@ service cloud.firestore {
         // Public customers can submit reviews
         allow create: if true;
         // Only owner can update (reply) or delete
-        allow update, delete: if isAuthenticated();
+        allow update, delete: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Orders
@@ -105,7 +108,7 @@ service cloud.firestore {
         // Public customers can create orders on storefront
         allow create: if true;
         // Business owner can read, update status, and manage orders
-        allow read, update, delete: if true;
+        allow read, update, delete: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Bookings & Appointments
@@ -113,12 +116,12 @@ service cloud.firestore {
         // Public customers can create bookings
         allow create: if true;
         // Business owner can read, update, and manage bookings
-        allow read, update, delete: if true;
+        allow read, update, delete: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Customers CRM
       match /customers/{customerId} {
-        allow read, write: if true;
+        allow read, write: if isBusinessOwner(businessId);
       }
 
       // Business Subcollection: Analytics Events
@@ -129,12 +132,11 @@ service cloud.firestore {
       // Business Subcollection: Bio Links & Community
       match /biolinks/{linkId} {
         allow read: if true;
-        allow write: if true;
+        allow write: if isBusinessOwner(businessId);
       }
-
       match /communityLinks/{linkId} {
         allow read: if true;
-        allow write: if true;
+        allow write: if isBusinessOwner(businessId);
       }
     }
 
@@ -143,34 +145,27 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
-
     match /platform_pricing_plans/{planId} {
       allow read: if true;
       allow write: if true;
     }
-
     match /platform_settings/{settingId} {
       allow read: if true;
       allow write: if true;
     }
-
     match /platform_clients/{clientId} {
       allow read: if true;
       allow write: if true;
     }
-
     match /payment_transactions/{transactionId} {
       allow read, write: if true;
     }
-
     match /admin_audit_logs/{logId} {
       allow read, write: if true;
     }
-
     match /platform_support_tickets/{ticketId} {
       allow read, write: if true;
     }
-
     match /platform_announcements/{announcementId} {
       allow read, write: if true;
     }

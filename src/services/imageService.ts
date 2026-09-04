@@ -77,11 +77,39 @@ export async function uploadLogoOrBannerToCloudinary(
     throw new Error('Cloudinary uploads are restricted strictly to store logos and banners.');
   }
 
-  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+  // Request signature from server for secure upload
+  let signData: any = null;
+  try {
+    const signRes = await fetch('/api/digital/sign-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paramsToSign: {
+          folder: 'store_assets',
+        },
+      }),
+    });
+    if (signRes.ok) {
+      signData = await signRes.json();
+    }
+  } catch (err) {
+    console.warn('Failed to fetch signature', err);
+  }
+
+  const cloudName = signData?.cloudName || CLOUDINARY_CLOUD_NAME;
+  const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  formData.append('api_key', CLOUDINARY_API_KEY);
+  
+  if (signData && signData.signature) {
+    formData.append('api_key', signData.apiKey);
+    formData.append('timestamp', signData.timestamp.toString());
+    formData.append('signature', signData.signature);
+    formData.append('folder', 'store_assets');
+  } else {
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('api_key', CLOUDINARY_API_KEY);
+  }
 
   return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, CustomQuoteRequest } from '../../types';
 import { submitCustomQuoteRequest } from '../../services/firebaseService';
-import { uploadToCloudinary } from '../../services/cloudinary';
+import { uploadFileToStorage } from '../../services/firebaseService';
 
 interface CustomQuoteRequestModalProps {
   business: BusinessProfile;
@@ -65,7 +65,7 @@ export const CustomQuoteRequestModal: React.FC<CustomQuoteRequestModalProps> = (
       const newUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         if (referenceImages.length + newUrls.length >= 4) break; // Limit 4 photos
-        const url = await uploadToCloudinary(files[i]);
+        const url = await uploadFileToStorage(files[i], 'uploads');
         newUrls.push(url);
       }
       setReferenceImages((prev) => [...prev, ...newUrls]);

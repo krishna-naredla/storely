@@ -51,6 +51,33 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
 
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Download failed or expired');
+      
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Error downloading file. Please request a new link if expired.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   useEffect(() => {
     if (isOpen) {
       setPurchasedOrder(null);
@@ -238,6 +265,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
             customerName: customerName.trim(),
             customerPhone: cleanPhone,
             customerEmail: customerEmail.trim() || undefined,
+            amount: price || 0,
           }),
         });
 
@@ -314,14 +342,16 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
 
         const rzp = new RazorpayClass(options);
         rzp.open();
-      } else {
-        // Fallback simulation if Razorpay script is blocked
+      } else if (price === 0 || isFree) {
+        // Fallback for free items if Razorpay script is blocked
         await completeOrderVerification({
           razorpay_order_id: orderData.id,
           razorpay_payment_id: `pay_direct_${Date.now()}`,
           razorpay_signature: 'test_verified',
         });
         setIsLoading(false);
+      } else {
+        throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Payment initiation failed');
@@ -461,16 +491,15 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
 
               {/* Main Download Button */}
               {remainingSeconds > 0 && downloadUrl ? (
-                <a
-                  href={downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download={item.fileName || item.name}
-                  className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 text-sm sm:text-base transition transform hover:-translate-y-0.5"
+                <button
+                  type="button"
+                  onClick={() => handleDownload(downloadUrl, item.fileName || item.name || 'download')}
+                  disabled={isLoading}
+                  className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 text-sm sm:text-base transition transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
                   <Download className="w-5 h-5" />
                   <span>Download Now ({item.fileSize || 'Instant'})</span>
-                </a>
+                </button>
               ) : (
                 <div className="space-y-2">
                   <div className="p-3 bg-rose-50 text-rose-700 rounded-xl text-xs text-center font-bold">
@@ -506,14 +535,14 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
                             <span className="font-semibold text-slate-800 truncate">{df.title}</span>
                           </div>
                           {df.url && (
-                            <a
-                              href={df.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[10px] transition shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(df.url!, df.title || 'download')}
+                              disabled={isLoading}
+                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[10px] transition shrink-0 disabled:opacity-50"
                             >
                               Download
-                            </a>
+                            </button>
                           )}
                         </div>
                       );

@@ -36,7 +36,7 @@ import {
   cancelEvent,
   getEventTickets,
 } from '../../services/firebaseService';
-import { uploadToCloudinary } from '../../services/cloudinary';
+import { uploadFileToStorage } from '../../services/firebaseService';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
 
@@ -150,7 +150,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
 
     try {
       setUploadingImage(true);
-      const url = await uploadToCloudinary(file);
+      const url = await uploadFileToStorage(file, 'uploads');
       setFormCoverImage(url);
     } catch (err) {
       console.error('Failed to upload cover image:', err);

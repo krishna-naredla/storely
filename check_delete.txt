@@ -1,0 +1,186 @@
+  });
+}
+
+/**
+ * Digital Products CRUD (PDF, Courses, Graphic Assets, Templates, etc.)
+ */
+export async function getDigitalProducts(businessId: string, activeOnly = false): Promise<DigitalProduct[]> {
+  try {
+    const colRef = collection(db, 'businesses', businessId, 'digital_products');
+    const snap = await getDocs(colRef);
+    let list = snap.docs.map((d) => d.data() as DigitalProduct);
+
+    if (activeOnly) {
+      list = list.filter((p) => p.status === 'active');
+    }
+    return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } catch (err) {
+    console.error('Error getting digital products:', err);
+    return [];
+  }
+}
+
+export async function getDigitalProductById(businessId: string, productId: string): Promise<DigitalProduct | null> {
+  try {
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as DigitalProduct;
+    }
+  } catch (err) {
+    console.error('Error getting digital product by id:', err);
+  }
+  return null;
+}
+
+export async function createDigitalProduct(
+  businessId: string,
+  data: Omit<DigitalProduct, 'id' | 'businessId' | 'createdAt' | 'updatedAt'>
+): Promise<DigitalProduct> {
+  const productId = 'digi_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  const now = Date.now();
+  const product: DigitalProduct = {
+    ...data,
+    id: productId,
+    businessId,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    const sanitized = sanitizeForFirestore(product);
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    await setDoc(docRef, sanitized);
+
+    // Also mirror into catalog collection with type 'product' and productType 'digital_file' for unified storefront queries
+    const catalogPayload: CatalogItem = {
+      id: productId,
+      businessId,
+      name: data.title,
+      slug: generateSlug(data.title),
+      type: 'product',
+      categoryId: 'digital',
+      shortDescription: data.description?.slice(0, 160) || '',
+      detailedDescription: data.description || '',
+      price: data.price,
+      salePrice: data.salePrice,
+      isFree: data.isFree || data.price === 0,
+      images: data.coverImage ? [data.coverImage] : [],
+      inStock: data.status === 'active',
+      isActive: data.status === 'active',
+      productType: 'digital_file',
+      digitalFileType: data.type.toLowerCase() === 'course' ? 'course' : data.type.toLowerCase() === 'pdf' ? 'pdf' : data.type.toLowerCase() === 'image' ? 'images' : 'other',
+      digitalFileUrl: data.fileUrls?.[0] || '',
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      downloadLimit: data.downloadLimit,
+      salesCount: data.salesCount || 0,
+      digitalFiles: data.courseLessons?.map((l) => ({
+        id: l.id,
+        title: l.title,
+        url: l.url,
+        fileType: l.fileType,
+        fileSize: l.fileSize,
+      })),
+      createdAt: now,
+      updatedAt: now,
+    };
+    await setDoc(doc(db, 'businesses', businessId, 'catalog', productId), sanitizeForFirestore(catalogPayload));
+  } catch (err) {
+    console.warn('Firestore createDigitalProduct warning:', err);
+  }
+  return product;
+}
+
+export async function updateDigitalProduct(
+  businessId: string,
+  productId: string,
+  data: Partial<DigitalProduct>
+): Promise<void> {
+  try {
+    const sanitized = sanitizeForFirestore({
+      ...data,
+      updatedAt: Date.now(),
+    });
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    await setDoc(docRef, sanitized, { merge: true });
+
+    // Sync mirrored catalog item if title/price/coverImage/status changed
+    const catalogDocRef = doc(db, 'businesses', businessId, 'catalog', productId);
+    const catalogSnap = await getDoc(catalogDocRef);
+    if (catalogSnap.exists()) {
+      const catalogUpdates: Partial<CatalogItem> = {
+        updatedAt: Date.now(),
+      };
+      if (data.title !== undefined) catalogUpdates.name = data.title;
+      if (data.description !== undefined) {
+        catalogUpdates.detailedDescription = data.description;
+        catalogUpdates.shortDescription = data.description.slice(0, 160);
+      }
+      if (data.price !== undefined) catalogUpdates.price = data.price;
+      if (data.salePrice !== undefined) catalogUpdates.salePrice = data.salePrice;
+      if (data.isFree !== undefined) catalogUpdates.isFree = data.isFree;
+      if (data.coverImage !== undefined) catalogUpdates.images = [data.coverImage];
+      if (data.status !== undefined) {
+        catalogUpdates.isActive = data.status === 'active';
+        catalogUpdates.inStock = data.status === 'active';
+      }
+      if (data.fileUrls !== undefined && data.fileUrls.length > 0) {
+        catalogUpdates.digitalFileUrl = data.fileUrls[0];
+      }
+      if (data.fileName !== undefined) catalogUpdates.fileName = data.fileName;
+      if (data.fileSize !== undefined) catalogUpdates.fileSize = data.fileSize;
+      if (data.courseLessons !== undefined) {
+        catalogUpdates.digitalFiles = data.courseLessons;
+      }
+      await setDoc(catalogDocRef, sanitizeForFirestore(catalogUpdates), { merge: true });
+    }
+  } catch (err) {
+    console.warn('Firestore updateDigitalProduct warning:', err);
+  }
+}
+
+export async function deleteDigitalProduct(businessId: string, productId: string): Promise<void> {
+  try {
+    // Delete from digital_products subcollection
+    const docRef = doc(db, 'businesses', businessId, 'digital_products', productId);
+    await deleteDoc(docRef);
+
+    // Also delete mirrored catalog doc
+    const catalogDocRef = doc(db, 'businesses', businessId, 'catalog', productId);
+    await deleteDoc(catalogDocRef);
+  } catch (err) {
+    console.warn('Firestore deleteDigitalProduct warning:', err);
+  }
+}
+
+export async function toggleDigitalProductStatus(
+  businessId: string,
+  productId: string,
+  currentStatus: DigitalProductStatus
+): Promise<DigitalProductStatus> {
+  const nextStatus: DigitalProductStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  await updateDigitalProduct(businessId, productId, { status: nextStatus });
+  return nextStatus;
+}
+
+export async function duplicateDigitalProduct(businessId: string, original: DigitalProduct): Promise<DigitalProduct> {
+  const { id, createdAt, updatedAt, ...rest } = original;
+  return createDigitalProduct(businessId, {
+    ...rest,
+    title: `${rest.title} (Copy)`,
+    salesCount: 0,
+  });
+}
+
+/**
+ * Orders Management
+ */
+export async function createOrder(
+  businessId: string,
+  data: Omit<Order, 'id' | 'businessId' | 'orderNumber' | 'createdAt' | 'updatedAt'>
+): Promise<Order> {
+  const orderId = 'ord_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  const orderNumber = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+  const now = Date.now();
+

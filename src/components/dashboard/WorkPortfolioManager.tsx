@@ -303,8 +303,8 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     setIsUploadingMedia(true);
     setUploadProgress(10);
     try {
-      const res = await uploadDigitalFileToCloudinary(file, (p) => setUploadProgress(p));
-      setItemMediaUrls([res.url]);
+      const url = await uploadToCloudinary(file, (p) => setUploadProgress(p));
+      setItemMediaUrls([url]);
     } catch (err) {
       console.error('Error uploading video:', err);
       alert('Failed to upload video file.');

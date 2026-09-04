@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, EventItem, EventTicket } from '../../types';
 import { EventCheckoutModal } from './EventCheckoutModal';
+import { cleanupStaleEventHolds } from '../../services/firebaseService';
 
 interface EventsShowcaseProps {
   events: EventItem[];
@@ -33,6 +34,13 @@ export const EventsShowcase: React.FC<EventsShowcaseProps> = ({
 
   // Filter out cancelled events on public storefront
   const activeEvents = events.filter((e) => e.status !== 'cancelled');
+  React.useEffect(() => {
+    // Cleanup stale holds for all active events when showcase mounts
+    activeEvents.forEach(evt => {
+      cleanupStaleEventHolds(business.id, evt.id).catch(() => {});
+    });
+  }, [business.id]); // Only run once on mount or business change
+
 
   if (activeEvents.length === 0) return null;
 

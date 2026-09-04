@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Sparkles,
   Check,
@@ -17,9 +17,9 @@ import {
   Car,
   Layers,
   Briefcase,
-} from 'lucide-react';
-import { BusinessProfile, BusinessModules } from '../../types';
-import { updateBusinessProfile } from '../../services/firebaseService';
+} from "lucide-react";
+import { BusinessProfile, BusinessModules } from "../../types";
+import { updateBusinessProfile } from "../../services/firebaseService";
 
 interface ModuleManagerProps {
   business: BusinessProfile;
@@ -30,107 +30,153 @@ interface ModuleDefinition {
   key: keyof BusinessModules;
   title: string;
   description: string;
-  category: 'Catalog' | 'Ordering' | 'Bookings' | 'Marketing';
+  category: "Catalog" | "Ordering" | "Bookings" | "Marketing" | "Creator";
   icon: React.ReactNode;
 }
 
 const MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
-    key: 'catalog_products',
-    title: 'Physical Products Catalog',
-    description: 'Sell retail items, grocery, electronics, clothing with SKU, inventory & variants.',
-    category: 'Catalog',
+    key: "products",
+    title: "Physical Products Catalog",
+    description:
+      "Sell retail items, grocery, electronics, clothing with SKU, inventory & variants.",
+    category: "Catalog",
     icon: <ShoppingBag className="w-4 h-4 text-emerald-600" />,
   },
   {
-    key: 'catalog_services',
-    title: 'Services & Appointments',
-    description: 'Display salon, spa, freelance, medical services with duration and pricing.',
-    category: 'Catalog',
+    key: "services",
+    title: "Services & Appointments",
+    description:
+      "Display salon, spa, freelance, medical services with duration and pricing.",
+    category: "Catalog",
     icon: <Sparkles className="w-4 h-4 text-purple-600" />,
   },
   {
-    key: 'catalog_menu',
-    title: 'Restaurant & Food Menu',
-    description: 'Food categories, veg/non-veg tags, spice levels, prep time & toppings.',
-    category: 'Catalog',
+    key: "menu",
+    title: "Restaurant & Food Menu",
+    description:
+      "Food categories, veg/non-veg tags, spice levels, prep time & toppings.",
+    category: "Catalog",
     icon: <UtensilsCrossed className="w-4 h-4 text-amber-600" />,
   },
   {
-    key: 'catalog_rooms',
-    title: 'Hotel Rooms & Stays',
-    description: 'Room guest capacities, bed types, amenities checklist & per-night pricing.',
-    category: 'Catalog',
+    key: "rooms",
+    title: "Hotel Rooms & Stays",
+    description:
+      "Room guest capacities, bed types, amenities checklist & per-night pricing.",
+    category: "Catalog",
     icon: <BedDouble className="w-4 h-4 text-blue-600" />,
   },
   {
-    key: 'catalog_vehicles',
-    title: 'Vehicle Fleet & Rentals',
-    description: 'Car/bike model, fuel type, transmission, seating capacity & daily rates.',
-    category: 'Catalog',
+    key: "vehicles",
+    title: "Vehicle Fleet & Rentals",
+    description:
+      "Car/bike model, fuel type, transmission, seating capacity & daily rates.",
+    category: "Catalog",
     icon: <Car className="w-4 h-4 text-teal-600" />,
   },
   {
-    key: 'cart_orders',
-    title: 'Direct Cart & Checkout',
-    description: 'Allow customers to add items to cart, select delivery/takeaway, and place orders.',
-    category: 'Ordering',
+    key: "cart_ordering",
+    title: "Direct Cart & Checkout",
+    description:
+      "Allow customers to add items to cart, select delivery/takeaway, and place orders.",
+    category: "Ordering",
     icon: <ShoppingBag className="w-4 h-4 text-emerald-600" />,
   },
   {
-    key: 'dine_in_ordering',
-    title: 'Dine-In / Table QR Ordering',
-    description: 'Let customers enter table number for contactless in-restaurant ordering.',
-    category: 'Ordering',
+    key: "table_delivery",
+    title: "Dine-In / Table QR Ordering",
+    description:
+      "Let customers enter table number for contactless in-restaurant ordering.",
+    category: "Ordering",
     icon: <UtensilsCrossed className="w-4 h-4 text-amber-600" />,
   },
   {
-    key: 'whatsapp_ordering',
-    title: 'Direct WhatsApp Checkout',
-    description: 'One-click checkout that sends formatted order details directly to your WhatsApp.',
-    category: 'Ordering',
+    key: "inquiries",
+    title: "Direct WhatsApp Checkout",
+    description:
+      "One-click checkout that sends formatted order details directly to your WhatsApp.",
+    category: "Ordering",
     icon: <MessageCircle className="w-4 h-4 text-emerald-600" />,
   },
   {
-    key: 'booking_appointments',
-    title: 'Appointment Booking Engine',
-    description: 'Allow clients to pick dates and available time slots for salon/consulting.',
-    category: 'Bookings',
+    key: "booking_appointments",
+    title: "Appointment Booking Engine",
+    description:
+      "Allow clients to pick dates and available time slots for salon/consulting.",
+    category: "Bookings",
     icon: <CalendarCheck className="w-4 h-4 text-purple-600" />,
   },
   {
-    key: 'stay_booking',
-    title: 'Room Reservation Engine',
-    description: 'Check-in and check-out dates selector for homestays, resorts and hotels.',
-    category: 'Bookings',
+    key: "stay_booking",
+    title: "Room Reservation Engine",
+    description:
+      "Check-in and check-out dates selector for homestays, resorts and hotels.",
+    category: "Bookings",
     icon: <BedDouble className="w-4 h-4 text-blue-600" />,
   },
   {
-    key: 'rental_booking',
-    title: 'Vehicle Rental Booking',
-    description: 'Trip start and end dates selector for car, bike, and equipment rental.',
-    category: 'Bookings',
+    key: "rental_booking",
+    title: "Vehicle Rental Booking",
+    description:
+      "Trip start and end dates selector for car, bike, and equipment rental.",
+    category: "Bookings",
     icon: <Car className="w-4 h-4 text-teal-600" />,
   },
   {
-    key: 'customer_reviews',
-    title: 'Storefront Customer Reviews',
-    description: 'Allow buyers to submit ratings, reviews, and read your vendor responses.',
-    category: 'Marketing',
+    key: "reviews",
+    title: "Storefront Customer Reviews",
+    description:
+      "Allow buyers to submit ratings, reviews, and read your vendor responses.",
+    category: "Marketing",
     icon: <Star className="w-4 h-4 text-amber-600" />,
   },
   {
-    key: 'offers_promotions',
-    title: 'Promotions & Discount Coupons',
-    description: 'Display percentage/flat promo banners and discount codes on storefront.',
-    category: 'Marketing',
+    key: "offers",
+    title: "Promotions & Discount Coupons",
+    description:
+      "Display percentage/flat promo banners and discount codes on storefront.",
+    category: "Marketing",
     icon: <Tag className="w-4 h-4 text-emerald-600" />,
   },
   {
-    key: 'work_portfolio',
-    title: 'Work Portfolio / Showcase',
-    description: 'Showcase showreels, galleries, case studies, client reviews, and media kit stats.',
-    category: 'Marketing',
+    key: "work_portfolio",
+    title: "Work Portfolio / Showcase",
+    description:
+      "Showcase showreels, galleries, case studies, client reviews, and media kit stats.",
+    category: "Marketing",
+    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+  },
+  {
+    key: "digital_products",
+    title: "Digital Products & Downloads",
+    description:
+      "Sell eBooks, guides, templates, and digital courses directly to your audience.",
+    category: "Creator",
+    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+  },
+  {
+    key: "universal_links",
+    title: "Bio Link & Community",
+    description:
+      "Create a custom Link-in-Bio page with your community links, socials, and top products.",
+    category: "Creator",
+    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+  },
+  {
+    key: "events_ticketing",
+    title: "Events & Webinars",
+    description:
+      "Host masterclasses, offline meetups, and paid live webinars with ticket management.",
+    category: "Creator",
+    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+  },
+  {
+    key: "custom_quotes",
+    title: "Custom Quote Requests",
+    description:
+      "Allow clients to submit tailored project requests for bespoke services.",
+    category: "Creator",
     icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
   },
 ];
@@ -157,7 +203,7 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
         modules: updated,
       });
     } catch (err) {
-      console.error('Error updating modules:', err);
+      console.error("Error updating modules:", err);
       // Revert on error
       setModules(business.modules);
     } finally {
@@ -165,7 +211,7 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
     }
   };
 
-  const categories = ['Catalog', 'Ordering', 'Bookings', 'Marketing'] as const;
+  const categories = ["Catalog", "Ordering", "Bookings", "Marketing"] as const;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -175,14 +221,17 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
           Dynamic Business Modules
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Enable or disable capabilities on the fly. Your storefront and dashboard navigation update instantly.
+          Enable or disable capabilities on the fly. Your storefront and
+          dashboard navigation update instantly.
         </p>
       </div>
 
       {/* Module Categories */}
       <div className="space-y-6">
         {categories.map((cat) => {
-          const catModules = MODULE_DEFINITIONS.filter((m) => m.category === cat);
+          const catModules = MODULE_DEFINITIONS.filter(
+            (m) => m.category === cat,
+          );
           return (
             <div key={cat} className="space-y-3">
               <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -199,8 +248,8 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
                       key={mod.key}
                       className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-4 ${
                         isEnabled
-                          ? 'bg-white border-emerald-300 shadow-2xs'
-                          : 'bg-slate-50/70 border-slate-200 opacity-70'
+                          ? "bg-white border-emerald-300 shadow-2xs"
+                          : "bg-slate-50/70 border-slate-200 opacity-70"
                       }`}
                     >
                       <div className="flex gap-3">
@@ -228,7 +277,9 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
                         disabled={isSavingThis}
                         onClick={() => handleToggle(mod.key)}
                         className={`p-1 rounded-xl transition cursor-pointer shrink-0 ${
-                          isEnabled ? 'text-emerald-600' : 'text-slate-300 hover:text-slate-400'
+                          isEnabled
+                            ? "text-emerald-600"
+                            : "text-slate-300 hover:text-slate-400"
                         }`}
                       >
                         {isSavingThis ? (

@@ -42,7 +42,7 @@ import {
   CatalogItemType,
   CatalogItemVariant,
   CatalogItemAddon,
-  DigitalFileItem,
+  
 } from '../../types';
 import {
   getCatalogItems,
@@ -63,7 +63,6 @@ import {
   uploadToCloudinary,
   uploadDigitalFileToCloudinary,
 } from '../../services/cloudinary';
-import { DigitalProductsManager } from './DigitalProductsManager';
 
 interface CatalogManagerProps {
   business: BusinessProfile;
@@ -72,9 +71,7 @@ interface CatalogManagerProps {
 export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   const { t } = useLanguage();
   const isDigitalCreator = business.type === 'creator' || business.type === 'services' || business.modules?.digitalProducts;
-  const [activeCatalogTab, setActiveCatalogTab] = useState<'standard' | 'digital'>(
-    business.type === 'creator' ? 'digital' : 'standard'
-  );
+  
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,7 +138,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileName, setDigitalFileName] = useState('');
   const [digitalFileSize, setDigitalFileSize] = useState('');
-  const [digitalFiles, setDigitalFiles] = useState<DigitalFileItem[]>([]);
+  const [digitalFiles, setDigitalFiles] = useState<[]>([]);
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [consultationDuration, setConsultationDuration] = useState<number>(30);
   const [consultationDays, setConsultationDays] = useState<string[]>(['MO', 'TU', 'WE', 'TH', 'FR']);
@@ -379,7 +376,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       setIsUploadingFile(true);
       setUploadProgress(0);
       const res = await uploadDigitalFileToCloudinary(file, (p) => setUploadProgress(p));
-      const newFileItem: DigitalFileItem = {
+      const newFileItem = {
         id: 'lesson_' + Date.now(),
         title: newLessonTitle.trim() || res.fileName,
         url: res.url,
@@ -506,37 +503,6 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
 
   return (
     <div className="space-y-6">
-      {/* Top Tab Bar when Digital Products module or Creator type is enabled */}
-      {(isDigitalCreator || business.modules?.digital_products || business.modules?.digitalProducts) && (
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-          <button
-            onClick={() => setActiveCatalogTab('digital')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeCatalogTab === 'digital'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
-          >
-            <FileText className="w-4 h-4" /> Digital Products & Courses
-          </button>
-          <button
-            onClick={() => setActiveCatalogTab('standard')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeCatalogTab === 'standard'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
-          >
-            <Package className="w-4 h-4" /> Standard Catalog & 1:1 Services
-          </button>
-        </div>
-      )}
-
-      {/* Render Digital Products Manager when active */}
-      {activeCatalogTab === 'digital' && (isDigitalCreator || business.modules?.digital_products || business.modules?.digitalProducts) ? (
-        <DigitalProductsManager businessId={business.id} businessName={business.name} />
-      ) : (
-        <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
@@ -818,6 +784,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   </select>
                 </div>
                 <div>
+                  
                   <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
                     Item Type
                   </label>
@@ -826,9 +793,11 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     onChange={e => setType(e.target.value as any)}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl"
                   >
-                    <option value="product">Product</option>
-                    <option value="service">Service</option>
+                    {bizMeta.supportedItemTypes.map(t => (
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                    ))}
                   </select>
+
                 </div>
               </div>
 
@@ -1122,8 +1091,6 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
             </form>
           </div>
         </div>
-      )}
-      </>
       )}
 
       <ConfirmDialog
