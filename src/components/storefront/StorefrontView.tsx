@@ -291,7 +291,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         link = document.createElement('link');
         link.type = 'image/x-icon';
         link.rel = 'shortcut icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
+        const headEl = document.head || document.getElementsByTagName('head')?.[0];
+        if (headEl) headEl.appendChild(link);
       }
       link.href = business.logo;
     }
@@ -958,6 +959,18 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Portfolio & Creative Showcase */}
+        {(business.modules?.work_portfolio || portfolioItems.length > 0) && (
+          <PortfolioShowcase
+            business={business}
+            items={portfolioItems}
+            testimonials={testimonials}
+            onBookConsultation={(item) => {
+              if (item) setSelectedItemForBooking(item);
+            }}
+          />
+        )}
 
         {/* Customer Reviews & Testimonials Section */}
         <section className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">

@@ -39,6 +39,7 @@ import {
   Linkedin,
   Globe,
   Settings2,
+  Palette,
 } from 'lucide-react';
 import {
   BusinessProfile,
@@ -72,6 +73,10 @@ import {
 } from '../../services/cloudinary';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { SafeImage } from '../common/SafeImage';
+import { PortfolioUrlBanner } from '../portfolio/PortfolioUrlBanner';
+import { PortfolioAppearanceTab } from '../portfolio/PortfolioAppearanceTab';
+import { PortfolioItemEditor } from '../portfolio/PortfolioItemEditor';
+import { PortfolioEmptyIllustration } from '../portfolio/PortfolioEmptyIllustration';
 
 interface WorkPortfolioManagerProps {
   business: BusinessProfile;
@@ -105,7 +110,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   business,
   onBusinessUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'items' | 'mediakit' | 'testimonials' | 'cta'>('items');
+  const [activeTab, setActiveTab] = useState<'items' | 'appearance' | 'mediakit' | 'testimonials' | 'cta'>('items');
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [consultationItems, setConsultationItems] = useState<CatalogItem[]>([]);
@@ -113,27 +118,102 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Item Form Modal
-  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  // Routable Item Editor Mode
+  const [editorMode, setEditorMode] = useState<'list' | 'create' | 'edit'>('list');
   const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null);
-  const [isSavingItem, setIsSavingItem] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<PortfolioItem | null>(null);
 
-  // Item Form State
-  const [itemTitle, setItemTitle] = useState('');
-  const [itemCategory, setItemCategory] = useState<PortfolioCategory>('Photography');
-  const [itemCoverImage, setItemCoverImage] = useState('');
-  const [itemMediaType, setItemMediaType] = useState<PortfolioMediaType>('image');
-  const [itemMediaUrls, setItemMediaUrls] = useState<string[]>([]);
-  const [itemExternalUrl, setItemExternalUrl] = useState('');
-  const [itemDescription, setItemDescription] = useState('');
-  const [itemTags, setItemTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
-  const [itemClientName, setItemClientName] = useState('');
-  const [itemProjectOutcome, setItemProjectOutcome] = useState('');
-  const [itemIsActive, setItemIsActive] = useState(true);
-  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  // Sync routable URL parameters for deep-linking
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const view = searchParams.get('portfolio_view') || searchParams.get('view');
+    const itemId = searchParams.get('portfolio_item_id') || searchParams.get('itemId');
+
+    if (view === 'new') {
+      setEditingItem(null);
+      setEditorMode('create');
+    } else if (view === 'edit' && itemId && items.length > 0) {
+      const match = items.find((i) => i.id === itemId);
+      if (match) {
+        setEditingItem(match);
+        setEditorMode('edit');
+      }
+    }
+  }, [items]);
+
+  const handleOpenCreateItem = () => {
+    setEditingItem(null);
+    setEditorMode('create');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('portfolio_view', 'new');
+      url.searchParams.delete('portfolio_item_id');
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleOpenEditItem = (item: PortfolioItem) => {
+    setEditingItem(item);
+    setEditorMode('edit');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('portfolio_view', 'edit');
+      url.searchParams.set('portfolio_item_id', item.id);
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleCloseEditor = () => {
+    setEditorMode('list');
+    setEditingItem(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('portfolio_view');
+      url.searchParams.delete('portfolio_item_id');
+      url.searchParams.delete('view');
+      url.searchParams.delete('itemId');
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleSavePortfolioItem = async (data: Omit<PortfolioItem, 'id' | 'businessId' | 'createdAt' | 'updatedAt' | 'order'>) => {
+    if (editingItem) {
+      await updatePortfolioItem(business.id, editingItem.id, data);
+      setItems((prev) =>
+        prev.map((i) => (i.id === editingItem.id ? ({ ...i, ...data } as PortfolioItem) : i))
+      );
+    } else {
+      const order = items.length;
+      const created = await createPortfolioItem(business.id, {
+        title: data.title || '',
+        category: data.category || 'Other',
+        coverImage: data.coverImage || '',
+        mediaType: data.mediaType || 'image',
+        mediaUrls: data.mediaUrls || [],
+        externalUrl: data.externalUrl,
+        description: data.description || '',
+        tags: data.tags || [],
+        clientName: data.clientName,
+        projectOutcome: data.projectOutcome,
+        year: data.year || data.projectYear,
+        projectYear: data.projectYear || data.year,
+        role: data.role,
+        liveDemoUrl: data.liveDemoUrl,
+        githubUrl: data.githubUrl,
+        figmaUrl: data.figmaUrl,
+        caseStudyNarrative: data.caseStudyNarrative || data.caseStudyStory,
+        caseStudyStory: data.caseStudyStory || data.caseStudyNarrative,
+        readTime: data.readTime,
+        videoViews: data.videoViews,
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        order,
+      });
+      setItems((prev) => [...prev, created]);
+    }
+    handleCloseEditor();
+  };
+
 
   // Testimonials State
   const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false);
@@ -205,178 +285,8 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     loadPortfolioData();
   }, [business.id]);
 
-  // Open Create Item Modal
-  const handleOpenCreateItem = () => {
-    setEditingItem(null);
-    setItemTitle('');
-    setItemCategory('Photography');
-    setItemCoverImage('');
-    setItemMediaType('image');
-    setItemMediaUrls([]);
-    setItemExternalUrl('');
-    setItemDescription('');
-    setItemTags([]);
-    setTagInput('');
-    setItemClientName('');
-    setItemProjectOutcome('');
-    setItemIsActive(true);
-    setIsItemModalOpen(true);
-  };
 
-  // Open Edit Item Modal
-  const handleOpenEditItem = (item: PortfolioItem) => {
-    setEditingItem(item);
-    setItemTitle(item.title);
-    setItemCategory(item.category || 'Photography');
-    setItemCoverImage(item.coverImage || '');
-    setItemMediaType(item.mediaType || 'image');
-    setItemMediaUrls(item.mediaUrls || []);
-    setItemExternalUrl(item.externalUrl || '');
-    setItemDescription(item.description || '');
-    setItemTags(item.tags || []);
-    setTagInput('');
-    setItemClientName(item.clientName || '');
-    setItemProjectOutcome(item.projectOutcome || '');
-    setItemIsActive(item.isActive !== false);
-    setIsItemModalOpen(true);
-  };
 
-  // Add Tag
-  const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    const cleanTag = tagInput.trim().toLowerCase();
-    if (!itemTags.includes(cleanTag)) {
-      setItemTags([...itemTags, cleanTag]);
-    }
-    setTagInput('');
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setItemTags(itemTags.filter((t) => t !== tagToRemove));
-  };
-
-  // Upload Cover Image
-  const handleUploadCoverImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingMedia(true);
-    setUploadProgress(10);
-    try {
-      const url = await uploadToCloudinary(file, (p) => setUploadProgress(p));
-      setItemCoverImage(url);
-    } catch (err) {
-      console.error('Error uploading cover image:', err);
-      alert('Failed to upload image. Please try again.');
-    } finally {
-      setIsUploadingMedia(false);
-      setUploadProgress(0);
-    }
-  };
-
-  // Upload Gallery Images
-  const handleUploadGalleryImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setIsUploadingMedia(true);
-    setUploadProgress(10);
-    try {
-      const uploadedUrls: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const url = await uploadToCloudinary(file);
-        uploadedUrls.push(url);
-      }
-      setItemMediaUrls((prev) => [...prev, ...uploadedUrls]);
-      if (!itemCoverImage && uploadedUrls.length > 0) {
-        setItemCoverImage(uploadedUrls[0]);
-      }
-    } catch (err) {
-      console.error('Error uploading gallery images:', err);
-      alert('Error uploading one or more images.');
-    } finally {
-      setIsUploadingMedia(false);
-      setUploadProgress(0);
-    }
-  };
-
-  // Upload Video File
-  const handleUploadVideoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingMedia(true);
-    setUploadProgress(10);
-    try {
-      const url = await uploadToCloudinary(file, (p) => setUploadProgress(p));
-      setItemMediaUrls([url]);
-    } catch (err) {
-      console.error('Error uploading video:', err);
-      alert('Failed to upload video file.');
-    } finally {
-      setIsUploadingMedia(false);
-      setUploadProgress(0);
-    }
-  };
-
-  // Save Portfolio Item
-  const handleSaveItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!itemTitle.trim()) {
-      alert('Please enter a project title');
-      return;
-    }
-    if (!itemCoverImage.trim()) {
-      alert('Please upload a cover thumbnail image');
-      return;
-    }
-
-    if (itemMediaType === 'external_video' || itemMediaType === 'external_link') {
-      if (!itemExternalUrl.trim()) {
-        alert('Please provide a valid destination URL (YouTube, Vimeo, Figma, or website link)');
-        return;
-      }
-      try {
-        new URL(itemExternalUrl.trim());
-      } catch {
-        alert('Please enter a valid URL starting with http:// or https://');
-        return;
-      }
-    }
-
-    setIsSavingItem(true);
-    try {
-      const payload = {
-        title: itemTitle.trim(),
-        category: itemCategory,
-        coverImage: itemCoverImage.trim(),
-        mediaType: itemMediaType,
-        mediaUrls: itemMediaUrls,
-        externalUrl: itemExternalUrl.trim() || undefined,
-        description: itemDescription.trim(),
-        tags: itemTags,
-        clientName: itemClientName.trim() || undefined,
-        projectOutcome: itemProjectOutcome.trim() || undefined,
-        isActive: itemIsActive,
-        order: editingItem ? editingItem.order : items.length,
-      };
-
-      if (editingItem) {
-        await updatePortfolioItem(business.id, editingItem.id, payload);
-        setItems((prev) =>
-          prev.map((i) => (i.id === editingItem.id ? { ...i, ...payload } : i))
-        );
-      } else {
-        const created = await createPortfolioItem(business.id, payload);
-        setItems((prev) => [...prev, created]);
-      }
-
-      setIsItemModalOpen(false);
-    } catch (err) {
-      console.error('Error saving portfolio item:', err);
-      alert('Failed to save portfolio item.');
-    } finally {
-      setIsSavingItem(false);
-    }
-  };
 
   // Toggle Active Status
   const handleToggleItemActive = async (item: PortfolioItem) => {
@@ -627,6 +537,23 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     return true;
   });
 
+  // Full-page routable view for creating or editing work sample items
+  if (editorMode !== 'list') {
+    return (
+      <PortfolioItemEditor
+        business={business}
+        editingItem={editingItem}
+        categories={
+          business.portfolioSettings?.customCategories && business.portfolioSettings.customCategories.length > 0
+            ? business.portfolioSettings.customCategories
+            : CATEGORIES
+        }
+        onBack={handleCloseEditor}
+        onSave={handleSavePortfolioItem}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Banner Header */}
@@ -659,6 +586,9 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
         </div>
       </div>
 
+      {/* Standalone Public URL & QR Banner */}
+      <PortfolioUrlBanner business={business} itemCount={items.length} />
+
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-2 no-scrollbar">
         <button
@@ -670,6 +600,17 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
           }`}
         >
           <Briefcase className="w-4 h-4" /> Work Samples ({items.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('appearance')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+            activeTab === 'appearance'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <Palette className="w-4 h-4" /> Profession & Themes
         </button>
 
         <button
@@ -706,6 +647,16 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
           <Settings2 className="w-4 h-4" /> Enquiry & CTA Setup
         </button>
       </div>
+
+      {/* ===================================================== */}
+      {/* TAB: PROFESSION & THEMES (CUSTOMIZATION ENGINE) */}
+      {/* ===================================================== */}
+      {activeTab === 'appearance' && (
+        <PortfolioAppearanceTab
+          business={business}
+          onBusinessUpdated={onBusinessUpdated}
+        />
+      )}
 
       {/* ===================================================== */}
       {/* TAB 1: WORK SAMPLES / PORTFOLIO ITEMS */}
@@ -759,22 +710,51 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
 
           {/* Items Grid / Empty State */}
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-8">
-              {[1, 2, 3].map((i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 py-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
-                  className="rounded-3xl bg-white border border-slate-200 p-4 h-64 animate-pulse"
-                />
+                  className="rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs animate-pulse flex flex-col justify-between"
+                >
+                  <div className="h-44 bg-slate-200" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-slate-200 rounded-md w-3/4" />
+                    <div className="h-3 bg-slate-100 rounded-md w-full" />
+                    <div className="h-3 bg-slate-100 rounded-md w-2/3" />
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <div className="h-6 w-16 bg-slate-100 rounded-lg" />
+                      <div className="h-6 w-20 bg-slate-200 rounded-lg" />
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
-          ) : filteredItems.length === 0 ? (
-            <DashboardEmptyState
-              icon={Briefcase}
-              title="No portfolio items found"
-              description={searchQuery ? 'No items match your search query.' : 'Showcase your best work, case studies, or design mockups to attract potential clients.'}
-              actionLabel="Add Portfolio Item"
-              onAction={() => handleOpenCreateItem()}
+          ) : items.length === 0 ? (
+            <PortfolioEmptyIllustration
+              onAddItem={handleOpenCreateItem}
+              title="Showcase Your Best Work"
+              description="Your portfolio is currently empty. Add your client case studies, design projects, photos, or showreels to attract new bookings and quote requests."
             />
+          ) : filteredItems.length === 0 ? (
+            <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-200 p-8 space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto">
+                <Briefcase className="w-7 h-7" />
+              </div>
+              <h4 className="text-base font-bold text-slate-800">No Matching Work Samples</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                No projects match the current filter or search query.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategoryFilter('all');
+                  setSearchQuery('');
+                }}
+                className="px-4 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition cursor-pointer"
+              >
+                Clear Filters
+              </button>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems.map((item, index) => {
@@ -1482,385 +1462,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
         </div>
       )}
 
-      {/* ===================================================== */}
-      {/* MODAL: ADD / EDIT WORK SAMPLE */}
-      {/* ===================================================== */}
-      {isItemModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 my-8 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 font-heading">
-                  {editingItem ? 'Edit Work Sample' : 'Add Work Sample to Showcase'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Add high-resolution media, project context, and client results.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsItemModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSaveItem} className="space-y-4">
-              {/* Title & Category Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Project Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Arjun & Priya Wedding Film"
-                    value={itemTitle}
-                    onChange={(e) => setItemTitle(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Discipline / Category *
-                  </label>
-                  <select
-                    value={itemCategory}
-                    onChange={(e) => setItemCategory(e.target.value as PortfolioCategory)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
-                  >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Cover Thumbnail Image */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Cover Thumbnail (Required) *
-                </label>
-                <div className="flex items-center gap-4">
-                  {itemCoverImage ? (
-                    <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-slate-200 shrink-0">
-                      <SafeImage
-                        src={itemCoverImage}
-                        alt="Cover preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setItemCoverImage('')}
-                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md text-xs hover:bg-red-700 cursor-pointer"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-24 h-24 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 shrink-0">
-                      <ImageIcon className="w-6 h-6" />
-                    </div>
-                  )}
-
-                  <div className="flex-1 space-y-2">
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold cursor-pointer transition">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{itemCoverImage ? 'Replace Cover Image' : 'Upload Cover Image'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleUploadCoverImage}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-[11px] text-slate-400">
-                      Supports JPG, PNG, WEBP. Optimized automatically via Cloudinary.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Media Type Selector */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Media Type
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {[
-                    { type: 'image' as PortfolioMediaType, label: 'Single Photo', icon: ImageIcon },
-                    { type: 'gallery' as PortfolioMediaType, label: 'Photo Gallery', icon: Layers },
-                    { type: 'video_file' as PortfolioMediaType, label: 'Uploaded Video', icon: Film },
-                    { type: 'external_video' as PortfolioMediaType, label: 'YouTube / Vimeo', icon: Play },
-                    { type: 'external_link' as PortfolioMediaType, label: 'Live Link / Figma', icon: ExternalLink },
-                  ].map((m) => {
-                    const Icon = m.icon;
-                    const isSelected = itemMediaType === m.type;
-                    return (
-                      <button
-                        key={m.type}
-                        type="button"
-                        onClick={() => setItemMediaType(m.type)}
-                        className={`p-2.5 rounded-xl border text-center flex flex-col items-center gap-1 transition cursor-pointer ${
-                          isSelected
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold shadow-xs'
-                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span className="text-[11px]">{m.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Dynamic Media Type Inputs */}
-              {itemMediaType === 'gallery' && (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700">
-                      Gallery Images ({itemMediaUrls.length})
-                    </label>
-                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-indigo-600 hover:bg-slate-50 rounded-lg text-xs font-bold cursor-pointer transition">
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Upload Photos</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleUploadGalleryImages}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-
-                  {itemMediaUrls.length > 0 ? (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                      {itemMediaUrls.map((url, idx) => (
-                        <div
-                          key={idx}
-                          className="relative h-16 rounded-lg overflow-hidden border border-slate-200 group"
-                        >
-                          <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setItemMediaUrls(itemMediaUrls.filter((_, i) => i !== idx))
-                            }
-                            className="absolute top-0.5 right-0.5 p-1 bg-red-600 text-white rounded text-[10px] opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-slate-400">
-                      Upload multiple high-resolution photos for clients to browse in a fullscreen lightbox.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {itemMediaType === 'video_file' && (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                  <label className="text-xs font-bold text-slate-700 block">
-                    Upload Video File (MP4, MOV)
-                  </label>
-                  {itemMediaUrls[0] ? (
-                    <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                        <Film className="w-4 h-4 text-indigo-600" />
-                        <span>Video Uploaded</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setItemMediaUrls([])}
-                        className="text-xs text-red-600 font-bold hover:underline cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center p-6 bg-white border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-indigo-500 transition">
-                      <Upload className="w-6 h-6 text-slate-400 mb-1" />
-                      <span className="text-xs font-bold text-indigo-600">
-                        Click to upload video file
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        MP4, WEBM or MOV files
-                      </span>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={handleUploadVideoFile}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-              )}
-
-              {(itemMediaType === 'external_video' || itemMediaType === 'external_link') && (
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    {itemMediaType === 'external_video'
-                      ? 'YouTube / Vimeo Video URL *'
-                      : 'Project / Live App / Figma URL *'}
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    placeholder={
-                      itemMediaType === 'external_video'
-                        ? 'https://www.youtube.com/watch?v=...'
-                        : 'https://figma.com/file/... or https://myapp.com'
-                    }
-                    value={itemExternalUrl}
-                    onChange={(e) => setItemExternalUrl(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono"
-                  />
-                </div>
-              )}
-
-              {/* Description */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Project Description / Case Study
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Explain the project scope, artistic direction, deliverables, and outcome..."
-                  value={itemDescription}
-                  onChange={(e) => setItemDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 leading-relaxed"
-                />
-              </div>
-
-              {/* Client & Outcome Metadata */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Client / Brand Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Vogue India, Acme Corp"
-                    value={itemClientName}
-                    onChange={(e) => setItemClientName(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Key Outcome (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 5M+ Views, 40% Conversion Lift"
-                    value={itemProjectOutcome}
-                    onChange={(e) => setItemProjectOutcome(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Tags Input */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Tags (Free text)
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. bridal, 4k, mobile-app (Hit Enter)"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
-                    className="flex-1 px-3.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTag}
-                    className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
-                  >
-                    Add Tag
-                  </button>
-                </div>
-                {itemTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {itemTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center gap-1"
-                      >
-                        #{tag}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTag(tag)}
-                          className="hover:text-red-600 cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Active Toggle */}
-              <div className="pt-2 flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={itemIsActive}
-                    onChange={(e) => setItemIsActive(e.target.checked)}
-                    className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-                  />
-                  <span className="text-xs font-bold text-slate-700">
-                    Visible on Public Portfolio Showcase
-                  </span>
-                </label>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsItemModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 text-xs font-bold rounded-xl transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingItem || isUploadingMedia}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingItem ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  <span>{editingItem ? 'Save Changes' : 'Publish Sample'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ===================================================== */}
       {/* MODAL: ADD / EDIT TESTIMONIAL */}

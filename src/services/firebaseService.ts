@@ -1189,52 +1189,143 @@ export async function permanentlyDeleteStoreAccount(business: BusinessProfile): 
   }
 }
 
-// BIO LINKS
-export const getBioLinks = async (businessId: string) => {
+// BIO LINKS HELPERS
+const getLocalBioLinks = (businessId: string): any[] => {
   try {
-    const q = query(
-      collection(db, 'biolinks'),
-      where('businessId', '==', businessId),
-      orderBy('order', 'asc')
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error('Error fetching bio links:', error?.message || error, error);
+    const raw = localStorage.getItem(`storelly_biolinks_${businessId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
     return [];
   }
 };
 
+const saveLocalBioLinks = (businessId: string, links: any[]) => {
+  try {
+    localStorage.setItem(`storelly_biolinks_${businessId}`, JSON.stringify(links));
+  } catch (e) {
+    console.warn('Failed to save biolinks locally:', e);
+  }
+};
+
+// BIO LINKS
+export const getBioLinks = async (businessId: string) => {
+  let items: any[] = [];
+  try {
+    // 1. Try compound query
+    try {
+      const q = query(
+        collection(db, 'biolinks'),
+        where('businessId', '==', businessId),
+        orderBy('order', 'asc')
+      );
+      const snapshot = await getDocs(q);
+      items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (indexError) {
+      // Fallback query without compound orderBy in case composite index is missing
+      const fallbackQuery = query(
+        collection(db, 'biolinks'),
+        where('businessId', '==', businessId)
+      );
+      const snapshot = await getDocs(fallbackQuery);
+      items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      items.sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    if (items.length > 0) {
+      saveLocalBioLinks(businessId, items);
+      return items;
+    }
+  } catch (error) {
+    console.warn('Error fetching bio links from Firestore, using local cache:', error);
+  }
+
+  // Fallback to local storage cache
+  const localItems = getLocalBioLinks(businessId);
+  return localItems.sort((a, b) => (a.order || 0) - (b.order || 0));
+};
+
 export const createBioLink = async (businessId: string, data: any) => {
-  const docRef = await addDoc(collection(db, 'biolinks'), {
-    businessId,
+  const newLink = {
     ...data,
+    businessId,
     createdAt: Date.now(),
-    updatedAt: Date.now()
-  });
-  return docRef.id;
+    updatedAt: Date.now(),
+  };
+
+  const tempId = 'bl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  // Optimistically save locally
+  const current = getLocalBioLinks(businessId);
+  saveLocalBioLinks(businessId, [...current, { ...newLink, id: tempId }]);
+
+  try {
+    const docRef = await addDoc(collection(db, 'biolinks'), newLink);
+    // Update local cache with real firestore ID
+    const updated = getLocalBioLinks(businessId).map(l => l.id === tempId ? { ...l, id: docRef.id } : l);
+    saveLocalBioLinks(businessId, updated);
+    return docRef.id;
+  } catch (err) {
+    console.warn('Firestore addDoc warning for createBioLink, preserved locally:', err);
+    return tempId;
+  }
 };
 
 export const updateBioLink = async (linkId: string, data: any) => {
-  const docRef = doc(db, 'biolinks', linkId);
-  await updateDoc(docRef, {
-    ...data,
-    updatedAt: Date.now()
-  });
+  // Update local caches across businesses
+  const localList = getLocalBusinesses();
+  for (const b of localList) {
+    const bLinks = getLocalBioLinks(b.id);
+    const target = bLinks.find(l => l.id === linkId);
+    if (target) {
+      const updatedList = bLinks.map(l => l.id === linkId ? { ...l, ...data, updatedAt: Date.now() } : l);
+      saveLocalBioLinks(b.id, updatedList);
+      break;
+    }
+  }
+
+  try {
+    const docRef = doc(db, 'biolinks', linkId);
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: Date.now()
+    });
+  } catch (err) {
+    console.warn('Firestore updateBioLink warning:', err);
+  }
 };
 
 export const deleteBioLink = async (linkId: string) => {
-  const docRef = doc(db, 'biolinks', linkId);
-  await deleteDoc(docRef);
+  const localList = getLocalBusinesses();
+  for (const b of localList) {
+    const bLinks = getLocalBioLinks(b.id);
+    if (bLinks.some(l => l.id === linkId)) {
+      saveLocalBioLinks(b.id, bLinks.filter(l => l.id !== linkId));
+      break;
+    }
+  }
+
+  try {
+    const docRef = doc(db, 'biolinks', linkId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Firestore deleteBioLink warning:', err);
+  }
 };
 
 export const updateBioLinksOrder = async (links: any[]) => {
-  const batch = writeBatch(db);
-  links.forEach((link, index) => {
-    const ref = doc(db, 'biolinks', link.id);
-    batch.update(ref, { order: index, updatedAt: Date.now() });
-  });
-  await batch.commit();
+  if (links.length > 0 && links[0].businessId) {
+    saveLocalBioLinks(links[0].businessId, links);
+  }
+
+  try {
+    const batch = writeBatch(db);
+    links.forEach((link, index) => {
+      const ref = doc(db, 'biolinks', link.id);
+      batch.update(ref, { order: index, updatedAt: Date.now() });
+    });
+    await batch.commit();
+  } catch (err) {
+    console.warn('Firestore updateBioLinksOrder batch warning:', err);
+  }
 };
 
 export const recordBioLinkClick = async (businessId: string, linkId: string) => {

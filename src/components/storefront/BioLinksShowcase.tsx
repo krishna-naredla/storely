@@ -1,34 +1,11 @@
 import React from 'react';
-import { ExternalLink, Instagram, Youtube, Facebook, Twitter, Send, Linkedin, MessageSquare, FileText, Folder, Globe, Briefcase, ShoppingBag, Mail, Phone, Link as LinkIcon, MessageCircle } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { recordBioLinkClick } from '../../services/firebaseService';
+import { SocialBrandIcon, getBrandConfig } from '../biolink/SocialBrandIcons';
 
-const getIcon = (type: string) => {
-  switch (type) {
-    case 'whatsapp':
-    case 'whatsapp_community': return MessageCircle;
-    case 'instagram': return Instagram;
-    case 'youtube': return Youtube;
-    case 'facebook': return Facebook;
-    case 'twitter': return Twitter;
-    case 'telegram': return Send;
-    case 'linkedin': return Linkedin;
-    case 'discord': return MessageSquare;
-    case 'google_form':
-    case 'google_sheet':
-    case 'google_doc': return FileText;
-    case 'gdrive': return Folder;
-    case 'website': return Globe;
-    case 'portfolio': return Briefcase;
-    case 'digital_store': return ShoppingBag;
-    case 'email': return Mail;
-    case 'phone': return Phone;
-    default: return LinkIcon;
-  }
-};
-
-export const BioLinksShowcase = ({ links, business }: { links: any[], business: any }) => {
+export const BioLinksShowcase = ({ links, business }: { links: any[]; business: any }) => {
   if (!links || links.length === 0) return null;
-  
+
   const theme = business.bioTheme || {
     backgroundColor: '#f8fafc',
     textColor: '#0f172a',
@@ -37,27 +14,64 @@ export const BioLinksShowcase = ({ links, business }: { links: any[], business: 
     buttonTextColor: '#0f172a',
   };
 
+  const getRadiusClass = () => {
+    if (theme.buttonStyle === 'pill') return 'rounded-full';
+    if (theme.buttonStyle === 'square') return 'rounded-lg';
+    return 'rounded-2xl';
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4 mb-8">
+    <div className="w-full max-w-xl mx-auto space-y-3 mb-8 px-4">
       {links.map((link) => {
-        const Icon = getIcon(link.type);
+        const brand = getBrandConfig(link.type);
+        const displaySubtitle = link.subtitle || brand.defaultSubtitle;
+
         return (
           <a
             key={link.id}
-            href={link.url.startsWith('http') ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" onClick={(e) => { recordBioLinkClick(business.id, link.id).catch(console.error); }}
-            className="w-full group relative flex items-center p-4 hover:scale-[1.02] transition-transform cursor-pointer shadow-sm overflow-hidden"
+            href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => {
+              recordBioLinkClick(business.id, link.id).catch(console.error);
+            }}
+            className={`w-full group text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] flex items-center p-3 sm:p-3.5 border ${getRadiusClass()}`}
             style={{
               backgroundColor: theme.buttonColor,
               color: theme.buttonTextColor,
-              borderRadius: theme.buttonStyle === 'pill' ? '999px' : theme.buttonStyle === 'rounded' ? '16px' : '0px',
-              border: `1px solid ${theme.textColor}15`
+              borderColor: 'rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
             }}
           >
-            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-black/5 rounded-full mr-4">
-              <Icon className="w-5 h-5 opacity-90" />
+            {/* Authentic Brand Icon Container */}
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0 mr-3.5 shadow-sm transition-transform duration-200 group-hover:scale-105"
+              style={{
+                background:
+                  link.type === 'instagram'
+                    ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                    : brand.color,
+              }}
+            >
+              <SocialBrandIcon type={link.type} size={22} className="w-5.5 h-5.5 text-white" />
             </div>
-            <span className="font-bold flex-1 text-left text-sm sm:text-base pr-8">{link.title}</span>
-            <ExternalLink className="absolute right-6 w-4 h-4 opacity-0 group-hover:opacity-40 transition-opacity" />
+
+            {/* Title & Subtitle */}
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="font-bold text-sm sm:text-base leading-snug truncate">
+                {link.title}
+              </div>
+              {displaySubtitle && (
+                <div className="text-xs text-slate-500 leading-tight truncate mt-0.5">
+                  {displaySubtitle}
+                </div>
+              )}
+            </div>
+
+            {/* Right Chevron Indicator */}
+            <div className="text-slate-400 group-hover:text-slate-600 transition-colors flex-shrink-0 pl-1">
+              <ChevronRight className="w-5 h-5" />
+            </div>
           </a>
         );
       })}

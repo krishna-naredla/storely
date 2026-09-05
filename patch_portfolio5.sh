@@ -1,0 +1,1 @@
+sed -i 's/<div className={`min-h-screen pb-24 ${getThemeWrapperClass()}`}>/<div className={`min-h-screen pb-24 ${getThemeWrapperClass()}`} style={{ backgroundColor: themeConfig.backgroundColor }}>/' src/components/portfolio/StandalonePortfolioView.tsx

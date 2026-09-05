@@ -29,6 +29,7 @@ import {
 import { BusinessProfile } from "../../types";
 import { BUSINESS_TYPES } from "../../services/businessConfig";
 import { subscribeToOrders } from "../../services/firebaseService";
+import { isCreatorProfile, getProfileTypeLabel } from "../../utils/profileHelper";
 
 export type DashboardTab =
   | "overview"
@@ -89,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : BUSINESS_TYPES.retail;
   const modules = business?.modules;
 
-  const isCreator = business?.type === 'creator';
+  const isCreator = isCreatorProfile(business);
   
   const navItems: {
     id: DashboardTab;
@@ -99,16 +100,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     visible: boolean;
   }[] = isCreator ? [
     { id: "overview", label: "Overview", icon: LayoutDashboard, visible: true },
-    { id: "modules", label: "My Modules", icon: Layers, visible: true },
+    { id: "modules", label: "Creator Modules", icon: Layers, badge: "Modules", visible: true },
+    { id: "portfolio", label: "Work Portfolio", icon: Briefcase, badge: "Showcase", visible: !!modules?.work_portfolio || !!modules?.portfolio },
+    { id: "biolink", label: "Universal Bio Link", icon: Link, badge: "@link", visible: !!modules?.universal_links },
     { id: "catalog", label: "Digital Store", icon: ShoppingBag, visible: !!modules?.digital_products || !!modules?.digitalProducts },
-    { id: "orders", label: "Downloads & Orders", icon: Package, visible: !!modules?.digital_products || !!modules?.digitalProducts },
-    { id: "biolink", label: "Universal Bio Link", icon: Link, visible: !!modules?.universal_links },
-    { id: "portfolio", label: "Portfolio", icon: Briefcase, visible: !!modules?.work_portfolio || !!modules?.portfolio },
-    { id: "events", label: "Events & Ticketing", icon: Ticket, visible: !!modules?.events_ticketing },
+    { id: "orders", label: "Downloads & Orders", icon: Package, visible: !!modules?.digital_products || !!modules?.digitalProducts || !!modules?.cart_ordering },
+    { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: !!modules?.booking_appointments },
     { id: "quotes", label: "Custom Quotes", icon: FileText, visible: !!modules?.custom_quotes },
-    { id: "reviews", label: "Reviews", icon: Star, visible: true },
-    { id: "analytics", label: "Analytics", icon: BarChart3, visible: true },
-    { id: "settings", label: "Settings", icon: Settings, visible: true },
+    { id: "events", label: "Events & Ticketing", icon: Ticket, visible: !!modules?.events_tickets || !!modules?.events_ticketing },
+    { id: "reviews", label: "Client Testimonials", icon: Star, visible: !!modules?.reviews !== false },
+    { id: "analytics", label: "Analytics & Traffic", icon: BarChart3, visible: true },
+    { id: "payments", label: "Payment Setup", icon: CreditCard, visible: true },
+    { id: "settings", label: "Creator Profile", icon: Settings, visible: true },
   ] : [
     {
       id: "overview",
@@ -299,7 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {/* Current Business Card - Click to Open Storefront */}
+          {/* Current Business Card - Click to Open Storefront / Portfolio */}
           {business && (
             <div className="px-3.5 pt-3 pb-1">
               <button
@@ -308,37 +311,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onOpenStorefront();
                   onClose();
                 }}
-                title="Click to open your live public storefront"
-                className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50/80 active:bg-emerald-100/60 border border-slate-200/80 hover:border-emerald-300 flex items-center gap-2.5 transition group cursor-pointer shadow-2xs"
+                title={isCreator ? "Click to view your live portfolio / public page" : "Click to open your live public storefront"}
+                className={`w-full text-left p-2.5 rounded-xl border flex items-center gap-2.5 transition group cursor-pointer shadow-2xs ${
+                  isCreator
+                    ? "bg-slate-50 hover:bg-indigo-50/80 active:bg-indigo-100/60 border-slate-200/80 hover:border-indigo-300"
+                    : "bg-slate-50 hover:bg-emerald-50/80 active:bg-emerald-100/60 border-slate-200/80 hover:border-emerald-300"
+                }`}
               >
-                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 group-hover:border-emerald-400 overflow-hidden shrink-0 transition">
-                  {business.logo ? (
+                <div className={`w-9 h-9 rounded-lg bg-white border overflow-hidden shrink-0 transition ${
+                  isCreator ? "border-slate-200 group-hover:border-indigo-400" : "border-slate-200 group-hover:border-emerald-400"
+                }`}>
+                  {business.logo || business.profileImage ? (
                     <img
-                      src={business.logo}
+                      src={business.logo || business.profileImage}
                       alt={business.name}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center group-hover:bg-emerald-200 transition">
+                    <div className={`w-full h-full font-bold text-xs flex items-center justify-center transition ${
+                      isCreator ? "bg-indigo-100 text-indigo-800 group-hover:bg-indigo-200" : "bg-emerald-100 text-emerald-800 group-hover:bg-emerald-200"
+                    }`}>
                       {business.name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1">
-                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 truncate">
+                    <h4 className={`text-xs font-bold truncate ${
+                      isCreator ? "text-slate-900 group-hover:text-indigo-800" : "text-slate-900 group-hover:text-emerald-800"
+                    }`}>
                       {business.name}
                     </h4>
-                    <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-emerald-600 shrink-0" />
+                    <ExternalLink className={`w-3 h-3 text-slate-400 shrink-0 ${
+                      isCreator ? "group-hover:text-indigo-600" : "group-hover:text-emerald-600"
+                    }`} />
                   </div>
-                  <p className="text-[10px] text-emerald-600 font-medium truncate flex items-center justify-between gap-1">
+                  <p className={`text-[10px] font-medium truncate flex items-center justify-between gap-1 ${
+                    isCreator ? "text-indigo-600" : "text-emerald-600"
+                  }`}>
                     <span className="flex items-center gap-1 truncate">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse shrink-0" />
-                      <span className="truncate">{bizMeta.label}</span>
+                      <span className={`w-1.5 h-1.5 rounded-full inline-block animate-pulse shrink-0 ${
+                        isCreator ? "bg-indigo-500" : "bg-emerald-500"
+                      }`} />
+                      <span className="truncate">{isCreator ? 'Creator Studio' : bizMeta.label}</span>
                     </span>
-                    <span className="text-[9px] text-slate-400 group-hover:text-emerald-700 font-semibold shrink-0">
-                      Open Store →
+                    <span className={`text-[9px] font-semibold shrink-0 ${
+                      isCreator ? "text-slate-400 group-hover:text-indigo-700" : "text-slate-400 group-hover:text-emerald-700"
+                    }`}>
+                      {isCreator ? "Live Profile →" : "Open Store →"}
                     </span>
                   </p>
                 </div>
@@ -362,7 +383,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
                       isActive
-                        ? "bg-emerald-50 text-emerald-700 font-bold shadow-xs"
+                        ? isCreator
+                          ? "bg-indigo-50 text-indigo-700 font-bold shadow-xs"
+                          : "bg-emerald-50 text-emerald-700 font-bold shadow-xs"
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                   >
@@ -370,7 +393,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <div
                         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
                           isActive
-                            ? "bg-emerald-600 text-white shadow-xs shadow-emerald-600/30"
+                            ? isCreator
+                              ? "bg-indigo-600 text-white shadow-xs shadow-indigo-600/30"
+                              : "bg-emerald-600 text-white shadow-xs shadow-emerald-600/30"
                             : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
                         }`}
                       >
@@ -379,7 +404,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800">
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
+                        isCreator ? "bg-indigo-100/70 text-indigo-800" : "bg-emerald-100/70 text-emerald-800"
+                      }`}>
                         {item.badge}
                       </span>
                     )}
@@ -395,9 +422,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onOpenMasterAdmin}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition shadow-xs"
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold transition shadow-xs"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
               <span>Master Admin Portal</span>
             </button>
           )}
@@ -405,10 +432,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onOpenStorefront}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition"
+            className={`w-full flex items-center justify-center gap-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition ${
+              isCreator ? "hover:text-indigo-700" : "hover:text-emerald-700"
+            }`}
           >
-            <Store className="w-3.5 h-3.5 text-emerald-600" />
-            <span>View Public Store</span>
+            {isCreator ? <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> : <Store className="w-3.5 h-3.5 text-emerald-600" />}
+            <span>{isCreator ? 'View Public Profile' : 'View Public Store'}</span>
             <ExternalLink className="w-3 h-3 text-slate-400" />
           </button>
 

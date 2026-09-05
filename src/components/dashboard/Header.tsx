@@ -10,7 +10,9 @@ import {
   Store,
   User,
   ShieldCheck,
-  Bell
+  Bell,
+  Sparkles,
+  Briefcase
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { getStorefrontUrl, subscribeToOrders } from '../../services/firebaseService';
@@ -18,6 +20,7 @@ import { requestFcmNotificationPermission } from '../../services/fcmPushService'
 import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../context/LanguageContext';
+import { isCreatorProfile, getPrimaryPublicUrl, getProfileTypeLabel } from '../../utils/profileHelper';
 
 interface HeaderProps {
   business: BusinessProfile | null;
@@ -45,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
-  const storeUrl = business ? getStorefrontUrl(business) : '';
+  const isCreator = isCreatorProfile(business);
+  const storeUrl = business ? (isCreator ? getPrimaryPublicUrl(business) : getStorefrontUrl(business)) : '';
 
   useEffect(() => {
     if (!business) return;
@@ -82,9 +86,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setBizDropdownOpen(!bizDropdownOpen)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold transition shadow-2xs cursor-pointer"
           >
-            {business?.logo ? (
+            {business?.logo || business?.profileImage ? (
               <img
-                src={business.logo}
+                src={business.logo || business.profileImage}
                 alt={business.name}
                 referrerPolicy="no-referrer"
                 onError={(e) => {
@@ -92,6 +96,8 @@ export const Header: React.FC<HeaderProps> = ({
                 }}
                 className="w-4 h-4 rounded-full object-cover shrink-0"
               />
+            ) : isCreator ? (
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             ) : (
               <Store className="w-3.5 h-3.5 text-emerald-600" />
             )}
@@ -107,31 +113,38 @@ export const Header: React.FC<HeaderProps> = ({
                 {" " + t("header.myBusinesses") + " "} ({userBusinesses.length})
               </p>
               <div className="max-h-48 overflow-y-auto space-y-1 my-1">
-                {userBusinesses.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectBusiness(b);
-                      setBizDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl transition ${
-                      business?.id === b.id
-                        ? 'bg-emerald-50 text-emerald-700 font-bold'
-                        : 'text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {b.logo ? (
-                        <img src={b.logo} alt={b.name} className="w-4 h-4 rounded-full object-cover shrink-0" />
-                      ) : (
-                        <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      )}
-                      <span className="truncate">{b.name}</span>
-                    </div>
-                    {business?.id === b.id && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                  </button>
-                ))}
+                {userBusinesses.map((b) => {
+                  const bCreator = isCreatorProfile(b);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectBusiness(b);
+                        setBizDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-xl transition ${
+                        business?.id === b.id
+                          ? bCreator
+                            ? 'bg-indigo-50 text-indigo-700 font-bold'
+                            : 'bg-emerald-50 text-emerald-700 font-bold'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {b.logo || b.profileImage ? (
+                          <img src={b.logo || b.profileImage} alt={b.name} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                        ) : bCreator ? (
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        ) : (
+                          <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        )}
+                        <span className="truncate">{b.name}</span>
+                      </div>
+                      {business?.id === b.id && <Check className={`w-3.5 h-3.5 shrink-0 ${bCreator ? 'text-indigo-600' : 'text-emerald-600'}`} />}
+                    </button>
+                  );
+                })}
               </div>
               <div className="pt-2 border-t border-slate-100">
                 <button
@@ -140,27 +153,33 @@ export const Header: React.FC<HeaderProps> = ({
                     setBizDropdownOpen(false);
                     onCreateNewBusiness();
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-xl transition cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 rounded-xl transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{t("header.createNewStore")}</span>
+                  <span>Create Store or Creator Profile</span>
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Live Storefront Status Pill - Click to Open */}
+        {/* Live Status Pill - Click to Open */}
         {business && (
           <button
             type="button"
             onClick={onOpenStorefront}
-            title="Click to visit live public storefront"
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 hover:border-emerald-300 text-[11px] font-semibold transition cursor-pointer group"
+            title={isCreator ? "Click to visit live creator portfolio" : "Click to visit live public storefront"}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition cursor-pointer group ${
+              isCreator
+                ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200/60 hover:border-indigo-300'
+                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200/60 hover:border-emerald-300'
+            }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{t("header.storeLive")}</span>
-            <ExternalLink className="w-2.5 h-2.5 text-emerald-600 opacity-60 group-hover:opacity-100 transition ml-0.5" />
+            <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isCreator ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
+            <span>{isCreator ? 'Profile Live' : t("header.storeLive")}</span>
+            <ExternalLink className={`w-2.5 h-2.5 opacity-60 group-hover:opacity-100 transition ml-0.5 ${
+              isCreator ? 'text-indigo-600' : 'text-emerald-600'
+            }`} />
           </button>
         )}
       </div>
@@ -173,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={() => requestFcmNotificationPermission()}
-          className="relative p-2 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-full transition cursor-pointer"
+          className="relative p-2 text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-full transition cursor-pointer"
           title="Enable Real-Time Browser Push Notifications (FCM)"
         >
           <Bell className="w-5 h-5" />
@@ -184,7 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        <PWAInstallPrompt variant="button" customTitle="Install Storelly Merchant App" />
+        <PWAInstallPrompt variant="button" customTitle={isCreator ? "Install Storelly Creator App" : "Install Storelly Merchant App"} />
 
         {business && (
           <>
@@ -192,7 +211,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={handleCopy}
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition"
-              title="Copy public store link"
+              title={isCreator ? "Copy live portfolio link" : "Copy public store link"}
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
               <span>{copied ? t("header.copied") : t("header.copyLink")}</span>
@@ -201,18 +220,26 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenShareModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition shadow-2xs"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition shadow-2xs border ${
+                isCreator
+                  ? 'text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border-indigo-200'
+                  : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
+              }`}
             >
-              <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+              <Share2 className={`w-3.5 h-3.5 ${isCreator ? 'text-indigo-600' : 'text-emerald-600'}`} />
               <span className="hidden sm:inline">{t("header.shareQR")}</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenStorefront}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-sm shadow-emerald-600/20"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white rounded-xl transition shadow-sm ${
+                isCreator
+                  ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+              }`}
             >
-              <span className="hidden sm:inline">{t("header.visitStore")}</span>
+              <span className="hidden sm:inline">{isCreator ? 'Visit Profile' : t("header.visitStore")}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </>

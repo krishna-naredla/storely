@@ -82,12 +82,16 @@ export interface BusinessModuleConfig {
 
 export type BusinessModules = BusinessModuleConfig;
 
+export type ProfileType = 'vendor' | 'creator';
+
 export interface BusinessProfile {
   id: string;
   ownerId: string;
   name: string;
   slug: string;
   username?: string; // For @username URLs
+  profileType?: ProfileType; // Explicit 'vendor' vs 'creator' separation
+  storeType?: ProfileType; // Backward-compatible alias
   type: BusinessType;
   category?: string;
   tagline?: string;
@@ -452,8 +456,10 @@ export interface BioLink {
   businessId: string;
   type: string;
   title: string;
+  subtitle?: string;
   url: string;
   icon?: string;
+  highlight?: boolean;
   order: number;
   enabled: boolean;
   clickCount?: number;
@@ -476,7 +482,8 @@ export type PortfolioCategory =
   | 'Events'
   | 'Beauty'
   | 'Handmade/Art'
-  | 'Other';
+  | 'Other'
+  | string;
 
 export type PortfolioMediaType =
   | 'image'
@@ -485,11 +492,49 @@ export type PortfolioMediaType =
   | 'external_video'
   | 'external_link';
 
+export type PortfolioProfession =
+  | 'photographer'
+  | 'designer'
+  | 'developer'
+  | 'youtuber'
+  | 'writer'
+  | 'coach'
+  | 'artist'
+  | 'event_planner'
+  | 'beauty'
+  | 'custom';
+
+export type PortfolioThemeColor =
+  | 'default'
+  | 'dark'
+  | 'minimal'
+  | 'photo'
+  | 'rose'
+  | 'indigo'
+  | 'emerald'
+  | 'amber';
+
+export type PortfolioFontStyle = 'sans' | 'serif' | 'mono' | 'display';
+
+export type PortfolioCardStyle = 'minimal' | 'bordered' | 'elevated' | 'glassmorphism' | 'brutalist';
+
+export interface PortfolioThemeConfig {
+  primaryColor: string; // e.g. '#4f46e5'
+  accentColor?: string;
+  backgroundColor?: string;
+  fontFamily: PortfolioFontStyle;
+  cardStyle: PortfolioCardStyle;
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  colorMode?: 'light' | 'dark' | 'auto';
+}
+
+export type PortfolioLayoutMode = 'grid' | 'masonry' | 'cards' | 'feed';
+
 export interface PortfolioItem {
   id: string;
   businessId: string;
   title: string;
-  category: PortfolioCategory;
+  category: string;
   coverImage: string; // Required cover thumbnail
   mediaType: PortfolioMediaType;
   mediaUrls?: string[]; // For single image, gallery images, or uploaded video file
@@ -500,6 +545,16 @@ export interface PortfolioItem {
   isActive: boolean;
   clientName?: string;
   projectOutcome?: string;
+  projectYear?: string;
+  year?: string;
+  role?: string;
+  liveDemoUrl?: string;
+  githubUrl?: string;
+  figmaUrl?: string;
+  readTime?: string; // e.g. "5 min read" for writers
+  videoViews?: string; // e.g. "250K views" for YouTubers
+  caseStudyStory?: string;
+  caseStudyNarrative?: string;
   cloudinaryPublicIds?: string[];
   createdAt: number;
   updatedAt: number;
@@ -537,14 +592,65 @@ export interface Testimonial {
   updatedAt?: number;
 }
 
+export interface PortfolioSocialLinks {
+  instagram?: string;
+  youtube?: string;
+  twitter?: string;
+  linkedin?: string;
+  github?: string;
+  behance?: string;
+  dribbble?: string;
+  website?: string;
+}
+
+export interface PortfolioServicePackage {
+  id: string;
+  title: string;
+  price: string;
+  description: string;
+  duration?: string;
+  deliverables?: string[];
+  badge?: string;
+  popular?: boolean;
+  buttonText?: string;
+  buttonUrl?: string;
+}
+
 export interface PortfolioSettings {
-  template?: 'default' | 'developer' | 'designer' | 'photographer';
-  ctaMode: 'whatsapp' | 'booking' | 'custom_quote'; // Enquiry mode
+  profession?: PortfolioProfession;
+  themeColor?: PortfolioThemeColor;
+  fontStyle?: PortfolioFontStyle;
+  layoutMode?: PortfolioLayoutMode;
+  themeConfig?: PortfolioThemeConfig;
+  template?: 'default' | 'developer' | 'designer' | 'photographer' | 'youtuber' | 'writer' | 'coach' | 'artist' | 'event_planner' | 'beauty';
+  ctaMode?: 'whatsapp' | 'booking' | 'custom_quote'; // Enquiry mode
   customCtaText?: string;
+  primaryCtaText?: string;
+  primaryCtaAction?: 'whatsapp' | 'booking' | 'url';
+  primaryCtaUrl?: string;
+  secondaryCtaText?: string;
+  secondaryCtaUrl?: string;
+  tertiaryCtaText?: string;
+  tertiaryCtaUrl?: string;
   whatsappMessage?: string;
   bookingItemId?: string; // Optional link to specific consultation service item
   headline?: string;
   subheadline?: string;
+  professionTitle?: string;
+  specializations?: string[];
+  slogan?: string;
+  location?: string;
+  aboutStory?: string;
+  experienceYears?: string;
+  completedProjectsCount?: string;
+  satisfactionRate?: string;
+  skillsList?: string[];
+  toolsList?: string[];
+  services?: PortfolioServicePackage[];
+  customNavTabs?: string[];
+  customCategories?: string[];
+  showSocialLinks?: boolean;
+  socialLinks?: PortfolioSocialLinks;
   enableCustomQuotes?: boolean;
   customQuoteTitle?: string;
   customQuoteDescription?: string;
@@ -554,6 +660,7 @@ export interface PortfolioSettings {
     subheading?: string;
     platformStats?: PlatformStat[];
     brandCollabs?: BrandCollab[];
+    pdfUrl?: string;
   };
 }
 

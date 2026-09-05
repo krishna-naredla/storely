@@ -2,6 +2,7 @@ import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store,
+  Briefcase,
   Sparkles,
   Plus,
   ArrowRight,
@@ -46,6 +47,7 @@ import { showMerchantNotification } from './services/fcmPushService';
 import { testFirestoreConnection, db } from './config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { BUSINESS_TYPES } from './services/businessConfig';
+import { isCreatorProfile } from './utils/profileHelper';
 import { Sidebar, DashboardTab } from './components/dashboard/Sidebar';
 import { Header } from './components/dashboard/Header';
 import { BioProfileManager } from './components/biolink/BioProfileManager';
@@ -72,6 +74,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingWizard } from './components/auth/OnboardingWizard';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { PortfolioShowcase } from './components/storefront/PortfolioShowcase';
+import { StandalonePortfolioView } from './components/portfolio/StandalonePortfolioView';
 import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
@@ -117,15 +120,35 @@ function parseStoreSlugFromUrl(): string | null {
     return decodeURIComponent(portMatch[1]).trim();
   }
 
+  const shortPortMatch = pathname.match(/^\/p\/([^/?#]+)/i);
+  if (shortPortMatch && shortPortMatch[1]) {
+    return decodeURIComponent(shortPortMatch[1]).trim();
+  }
+
   const match = pathname.match(/^\/store\/([^/?#]+)/i);
   if (match && match[1]) {
     return decodeURIComponent(match[1]).trim();
   }
 
   const urlParams = new URLSearchParams(window.location.search);
+  const portfolioParam = urlParams.get('portfolio') || urlParams.get('p');
+  if (portfolioParam && portfolioParam.trim()) {
+    return decodeURIComponent(portfolioParam).trim();
+  }
+
+  const bioParam = urlParams.get('bio');
+  if (bioParam && bioParam.trim()) {
+    return decodeURIComponent(bioParam).trim();
+  }
+
+  const creatorParam = urlParams.get('creator');
+  if (creatorParam && creatorParam.trim()) {
+    return decodeURIComponent(creatorParam).trim();
+  }
+
   const storeParam = urlParams.get('store');
   if (storeParam && storeParam.trim()) {
-    return storeParam.trim();
+    return decodeURIComponent(storeParam).trim();
   }
 
   return null;
@@ -158,6 +181,15 @@ function generateFallbackOgImage(name: string): string {
 function injectStoreMetadata(business: BusinessProfile) {
   if (!business) return;
 
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const urlParams = new URLSearchParams(search);
+  const isPortfolio =
+    pathname.startsWith('/portfolio') ||
+    pathname.startsWith('/p/') ||
+    urlParams.has('portfolio') ||
+    urlParams.has('p');
+
   // Ensure charset and viewport tags exist for social crawlers and mobile previews
   let charsetMeta = document.querySelector('meta[charset]');
   if (!charsetMeta) {
@@ -174,7 +206,9 @@ function injectStoreMetadata(business: BusinessProfile) {
   }
   viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 
-  const title = `${business.name} - Official Store | Storelly`;
+  const title = isPortfolio
+    ? `${business.name} — ${business.portfolioSettings?.headline || business.tagline || 'Official Creator Portfolio & Case Studies'} | Storelly`
+    : `${business.name} - Official Store | Storelly`;
   document.title = title;
 
   const updateMeta = (property: string, content: string, isProperty = true) => {
@@ -192,20 +226,59 @@ function injectStoreMetadata(business: BusinessProfile) {
     meta.setAttribute('content', content);
   };
 
-  const desc = business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`;
+  const desc = isPortfolio
+    ? (business.portfolioSettings?.subheadline || business.description || `Explore verified work samples, case studies, and creative services by ${business.name}.`)
+    : (business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`);
+
   const img = business.banner || business.logo || generateFallbackOgImage(business.name);
   const url = window.location.href;
 
-  updateMeta('og:title', business.name);
+  updateMeta('og:title', isPortfolio ? `${business.name} Portfolio` : business.name);
   updateMeta('og:description', desc);
   updateMeta('og:image', img);
   updateMeta('og:url', url);
-  updateMeta('og:type', 'website');
+  updateMeta('og:type', isPortfolio ? 'profile' : 'website');
 
   updateMeta('twitter:card', 'summary_large_image', false);
-  updateMeta('twitter:title', business.name, false);
+  updateMeta('twitter:title', isPortfolio ? `${business.name} Portfolio` : business.name, false);
   updateMeta('twitter:description', desc, false);
   updateMeta('twitter:image', img, false);
+
+  // Structured JSON-LD Schema for Google & Search Crawlers
+  try {
+    let schemaTag = document.querySelector('script[type="application/ld+json"]#storelly-seo-schema');
+    if (!schemaTag) {
+      schemaTag = document.createElement('script');
+      schemaTag.setAttribute('type', 'application/ld+json');
+      schemaTag.setAttribute('id', 'storelly-seo-schema');
+      document.head.appendChild(schemaTag);
+    }
+
+    const structuredData = isPortfolio
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'Person',
+          name: business.name,
+          jobTitle: business.portfolioSettings?.profession || 'Creator',
+          description: desc,
+          url: url,
+          image: img,
+          telephone: business.whatsapp || business.phone || undefined,
+        }
+      : {
+          '@context': 'https://schema.org',
+          '@type': 'Store',
+          name: business.name,
+          description: desc,
+          url: url,
+          image: img,
+          telephone: business.whatsapp || business.phone || undefined,
+        };
+
+    schemaTag.textContent = JSON.stringify(structuredData);
+  } catch (err) {
+    // Non-blocking schema injection failure
+  }
 }
 
 // Main App Container
@@ -634,18 +707,40 @@ function MainContent() {
   // ROUTE 1: PUBLIC STOREFRONT RESOLUTION
   // ==========================================
   if (publicStoreSlug || (viewMode === 'storefront' && (publicBusiness || selectedBusiness))) {
-    // 1A. Loading Storefront Screen
+    const isPortfolioPath =
+      window.location.pathname.startsWith('/portfolio') ||
+      window.location.pathname.startsWith('/p/') ||
+      new URLSearchParams(window.location.search).has('portfolio') ||
+      new URLSearchParams(window.location.search).has('p');
+
+    // 1A. Loading Screen
     if (isLoadingPublicStore) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex flex-col items-center justify-center text-slate-900 space-y-6 px-4 selection:bg-emerald-500 selection:text-white">
-          <div className="max-w-sm w-full bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
-            {/* Vendor Logo or 2D Vector Clipart Illustration */}
+        <div className={`min-h-screen flex flex-col items-center justify-center space-y-6 px-4 ${
+          isPortfolioPath
+            ? 'bg-slate-950 text-white selection:bg-indigo-500 selection:text-white'
+            : 'bg-gradient-to-br from-emerald-50 via-white to-teal-50 text-slate-900 selection:bg-emerald-500 selection:text-white'
+        }`}>
+          <div className={`max-w-sm w-full backdrop-blur-xl rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 ${
+            isPortfolioPath
+              ? 'bg-slate-900/90 border border-slate-800'
+              : 'bg-white/90 border border-slate-200/80'
+          }`}>
+            {/* Creator / Vendor Logo or Clipart Illustration */}
             <div className="relative">
-              <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-3xl blur-md opacity-20 animate-pulse" />
-              <div className="relative w-20 h-20 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center overflow-hidden shadow-sm">
-                {publicBusiness?.logo ? (
+              <div className={`absolute -inset-2 rounded-3xl blur-md opacity-30 animate-pulse ${
+                isPortfolioPath
+                  ? 'bg-gradient-to-tr from-indigo-500 to-purple-500'
+                  : 'bg-gradient-to-tr from-emerald-500 to-teal-400'
+              }`} />
+              <div className={`relative w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm ${
+                isPortfolioPath
+                  ? 'bg-slate-800 border border-slate-700'
+                  : 'bg-white border border-emerald-200'
+              }`}>
+                {publicBusiness?.logo || publicBusiness?.profileImage ? (
                   <img
-                    src={publicBusiness.logo}
+                    src={publicBusiness.logo || publicBusiness.profileImage}
                     alt={publicBusiness.name}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
@@ -657,17 +752,24 @@ function MainContent() {
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-black text-slate-900 font-heading tracking-tight">
-                {publicBusiness ? publicBusiness.name : 'Opening Digital Storefront...'}
+              <h3 className={`text-base font-black font-heading tracking-tight ${
+                isPortfolioPath ? 'text-white' : 'text-slate-900'
+              }`}>
+                {publicBusiness ? publicBusiness.name : isPortfolioPath ? 'Loading Creator Portfolio...' : 'Opening Digital Storefront...'}
               </h3>
-              <p className="text-xs text-slate-500">
-                Preparing secure catalog for <span className="font-mono text-emerald-600 font-bold">@{publicStoreSlug}</span>
+              <p className={`text-xs ${isPortfolioPath ? 'text-slate-400' : 'text-slate-500'}`}>
+                {isPortfolioPath ? 'Preparing portfolio showcase for ' : 'Preparing secure catalog for '}
+                <span className={`font-mono font-bold ${isPortfolioPath ? 'text-indigo-400' : 'text-emerald-600'}`}>
+                  @{publicStoreSlug}
+                </span>
               </p>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
-              <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-              <span className="text-xs font-bold text-slate-600 tracking-wider uppercase">Loading Store...</span>
+              <Loader2 className={`w-5 h-5 animate-spin ${isPortfolioPath ? 'text-indigo-400' : 'text-emerald-600'}`} />
+              <span className={`text-xs font-bold tracking-wider uppercase ${isPortfolioPath ? 'text-slate-400' : 'text-slate-600'}`}>
+                {isPortfolioPath ? 'Loading Portfolio...' : 'Loading Store...'}
+              </span>
             </div>
           </div>
         </div>
@@ -681,8 +783,13 @@ function MainContent() {
       
       // Check if it's a bio link or portfolio
       const pathname = window.location.pathname;
-      const isBioLink = pathname.startsWith('/@');
-      const isPortfolio = pathname.startsWith('/portfolio');
+      const urlParams = new URLSearchParams(window.location.search);
+      const isBioLink = pathname.startsWith('/@') || urlParams.has('bio');
+      const isPortfolio =
+        pathname.startsWith('/portfolio') ||
+        pathname.startsWith('/p/') ||
+        urlParams.has('portfolio') ||
+        urlParams.has('p');
       
       if (isBioLink) {
         return (
@@ -698,17 +805,11 @@ function MainContent() {
       if (isPortfolio) {
         return (
           <CreatorAuthGuard business={targetBusiness} moduleName="portfolio" isOwner={!!isOwner}>
-            <div className="bg-slate-50 min-h-screen">
-              {isOwner && (
-                <div className="bg-slate-900 text-white p-3 flex justify-between items-center z-50 sticky top-0">
-                  <span className="text-xs font-bold">Previewing your Portfolio</span>
-                  <button onClick={navigateToDashboard} className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition">
-                    Back to Dashboard
-                  </button>
-                </div>
-              )}
-              <PortfolioShowcase business={targetBusiness} />
-            </div>
+            <StandalonePortfolioView
+              business={targetBusiness}
+              onBackToDashboard={isOwner ? navigateToDashboard : undefined}
+              isOwner={!!isOwner}
+            />
           </CreatorAuthGuard>
         );
       }
@@ -728,18 +829,28 @@ function MainContent() {
       );
     }
 
-    // 1C. Storefront Not Found (404) -> Clean Public Not Found Page
+    // 1C. Public Handle Not Found (404) -> Clean Public Not Found Page
+    const currentPath = window.location.pathname;
+    const currentParams = new URLSearchParams(window.location.search);
+    const isPortfolioRoute =
+      currentPath.startsWith('/portfolio') ||
+      currentPath.startsWith('/p/') ||
+      currentParams.has('portfolio') ||
+      currentParams.has('p');
+
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center selection:bg-emerald-500 selection:text-slate-950">
         <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
           <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
-            <Store className="w-8 h-8" />
+            {isPortfolioRoute ? <Briefcase className="w-8 h-8" /> : <Store className="w-8 h-8" />}
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white font-heading">Store Not Found</h1>
+            <h1 className="text-2xl font-black text-white font-heading">
+              {isPortfolioRoute ? 'Portfolio Not Found' : 'Store Not Found'}
+            </h1>
             <p className="text-xs text-slate-400 leading-relaxed">
-              We couldn't find an active digital storefront matching the handle{' '}
+              We couldn't find an active {isPortfolioRoute ? 'creator portfolio' : 'digital storefront'} matching the handle{' '}
               <span className="font-mono font-bold text-emerald-400">"{publicStoreSlug}"</span>.
             </p>
           </div>
@@ -750,9 +861,9 @@ function MainContent() {
               <span>Possible Reasons:</span>
             </div>
             <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-slate-400">
-              <li>The store link may contain a spelling mistake.</li>
-              <li>The merchant may have updated their store handle.</li>
-              <li>The store has not been published yet.</li>
+              <li>The {isPortfolioRoute ? 'portfolio' : 'store'} link may contain a spelling mistake.</li>
+              <li>The {isPortfolioRoute ? 'creator' : 'merchant'} may have updated their handle.</li>
+              <li>The {isPortfolioRoute ? 'portfolio' : 'store'} has not been published yet.</li>
             </ul>
           </div>
 
@@ -764,7 +875,7 @@ function MainContent() {
                 className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Retry Loading Store</span>
+                <span>Retry Loading {isPortfolioRoute ? 'Portfolio' : 'Store'}</span>
               </button>
             )}
 
@@ -857,14 +968,14 @@ function MainContent() {
             <div className="pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
-                  Welcome to Storelly, {currentUser.displayName || currentUser.email || 'Merchant'}!
+                  Welcome to Storelly, {currentUser.displayName || currentUser.email || 'Partner'}!
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Let's create your digital business profile & public storefront in 4 simple steps.
+                  Choose between a Vendor Storefront or Creator Workspace to start.
                 </p>
               </div>
-              <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-800 font-bold text-xs self-start sm:self-auto border border-emerald-200">
-                Step-by-Step Setup
+              <div className="px-3.5 py-1.5 rounded-full bg-slate-100 text-slate-700 font-bold text-xs self-start sm:self-auto border border-slate-200">
+                Setup Wizard
               </div>
             </div>
 
@@ -957,26 +1068,29 @@ function MainContent() {
 
           {activeTab === 'analytics' && <AnalyticsView business={biz} />}
 
-          {activeTab === 'modules' && biz.type === 'creator' ? (
-            <CreatorModulesManager
-              business={biz}
-              onBusinessUpdated={(updated) => {
-                setSelectedBusiness(updated);
-                setBusinesses((prev) =>
-                  prev.map((b) => (b.id === updated.id ? updated : b))
-                );
-              }}
-            />
-          ) : activeTab === 'modules' && (
-            <ModuleManager
-              business={biz}
-              onBusinessUpdated={(updated) => {
-                setSelectedBusiness(updated);
-                setBusinesses((prev) =>
-                  prev.map((b) => (b.id === updated.id ? updated : b))
-                );
-              }}
-            />
+          {activeTab === 'modules' && (
+            isCreatorProfile(biz) ? (
+              <CreatorModulesManager
+                business={biz}
+                onNavigateTab={setActiveTab}
+                onBusinessUpdated={(updated) => {
+                  setSelectedBusiness(updated);
+                  setBusinesses((prev) =>
+                    prev.map((b) => (b.id === updated.id ? updated : b))
+                  );
+                }}
+              />
+            ) : (
+              <ModuleManager
+                business={biz}
+                onBusinessUpdated={(updated) => {
+                  setSelectedBusiness(updated);
+                  setBusinesses((prev) =>
+                    prev.map((b) => (b.id === updated.id ? updated : b))
+                  );
+                }}
+              />
+            )
           )}
 
           {activeTab === 'payments' && (
@@ -998,7 +1112,17 @@ function MainContent() {
             />
           )}
 
-          {activeTab === 'biolink' && <BioProfileManager business={biz} />}
+          {activeTab === 'biolink' && (
+            <BioProfileManager
+              business={biz}
+              onBusinessUpdated={(updated) => {
+                setSelectedBusiness(updated);
+                setBusinesses((prev) =>
+                  prev.map((b) => (b.id === updated.id ? updated : b))
+                );
+              }}
+            />
+          )}
 
           {activeTab === 'share' && (
             <div className="space-y-6">

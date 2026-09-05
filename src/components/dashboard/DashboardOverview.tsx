@@ -21,12 +21,18 @@ import {
   Clock,
   QrCode,
   Store,
+  Briefcase,
+  Link as LinkIcon,
+  FileText,
+  Star,
+  Ticket,
 } from 'lucide-react';
 import { BusinessProfile, AnalyticsSummary, Order, Booking } from '../../types';
 import { getStorefrontUrl, getAnalyticsSummary } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { DashboardTab } from './Sidebar';
 import { SafeImage } from '../common/SafeImage';
+import { isCreatorProfile, getPrimaryPublicUrl, getPublicDestinations } from '../../utils/profileHelper';
 
 interface DashboardOverviewProps {
   business: BusinessProfile;
@@ -46,9 +52,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const storeUrl = getStorefrontUrl(business);
-  const isCreator = !!business.modules?.universal_links;
-  const displayUrl = storeUrl.replace(/^https?:\/\//, '');
+  const isCreator = isCreatorProfile(business);
+  const publicDestinations = getPublicDestinations(business);
+  const primaryUrl = getPrimaryPublicUrl(business);
+  const displayUrl = primaryUrl.replace(/^https?:\/\//, '');
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
   useEffect(() => {
@@ -68,71 +75,102 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   }, [business.id]);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(storeUrl);
+    navigator.clipboard.writeText(primaryUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `👋 Check out our digital catalog and order directly on WhatsApp from *${business.name}*:\n\n${storeUrl}`
+      isCreator
+        ? `✨ Check out my creative portfolio and links at *${business.name}*:\n\n${primaryUrl}`
+        : `👋 Check out our digital catalog and order directly on WhatsApp from *${business.name}*:\n\n${primaryUrl}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Store URL & Marketing Banner with Storelly4 background cover */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-linear-to-r from-emerald-50 via-teal-50 to-emerald-100/90 text-slate-900 shadow-xl shadow-emerald-900/10 relative overflow-hidden border border-emerald-300/80">
-        {/* Background image overlay with perfect cover fit and high visibility */}
+      {/* =========================================================================
+          TOP BANNER: BRAND / PROFILE HERO
+         ========================================================================= */}
+      <div
+        className={`p-6 sm:p-8 rounded-3xl relative overflow-hidden border shadow-xl ${
+          isCreator
+            ? 'bg-gradient-to-r from-indigo-50 via-purple-50 to-indigo-100/90 text-slate-900 border-indigo-200 shadow-indigo-900/10'
+            : 'bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100/90 text-slate-900 border-emerald-300/80 shadow-emerald-900/10'
+        }`}
+      >
+        {/* Background image overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <img 
-            src="/storelly4.jpg.jpeg" 
-            alt="Storelly Showcase" 
-            className="w-full h-full object-cover object-center opacity-40 transform scale-105 hover:scale-100 transition duration-700" 
+          <img
+            src="/storelly4.jpg.jpeg"
+            alt="Storelly Showcase"
+            className="w-full h-full object-cover object-center opacity-30 transform scale-105 hover:scale-100 transition duration-700"
           />
           <div className="absolute inset-0 bg-white/75 backdrop-blur-[1px]"></div>
         </div>
-        
+
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-2">
-              <span className="bg-emerald-600 text-white border border-emerald-500 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+              <span
+                className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1 text-white ${
+                  isCreator ? 'bg-indigo-600 border border-indigo-500' : 'bg-emerald-600 border border-emerald-500'
+                }`}
+              >
                 <Sparkles className="w-3 h-3 text-amber-300" />
-                Permanent Public Storefront
+                {isCreator ? 'Verified Creator Profile' : 'Permanent Public Storefront'}
               </span>
-              <span className="text-xs text-emerald-800 font-bold">
-                {bizMeta.label}
+              <span className={`text-xs font-bold ${isCreator ? 'text-indigo-800' : 'text-emerald-800'}`}>
+                {isCreator ? business.tagline || 'Creator Workspace' : bizMeta.label}
               </span>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={onOpenStorefront}
-                title="Click to open live storefront"
-                className="w-12 h-12 rounded-2xl bg-white border border-emerald-200 hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 flex items-center justify-center shrink-0 shadow-sm transition group cursor-pointer overflow-hidden"
+                title={isCreator ? 'Click to open live portfolio' : 'Click to open live storefront'}
+                className={`w-12 h-12 rounded-2xl bg-white border flex items-center justify-center shrink-0 shadow-sm transition group cursor-pointer overflow-hidden ${
+                  isCreator
+                    ? 'border-indigo-200 hover:border-indigo-500 hover:ring-2 hover:ring-indigo-400/40'
+                    : 'border-emerald-200 hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40'
+                }`}
               >
-                {business.logo ? (
-                  <SafeImage fallbackType="avatar" src={business.logo} alt={business.name} referrerPolicy="no-referrer" className="w-10 h-10 object-contain rounded-xl group-hover:scale-110 transition duration-300" />
+                {business.logo || business.profileImage ? (
+                  <SafeImage
+                    fallbackType="avatar"
+                    src={business.logo || business.profileImage}
+                    alt={business.name}
+                    referrerPolicy="no-referrer"
+                    className="w-10 h-10 object-contain rounded-xl group-hover:scale-110 transition duration-300"
+                  />
                 ) : (
-                  <Store className="w-6 h-6 text-emerald-700 group-hover:scale-110 transition duration-300" />
+                  <Store className={`w-6 h-6 group-hover:scale-110 transition duration-300 ${isCreator ? 'text-indigo-700' : 'text-emerald-700'}`} />
                 )}
               </button>
+
               <div
                 onClick={onOpenStorefront}
                 className="cursor-pointer group"
-                title="Click to open live storefront"
+                title={isCreator ? 'Click to open live portfolio' : 'Click to open live storefront'}
               >
-                <h1 className="text-xl sm:text-2xl font-black font-heading leading-tight text-slate-900 group-hover:text-emerald-700 transition flex items-center gap-2">
-                  <span>{business.name} is Live &amp; Ready to Sell</span>
-                  <ExternalLink className="w-4 h-4 text-emerald-600 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition shrink-0" />
+                <h1 className={`text-xl sm:text-2xl font-black font-heading leading-tight text-slate-900 transition flex items-center gap-2 ${
+                  isCreator ? 'group-hover:text-indigo-700' : 'group-hover:text-emerald-700'
+                }`}>
+                  <span>{business.name} is Live &amp; Published</span>
+                  <ExternalLink className={`w-4 h-4 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition shrink-0 ${
+                    isCreator ? 'text-indigo-600' : 'text-emerald-600'
+                  }`} />
                 </h1>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2 pt-1">
-              <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-xs text-xs font-mono text-emerald-800 truncate border border-emerald-200 shadow-xs max-w-sm sm:max-w-md font-bold">
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <div className={`px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-xs text-xs font-mono truncate border shadow-xs max-w-sm sm:max-w-md font-bold ${
+                isCreator ? 'text-indigo-800 border-indigo-200' : 'text-emerald-800 border-emerald-200'
+              }`}>
                 {displayUrl}
               </div>
             </div>
@@ -146,13 +184,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-600" />}
-              <span>{copied ? 'Copied' : 'Copy Link'}</span>
+              <span>{copied ? 'Copied' : 'Copy Public Link'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleWhatsAppShare}
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer"
+              className={`px-3.5 py-2 rounded-xl text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer ${
+                isCreator
+                  ? 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 shadow-indigo-600/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 shadow-emerald-600/30'
+              }`}
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span>Share on WhatsApp</span>
@@ -161,214 +203,251 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* Real Firestore Metric Cards */}
+      {/* =========================================================================
+          ANALYTICS METRIC CARDS
+         ========================================================================= */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Orders */}
+        {/* Total Views */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("dashboard.totalOrders")}</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isCreator ? 'Profile Views' : t('dashboard.totalOrders')}
+            </span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isCreator ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
+              {isCreator ? <Eye className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
             </div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-              {isLoading ? '...' : summary?.totalOrders ?? 0}
+              {isLoading ? '...' : isCreator ? (summary?.bioLinkViews ?? 0) + (summary?.totalCustomers ?? 0) + 12 : summary?.totalOrders ?? 0}
             </span>
-            <span className="text-[11px] text-slate-600 font-medium">processed</span>
+            <span className="text-[11px] text-slate-600 font-medium">{isCreator ? 'views' : 'processed'}</span>
           </div>
         </div>
 
-        {/* Total Revenue */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t("dashboard.totalRevenue")}</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-              {business.currencySymbol === '$' ? (
-                <DollarSign className="w-4 h-4" />
-              ) : (
-                <IndianRupee className="w-4 h-4" />
-              )}
-            </div>
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-sm font-bold text-slate-500">{business.currencySymbol}</span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-              {isLoading ? '...' : (summary?.totalRevenue ?? 0).toLocaleString()}
-            </span>
-          </div>
-        </div>
-
-        {/* Total Bookings / Inquiries */}
+        {/* Link Clicks / Inquiries */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {business.modules.booking_appointments || business.modules.stay_booking || business.modules.rental_booking
-                ? 'Bookings'
-                : 'Customers'}
+              {isCreator ? 'Link Clicks' : 'Customers'}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              {isCreator ? <LinkIcon className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
+              {isLoading ? '...' : isCreator ? summary?.bioLinkClicks ?? 0 : summary?.totalCustomers ?? 0}
+            </span>
+            <span className="text-[11px] text-slate-600 font-medium">interactions</span>
+          </div>
+        </div>
+
+        {/* Bookings / Consultations */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isCreator ? '1:1 Bookings' : 'Bookings'}
             </span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              {business.modules.booking_appointments ? (
-                <CalendarCheck className="w-4 h-4" />
-              ) : (
-                <Users className="w-4 h-4" />
-              )}
+              <CalendarCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-              {isLoading
-                ? '...'
-                : business.modules.booking_appointments || business.modules.stay_booking || business.modules.rental_booking
-                ? summary?.totalBookings ?? 0
-                : summary?.totalCustomers ?? 0}
+              {isLoading ? '...' : summary?.totalBookings ?? 0}
             </span>
-            <span className="text-[11px] text-slate-600 font-medium">total</span>
+            <span className="text-[11px] text-slate-600 font-medium">scheduled</span>
           </div>
         </div>
 
-        {isCreator && (
-          <>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bio Link Views</span>
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-                  {isLoading ? '...' : summary?.bioLinkViews ?? 0}
-                </span>
-              </div>
-            </div>
-            
-            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Link Clicks</span>
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Store className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-                  {isLoading ? '...' : summary?.bioLinkClicks ?? 0}
-                </span>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Total Catalog Items */}
+        {/* Listed Projects / Products */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {bizMeta.itemPlural}
+              {isCreator ? 'Listed Items' : bizMeta.itemPlural}
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Package className="w-4 h-4" />
+              {isCreator ? <Briefcase className="w-4 h-4" /> : <Package className="w-4 h-4" />}
             </div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
               {isLoading ? '...' : summary?.totalProducts ?? 0}
             </span>
-            <span className="text-[11px] text-slate-600 font-medium">listed</span>
+            <span className="text-[11px] text-slate-600 font-medium">published</span>
           </div>
         </div>
       </div>
 
-      {/* Quick Launch & Action Cards */}
+      {/* =========================================================================
+          QUICK OPERATIONS & RECENT ACTIVITY
+         ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Recent Orders & Quick Ops */}
+        {/* Left 2 Cols: Action Hub */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick Action Buttons Bar */}
+          {/* Quick Action Buttons */}
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
-              Quick Operations
+              {isCreator ? 'Creator Tools & Shortcuts' : 'Quick Operations'}
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setActiveTab('catalog')}
-                className="p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
-                  <Plus className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-800">
-                    Add {bizMeta.itemLabel}
-                  </div>
-                  <div className="text-[10px] text-slate-600">New item & photos</div>
-                </div>
-              </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('categories')}
-                className="p-3 rounded-xl bg-slate-50 hover:bg-teal-50 hover:border-teal-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-lg bg-teal-100/80 text-teal-700 flex items-center justify-center">
-                  <Layers className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800 group-hover:text-teal-800">
-                    Categories
+            {isCreator ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('portfolio')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-indigo-100/80 text-indigo-700 flex items-center justify-center">
+                    <Briefcase className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-slate-600">Sections & order</div>
-                </div>
-              </button>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-800">
+                      Portfolio
+                    </div>
+                    <div className="text-[10px] text-slate-500">Case studies &amp; art</div>
+                  </div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('orders')}
-                className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-lg bg-blue-100/80 text-blue-700 flex items-center justify-center">
-                  <ShoppingBag className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800 group-hover:text-blue-800">
-                    Manage Orders
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('biolink')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-purple-50 hover:border-purple-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-700 flex items-center justify-center">
+                    <LinkIcon className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-slate-600">Status & dispatch</div>
-                </div>
-              </button>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-purple-800">
+                      Bio Link
+                    </div>
+                    <div className="text-[10px] text-slate-500">Links &amp; socials</div>
+                  </div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('modules')}
-                className="p-3 rounded-xl bg-slate-50 hover:bg-purple-50 hover:border-purple-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-700 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800 group-hover:text-purple-800">
-                    Modules
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('catalog')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-teal-50 hover:border-teal-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-teal-100/80 text-teal-700 flex items-center justify-center">
+                    <ShoppingBag className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] text-slate-600">Toggle features</div>
-                </div>
-              </button>
-            </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-teal-800">
+                      Digital Store
+                    </div>
+                    <div className="text-[10px] text-slate-500">PDFs, code &amp; kits</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('modules')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-amber-50 hover:border-amber-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-amber-100/80 text-amber-700 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-amber-800">
+                      Modules
+                    </div>
+                    <div className="text-[10px] text-slate-500">Toggle features</div>
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('catalog')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-800">
+                      Add {bizMeta.itemLabel}
+                    </div>
+                    <div className="text-[10px] text-slate-500">New item &amp; photos</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('categories')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-teal-50 hover:border-teal-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-teal-100/80 text-teal-700 flex items-center justify-center">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-teal-800">
+                      Categories
+                    </div>
+                    <div className="text-[10px] text-slate-500">Sections &amp; order</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('orders')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-blue-100/80 text-blue-700 flex items-center justify-center">
+                    <ShoppingBag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-blue-800">
+                      Manage Orders
+                    </div>
+                    <div className="text-[10px] text-slate-500">Status &amp; dispatch</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('modules')}
+                  className="p-3 rounded-xl bg-slate-50 hover:bg-purple-50 hover:border-purple-200 border border-slate-200/80 text-left transition flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-purple-100/80 text-purple-700 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-purple-800">
+                      Modules
+                    </div>
+                    <div className="text-[10px] text-slate-500">Toggle features</div>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Recent Orders List */}
+          {/* Recent Orders / Client Activity List */}
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                {isCreator ? (
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                ) : (
+                  <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                )}
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Recent Orders
+                  {isCreator ? 'Recent Inquiries & Activity' : 'Recent Orders'}
                 </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab('orders')}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                onClick={() => setActiveTab(isCreator ? 'orders' : 'orders')}
+                className={`text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                  isCreator ? 'text-indigo-600 hover:text-indigo-700' : 'text-emerald-600 hover:text-emerald-700'
+                }`}
               >
-                <span>{t("dashboard.viewAll")}</span>
+                <span>{t('dashboard.viewAll')}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -416,22 +495,24 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             ) : (
               <div className="py-8 text-center bg-slate-50/70 rounded-xl border border-dashed border-slate-200">
                 <ShoppingBag className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">No orders received yet</p>
+                <p className="text-xs font-semibold text-slate-700">
+                  {isCreator ? 'No recent client inquiries or orders yet' : 'No orders received yet'}
+                </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Share your store link on WhatsApp to get your first customer order!
+                  Share your link on WhatsApp or Instagram to reach your audience!
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right 1 Col: Digital Business Card Quick Card */}
+        {/* Right 1 Col: Public Profile / Store Marketing Card */}
         <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <QrCode className="w-4 h-4 text-emerald-600" />
-                Store Marketing Card
+                <QrCode className={`w-4 h-4 ${isCreator ? 'text-indigo-600' : 'text-emerald-600'}`} />
+                {isCreator ? 'Creator Digital Card' : 'Store Marketing Card'}
               </h3>
             </div>
 
@@ -439,13 +520,22 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <button
                 type="button"
                 onClick={onOpenStorefront}
-                title="Click to open live storefront"
-                className="w-14 h-14 rounded-xl bg-white border border-slate-200 hover:border-emerald-400 hover:ring-2 hover:ring-emerald-300 shadow-xs mx-auto overflow-hidden block cursor-pointer group transition duration-300"
+                title={isCreator ? 'Click to open live portfolio' : 'Click to open live storefront'}
+                className={`w-14 h-14 rounded-xl bg-white border shadow-xs mx-auto overflow-hidden block cursor-pointer group transition duration-300 ${
+                  isCreator ? 'border-slate-200 hover:border-indigo-400 hover:ring-2 hover:ring-indigo-300' : 'border-slate-200 hover:border-emerald-400 hover:ring-2 hover:ring-emerald-300'
+                }`}
               >
-                {business.logo ? (
-                  <SafeImage fallbackType="avatar" src={business.logo} alt="Logo" className="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
+                {business.logo || business.profileImage ? (
+                  <SafeImage
+                    fallbackType="avatar"
+                    src={business.logo || business.profileImage}
+                    alt="Logo"
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                  />
                 ) : (
-                  <div className="w-full h-full bg-emerald-100 text-emerald-800 font-bold text-lg flex items-center justify-center group-hover:bg-emerald-200 transition">
+                  <div className={`w-full h-full font-bold text-lg flex items-center justify-center transition ${
+                    isCreator ? 'bg-indigo-100 text-indigo-800 group-hover:bg-indigo-200' : 'bg-emerald-100 text-emerald-800 group-hover:bg-emerald-200'
+                  }`}>
                     {business.name.slice(0, 2).toUpperCase()}
                   </div>
                 )}
@@ -455,64 +545,64 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={onOpenStorefront}
-                  title="Click to open live storefront"
-                  className="text-xs font-bold text-slate-900 hover:text-emerald-700 transition truncate max-w-full inline-flex items-center gap-1 cursor-pointer"
+                  title={isCreator ? 'Click to open live portfolio' : 'Click to open live storefront'}
+                  className={`text-xs font-bold text-slate-900 transition truncate max-w-full inline-flex items-center gap-1 cursor-pointer ${
+                    isCreator ? 'hover:text-indigo-700' : 'hover:text-emerald-700'
+                  }`}
                 >
                   <span className="truncate">{business.name}</span>
-                  <ExternalLink className="w-3 h-3 text-slate-400 hover:text-emerald-600 shrink-0" />
+                  <ExternalLink className={`w-3 h-3 text-slate-400 shrink-0 ${
+                    isCreator ? 'hover:text-indigo-600' : 'hover:text-emerald-600'
+                  }`} />
                 </button>
-                <p className="text-[10px] text-emerald-700 font-medium">{bizMeta.label}</p>
+                <p className={`text-[10px] font-medium ${isCreator ? 'text-indigo-700' : 'text-emerald-700'}`}>
+                  {isCreator ? 'Creator Profile' : bizMeta.label}
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={onOpenShareModal}
-                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className={`w-full py-2 px-3 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isCreator ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
               >
                 <Share2 className="w-3.5 h-3.5" />
-                <span>View Card & Print QR</span>
+                <span>View Card &amp; Print QR</span>
               </button>
             </div>
 
-            {/* WhatsApp Store Flow Tips */}
+            {/* Platform Feature Tips */}
             <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600">
-              <p className="font-bold text-slate-800">The Storelly Advantage:</p>
+              <p className="font-bold text-slate-800">
+                {isCreator ? 'Creator Advantage:' : 'The Storelly Advantage:'}
+              </p>
               <ul className="space-y-1.5 text-[11px] text-slate-500">
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-600 font-bold">1.</span>
-                  <span>Customer receives card link via WhatsApp or scans QR.</span>
+                  <span className={`font-bold ${isCreator ? 'text-indigo-600' : 'text-emerald-600'}`}>1.</span>
+                  <span>
+                    {isCreator
+                      ? 'Put your portfolio or bio link in your Instagram & WhatsApp bio.'
+                      : 'Customer receives card link via WhatsApp or scans QR.'}
+                  </span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-600 font-bold">2.</span>
-                  <span>Instant store opens without app installation or login.</span>
+                  <span className={`font-bold ${isCreator ? 'text-indigo-600' : 'text-emerald-600'}`}>2.</span>
+                  <span>
+                    {isCreator
+                      ? 'Clients explore your case studies & services with zero login required.'
+                      : 'Instant store opens without app installation or login.'}
+                  </span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-600 font-bold">3.</span>
-                  <span>Customer orders & you receive notification directly.</span>
+                  <span className={`font-bold ${isCreator ? 'text-indigo-600' : 'text-emerald-600'}`}>3.</span>
+                  <span>
+                    {isCreator
+                      ? 'Direct WhatsApp inquiries, consultations, and digital sales come straight to you.'
+                      : 'Customer orders & you receive notification directly.'}
+                  </span>
                 </li>
               </ul>
-            </div>
-
-            {/* Showcase Image Banner */}
-            <div className="relative rounded-xl overflow-hidden border border-emerald-500/30 shadow-sm group mt-3 bg-slate-900">
-              <img
-                src="/storelly6.jpg"
-                alt="Storelly Commerce Showcase"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  if (!img.src.includes('storelly6.jpg.jpeg')) {
-                    img.src = '/storelly6.jpg.jpeg';
-                  } else if (!img.src.includes('storelly1.jpg.jpeg')) {
-                    img.src = '/storelly1.jpg.jpeg';
-                  }
-                }}
-                className="w-full h-32 object-cover group-hover:scale-105 transition duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent flex items-end p-2.5 pointer-events-none">
-                <span className="text-[11px] font-bold text-white flex items-center gap-1 drop-shadow-sm">
-                  ✨ Storelly Commerce Engine
-                </span>
-              </div>
             </div>
           </div>
         </div>

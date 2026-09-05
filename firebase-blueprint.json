@@ -9,6 +9,7 @@
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "slug": { "type": "string" },
+        "profileType": { "type": "string" },
         "type": { "type": "string" },
         "tagline": { "type": "string" },
         "description": { "type": "string" },
