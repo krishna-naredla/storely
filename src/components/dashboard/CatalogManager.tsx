@@ -1,6 +1,9 @@
 import { useLanguage } from '../../context/LanguageContext';
 import { SafeImage } from '../common/SafeImage';
 import React, { useState, useEffect } from 'react';
+import { PackageOpen } from "lucide-react";
+import { DashboardEmptyState } from '../common/DashboardEmptyState';
+import { DashboardSkeleton } from '../common/DashboardSkeleton';
 import {
   Plus,
   Search,
@@ -591,7 +594,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
             return (
               <div
                 key={item.id}
-                className={`bg-white rounded-2xl border p-4 flex flex-col gap-3 relative transition hover:shadow-xs ${
+                className={`bg-white rounded-3xl border border-slate-200 p-4 flex flex-col gap-3 relative transition hover:shadow-xs ${
                   !item.isActive ? 'opacity-60 bg-slate-50' : 'border-slate-200'
                 }`}
               >
@@ -690,10 +693,13 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
           })}
         </div>
       ) : (
-        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-          <p className="text-sm font-semibold text-slate-700">No products found</p>
-          <p className="text-xs text-slate-400 mt-1">Click Add New Product above to create your first offering.</p>
-        </div>
+        <DashboardEmptyState
+          icon={PackageOpen}
+          title="No products found"
+          description={searchQuery ? "No products match your search query." : "You haven't added any products or services yet. Create your first offering to start selling!"}
+          actionLabel="Add New Product"
+          onAction={openCreateModal}
+        />
       )}
 
       {/* CREATE / EDIT MODAL */}

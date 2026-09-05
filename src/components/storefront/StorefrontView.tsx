@@ -45,7 +45,7 @@ import {
   getCategories,
   getOffers,
   getReviews,
-  getEvents,
+  getEvents, getBioLinks, recordBioLinkClick, getPortfolioItems, getTestimonials,
   recordAnalyticsEvent,
   incrementShareCount,
 } from '../../services/firebaseService';
@@ -61,8 +61,9 @@ import { DigitalCheckoutModal } from './DigitalCheckoutModal';
 import { VerifiedBadge } from '../common/VerifiedBadge';
 import { PortfolioShowcase } from './PortfolioShowcase';
 import { EventsShowcase } from './EventsShowcase';
+import { BioLinksShowcase } from './BioLinksShowcase';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, LayoutGrid } from 'lucide-react';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -182,6 +183,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [offers, setOffers] = useState<Offer[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [bioLinks, setBioLinks] = useState<any[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter & Search states
@@ -207,11 +211,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     setBannerError(false);
   }, [business.id, business.logo, business.banner, business.coverImage]);
 
-  const hasPortfolioModule =
-    business.type === 'creator' ||
-    Boolean(business.modules?.work_portfolio) ||
-    Boolean(business.modules?.portfolio);
-  const [creatorTab, setCreatorTab] = useState<'store' | 'events'>('store');
+  
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
@@ -317,6 +317,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         setOffers(parsed.offers || []);
         setReviews(parsed.reviews || []);
         setEvents(parsed.events || []);
+        setBioLinks(parsed.bioLinks || []);
+        setPortfolioItems(parsed.portfolioItems || []);
+        setTestimonials(parsed.testimonials || []);
         setIsLoading(false);
       } catch (e) {
         // ignore parse errors
@@ -327,12 +330,15 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       if (!cachedData) {
         setIsLoading(true);
       }
-      const [fetchedItems, fetchedCategories, fetchedOffers, fetchedReviews, fetchedEvents] = await Promise.all([
+      const [fetchedItems, fetchedCategories, fetchedOffers, fetchedReviews, fetchedEvents, fetchedBioLinks, fetchedPortfolioItems, fetchedTestimonials] = await Promise.all([
         getCatalogItems(business.id, true),
         getCategories(business.id),
         getOffers(business.id),
         getReviews(business.id),
         getEvents(business.id),
+        getBioLinks(business.id) as Promise<any[]>,
+        getPortfolioItems(business.id, true),
+        getTestimonials(business.id, true),
       ]);
 
       const activeCategories = fetchedCategories.filter((c) => c.isActive !== false);
@@ -345,6 +351,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       setOffers(activeOffers);
       setReviews(publishedReviews);
       setEvents(activeEvents);
+      setBioLinks(fetchedBioLinks.filter(l => l.enabled).sort((a,b) => (a.order || 0) - (b.order || 0)));
+      setPortfolioItems(fetchedPortfolioItems);
+      setTestimonials(fetchedTestimonials);
 
       // Save to cache for next instant load
       localStorage.setItem(
@@ -355,6 +364,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           offers: activeOffers,
           reviews: publishedReviews,
           events: activeEvents,
+          bioLinks: fetchedBioLinks.filter(l => l.enabled).sort((a,b) => (a.order || 0) - (b.order || 0)),
+          portfolioItems: fetchedPortfolioItems,
+          testimonials: fetchedTestimonials,
           timestamp: Date.now(),
         })
       );
@@ -488,281 +500,71 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               className="w-full h-full object-cover object-center"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white/50">
-              <Store className="w-12 h-12 mb-2 text-emerald-400" />
-              <span className="text-xs font-semibold text-slate-200">{business.name}</span>
-            </div>
+                  <div className="w-full h-full bg-linear-to-r from-emerald-900 to-teal-900 opacity-90" />
           )}
-          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
         </div>
-
-        {/* Profile Card Container */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative pb-6">
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200/80 p-5 sm:p-6 -mt-16 sm:-mt-20 mb-4 relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            {/* Logo and Primary Info */}
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 aspect-square rounded-2xl bg-white p-1.5 shadow-xl border-2 border-slate-100 overflow-hidden shrink-0 -mt-12 sm:-mt-16 relative z-20 flex items-center justify-center">
-                {business.logo && !logoError ? (
-                  <img
-                    src={business.logo}
-                    alt={business.name}
-                    referrerPolicy="no-referrer"
-                    loading="eager"
-                    fetchPriority="high"
-                    onError={() => setLogoError(true)}
-                    className="w-full h-full object-cover aspect-square rounded-xl"
-                  />
+        
+        {/* Profile Info Card */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 -mt-12 sm:-mt-16 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+            {/* Logo */}
+            <div className="relative shrink-0">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-2xl sm:rounded-3xl shadow-xl border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
+                {business.logo || business.profileImage ? (
+                  <img src={business.logo || business.profileImage} alt={business.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-emerald-600 text-white font-extrabold text-3xl flex items-center justify-center rounded-xl shadow-inner">
-                    {business.name.slice(0, 2).toUpperCase()}
-                  </div>
+                  <Store className="w-10 h-10 sm:w-14 sm:h-14 text-emerald-600/40" />
                 )}
-              </div>
-
-              <div className="space-y-1.5 mb-1 pt-1 sm:pt-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
-                    {business.name}
-                  </h1>
-                  {Boolean(business.name && (business.whatsapp || business.phone)) && (
-                    <VerifiedBadge verified={true} size="sm" />
-                  )}
-                  {(() => {
-                    const isMaintenance = business.status === 'maintenance';
-                    const isStoreOpen = !isMaintenance && business.status !== 'inactive' && business.status !== 'closed';
-                    return (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border ${
-                        isMaintenance
-                          ? 'bg-amber-100 text-amber-800 border-amber-300'
-                          : isStoreOpen 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isMaintenance ? 'bg-amber-600' : isStoreOpen ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
-                        {isMaintenance ? 'Closed (Maintenance Mode)' : isStoreOpen ? 'Open Now' : 'Offline / Closed'}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {business.tagline && (
-                  <p className="text-sm font-medium text-slate-600 line-clamp-1">
-                    {business.tagline}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-3 text-xs text-slate-500 pt-0.5 flex-wrap">
-                  <span className="font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                    {bizMeta.label}
-                  </span>
-
-                  <div className="flex items-center gap-1 font-bold text-slate-800">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span>{averageRating}</span>
-                    <span className="text-slate-400 font-normal">({reviews.length} reviews)</span>
-                  </div>
-
-                  {business.city && (
-                    <div className="flex items-center gap-1 text-slate-600">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{business.city}</span>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
-
-            {/* Direct Merchant Contact & Share CTAs */}
-            <div className="flex items-center gap-2 sm:mb-1 shrink-0 flex-wrap pt-2 sm:pt-0">
-              <PWAInstallPrompt variant="button" customTitle={`Install ${business.name} App`} />
-
-              <a
-                href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(
-                  `Hi ${business.name}, I am visiting your online storefront.`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={() => setIsCustomerOrdersOpen(true)}
-                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                title="View My Orders & Track Status"
-              >
-                <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                <span className="hidden sm:inline">My Orders</span>
-              </button>
-
-              <a
-                href={`tel:${business.phone || business.whatsapp}`}
-                className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer shadow-xs"
-                title="Call Merchant"
-              >
-                <Phone className="w-4 h-4" />
-              </a>
-
-              <button
-                type="button"
-                onClick={handleShareStore}
-                className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer shadow-xs"
-                title="Share Store Link"
-              >
-                {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
-              </button>
-
-              {onOpenDigitalCard && (
-                <button
-                  type="button"
-                  onClick={onOpenDigitalCard}
-                  className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition cursor-pointer shadow-xs"
-                  title="View Digital Visiting Card"
-                >
-                  <QrCode className="w-4 h-4 text-emerald-600" />
-                </button>
+            
+            {/* Core Info */}
+            <div className="flex-1 space-y-1 sm:pb-2 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading truncate">{business.name}</h1>
+                <VerifiedBadge />
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600 font-medium">
+                {business.category && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>{business.category}</span>
+                  </span>
+                )}
+                {business.city && (
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <MapPin className="w-4 h-4" />
+                    <span>{business.city}, {business.state}</span>
+                  </span>
+                )}
+              </div>
+              
+              {(business.tagline || business.description || business.bio) && (
+                <p className="text-sm text-slate-600 mt-2 max-w-2xl line-clamp-2 leading-relaxed">
+                  {business.tagline || business.bio || business.description}
+                </p>
               )}
             </div>
-          </div>
-
-          {/* Description & Store Badges */}
-          {business.description && (
-            <p className="text-xs text-slate-600 max-w-3xl pt-3 mt-3 border-t border-slate-100 leading-relaxed">
-              {business.description}
-            </p>
-          )}
+            
+            {/* Quick Actions (Share/Social) */}
+            <div className="flex items-center gap-2 shrink-0 sm:pb-2">
+              <button onClick={handleShareStore} className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition tooltip-trigger group relative">
+                <Share2 className="w-4 h-4" />
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">Share</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Creator View Switcher (Portfolio vs Store Catalog vs Events) */}
-      {hasPortfolioModule && business.status !== 'maintenance' && (
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between sm:justify-start gap-2 sm:gap-3 py-2.5 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setCreatorTab('portfolio')}
-                className={`px-4 sm:px-5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  creatorTab === 'portfolio'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Work Portfolio</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreatorTab('store')}
-                className={`px-4 sm:px-5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  creatorTab === 'store'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Services & Products ({catalogItems.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreatorTab('events')}
-                className={`px-4 sm:px-5 py-2 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 ${
-                  creatorTab === 'events'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                <Ticket className="w-3.5 h-3.5" />
-                <span>Events & Webinars ({events.length})</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsQuoteModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl text-xs font-black bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition flex items-center gap-1.5 cursor-pointer shrink-0 sm:ml-auto"
-            >
-              <FileText className="w-3.5 h-3.5 text-amber-600" />
-              <span>Request Custom Quote</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Store Content Area / Maintenance Mode View */}
-      {business.status === 'maintenance' ? (
-        <main className="max-w-3xl mx-auto px-4 py-12 sm:py-16 text-center space-y-6">
-          <div className="p-8 sm:p-12 bg-white rounded-3xl border border-amber-200 shadow-xl space-y-6">
-            <div className="w-full max-w-sm h-52 mx-auto bg-amber-50/50 rounded-2xl flex items-center justify-center border-2 border-amber-200/60 shadow-inner overflow-hidden p-2">
-              {business.maintenanceImage ? (
-                <SafeImage src={business.maintenanceImage} alt="Closed for maintenance" fallbackType="none" className="w-full h-full object-contain rounded-xl" />
-              ) : (
-                <Store className="w-16 h-16 text-amber-600 animate-pulse" />
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[11px] uppercase tracking-wider inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
-                Shop Temporarily Closed
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading">
-                We'll Be Back Soon!
-              </h2>
-              <p className="text-sm text-slate-600 max-w-lg mx-auto leading-relaxed pt-2">
-                {business.maintenanceMessage || 'We are currently taking a short break or restocking fresh items. Please check back later or contact us on WhatsApp below!'}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-center gap-3 pt-4">
-              <a
-                href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(
-                  `Hi ${business.name}, I see your store is in maintenance mode. When will you reopen?`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Contact Owner on WhatsApp</span>
-              </a>
-
-              <button
-                type="button"
-                onClick={handleShareStore}
-                className="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition flex items-center gap-2 cursor-pointer"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Share Store</span>
-              </button>
-            </div>
-          </div>
-        </main>
-      ) : hasPortfolioModule && creatorTab === 'events' ? (
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
-          {events.length > 0 ? (
-            <EventsShowcase events={events} business={business} />
-          ) : (
-            <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto">
-                <Ticket className="w-7 h-7" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 font-heading">
-                No Upcoming Events Right Now
-              </h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Check back soon for upcoming masterclasses, workshops, and exclusive live webinars.
-              </p>
-            </div>
-          )}
-        </main>
-      ) : (
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
+        
+        {/* Bio Link Buttons */}
+        {(business.modules?.universal_links) && (
+           <BioLinksShowcase links={bioLinks} business={business} />
+        )}
+        
         {/* Active Promotional Offers Ribbon */}
         {offers.length > 0 && (
           <div className="space-y-2">
@@ -1288,7 +1090,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           <img src="/storelly7.jpg.jpeg" alt="Store Showroom" className="w-40 h-24 object-cover rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:block" />
         </div>
       </main>
-      )}
 
       {/* Floating Bottom Cart Bar (if items in cart) */}
       {totalItemsCount > 0 && isOrderable && (

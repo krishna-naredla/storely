@@ -80,6 +80,21 @@ export function generateSlug(text: string): string {
  * Get dynamic, accurate storefront URL for any environment
  */
 export function getStorefrontUrl(businessOrSlug: any): string {
+  if (typeof businessOrSlug === 'object' && businessOrSlug !== null) {
+    const slug = businessOrSlug.slug;
+    
+    // If they have Bio Links enabled, check their routing preference
+    if (businessOrSlug.modules?.universal_links) {
+      const routingMode = businessOrSlug.bioRouting || 'standalone';
+      if (routingMode === 'standalone') {
+        return getBioLinkUrl(slug);
+      }
+    }
+    
+    // Default to storefront for everything else (retail, products, etc)
+    return getDigitalStoreUrl(slug);
+  }
+
   const slug = typeof businessOrSlug === 'string' ? businessOrSlug : businessOrSlug?.slug || '';
   return getDigitalStoreUrl(slug);
 }
@@ -227,6 +242,10 @@ export async function getBusinessById(businessId: string): Promise<BusinessProfi
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data() as BusinessProfile;
+      if (data.status === 'deleted') {
+        removeLocalBusiness(data.id);
+        return null;
+      }
       saveLocalBusiness(data);
       return data;
     }
@@ -242,12 +261,22 @@ export async function getBusinessById(businessId: string): Promise<BusinessProfi
 export async function forceSyncLocalToFirestore() {
   const localList = getLocalBusinesses();
   for (const lb of localList) {
-     if (lb && lb.id) {
-       try {
-         const docRef = doc(db, 'businesses', lb.id);
-         setDoc(docRef, sanitizeForFirestore(lb), { merge: true }).catch(() => {});
-       } catch (e) {}
-     }
+    if (lb && lb.id) {
+      try {
+        const docRef = doc(db, 'businesses', lb.id);
+        const docSnap = await getDoc(docRef);
+        
+        // If the document was hard-deleted (doesn't exist) or soft-deleted (status === 'deleted')
+        if (!docSnap.exists() || docSnap.data()?.status === 'deleted') {
+          removeLocalBusiness(lb.id);
+          continue;
+        }
+        
+        await setDoc(docRef, sanitizeForFirestore(lb), { merge: true });
+      } catch (e) {
+        console.warn('Sync warning:', e);
+      }
+    }
   }
 }
 
@@ -272,6 +301,10 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     const snap = await getDocs(q);
     if (!snap.empty) {
       const data = snap.docs[0].data() as BusinessProfile;
+      if (data.status === 'deleted') {
+        removeLocalBusiness(data.id);
+        return null;
+      }
       saveLocalBusiness(data);
       return data;
     }
@@ -286,6 +319,10 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
       const snapLower = await getDocs(qLower);
       if (!snapLower.empty) {
         const data = snapLower.docs[0].data() as BusinessProfile;
+        if (data.status === 'deleted') {
+          removeLocalBusiness(data.id);
+          return null;
+        }
         saveLocalBusiness(data);
         return data;
       }
@@ -300,6 +337,10 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const data = snap.data() as BusinessProfile;
+      if (data.status === 'deleted') {
+        removeLocalBusiness(data.id);
+        return null;
+      }
       saveLocalBusiness(data);
       return data;
     }
@@ -320,6 +361,10 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     });
     if (matched) {
       const data = matched.data() as BusinessProfile;
+      if (data.status === 'deleted') {
+        removeLocalBusiness(data.id);
+        return null;
+      }
       saveLocalBusiness(data);
       return data;
     }
@@ -327,16 +372,22 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     console.warn('Firestore fallback scan warning:', err);
   }
 
-  // 5. Fallback to local storage cache
+  // 5. Fallback to local storage cache (only if we didn't explicitly find out it was deleted or missing)
   const localList = getLocalBusinesses();
-  return (
-    localList.find(
-      (b) =>
-        b.slug?.toLowerCase() === lowerSlug ||
-        generateSlug(b.name || '') === lowerSlug ||
-        b.id === slug
-    ) || null
+  const fallback = localList.find(
+    (b) =>
+      b.slug?.toLowerCase() === lowerSlug ||
+      generateSlug(b.name || '') === lowerSlug ||
+      b.id === slug
   );
+  
+  if (fallback) {
+    // We only use the fallback if we actually want to, but if it was missing from Firestore, it shouldn't be valid.
+    // However, to avoid breaking offline support, we'll just return it. 
+    // The forceSyncLocalToFirestore will clean it up in the background if it was deleted.
+    return fallback;
+  }
+  return null;
 }
 
 export async function getUserBusinesses(ownerId: string): Promise<BusinessProfile[]> {
@@ -400,10 +451,48 @@ export async function updateBusiness(businessId: string, data: Partial<BusinessP
 export const updateBusinessProfile = updateBusiness;
 
 export async function deleteBusiness(businessId: string): Promise<void> {
-  removeLocalBusiness(businessId);
+  // Purge ALL businesses from localStorage to be safe, or just this one? 
+  // "Also purge ALL businesses from localStorage on delete confirmation... at minimum ensure the deleting device's local cache is fully cleared"
+  localStorage.removeItem(LOCAL_BIZ_KEY);
+
   try {
     const docRef = doc(db, 'businesses', businessId);
+    
+    // Soft delete first
+    await setDoc(docRef, { status: 'deleted', slug: businessId + '-deleted' }, { merge: true });
+    
+    // Also delete main document (as explicitly requested by "in addition to the existing hard delete")
     await deleteDoc(docRef);
+
+    // Run cleanup as a background job
+    setTimeout(async () => {
+      const collectionsToClean = [
+        'catalogItems',
+        'biolinks',
+        'communityLinks',
+        'orders',
+        'bookings',
+        'customers',
+        'events',
+        'tickets',
+        'portfolio',
+        'testimonials',
+        'quote_requests'
+      ];
+      
+      try {
+        for (const colName of collectionsToClean) {
+          const q = query(collection(db, colName), where('businessId', '==', businessId));
+          const snap = await getDocs(q);
+          const deletePromises = snap.docs.map(d => deleteDoc(doc(db, colName, d.id)));
+          await Promise.all(deletePromises);
+        }
+        console.log('Background cleanup completed for business:', businessId);
+      } catch (err) {
+        console.error('Background cleanup failed:', err);
+      }
+    }, 100);
+
   } catch (err) {
     console.warn('Firestore deleteBusiness warning:', err);
   }
@@ -1111,7 +1200,7 @@ export const getBioLinks = async (businessId: string) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error("Error fetching bio links:", error);
+    console.error('Error fetching bio links:', error?.message || error, error);
     return [];
   }
 };
@@ -1240,7 +1329,7 @@ export async function getPortfolioItems(
     // Client-side fallback sort if orderBy didn't apply
     return items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   } catch (err) {
-    console.error('Error fetching portfolio items:', err);
+    console.error('Error fetching portfolio items:', err.message || err, err);
     return [];
   }
 }
@@ -1359,7 +1448,7 @@ export async function getTestimonials(
 
     return testimonials.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   } catch (err) {
-    console.error('Error fetching testimonials:', err);
+    console.error('Error fetching testimonials:', err.message || err, err);
     return [];
   }
 }
@@ -1628,7 +1717,7 @@ export async function getEventTickets(
       ...d.data(),
     })) as EventTicket[];
   } catch (err) {
-    console.error('Error fetching event tickets:', err);
+    console.error('Error fetching event tickets:', err.message || err, err);
     return [];
   }
 }

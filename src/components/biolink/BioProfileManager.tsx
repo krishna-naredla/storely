@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BusinessProfile } from '../../types';
-import { getBioLinks, createBioLink, updateBioLink, deleteBioLink, updateBioLinksOrder, updateBusinessProfile, getBioLinkAnalytics, getBioLinkUrl } from '../../services/firebaseService';
-import { Plus, GripVertical, Edit2, Trash2, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Mail, Phone, Palette, Copy, Share2, QrCode, BarChart2, Eye, MousePointerClick, MessageCircle, Send, Linkedin, MessageSquare, FileText, Folder, Globe, Briefcase, ShoppingBag, Layout } from 'lucide-react';
+import { getBioLinks, createBioLink, updateBioLink, deleteBioLink, updateBioLinksOrder, updateBusinessProfile, getBioLinkAnalytics, getBioLinkUrl, getDigitalStoreUrl } from '../../services/firebaseService';
+import { DashboardEmptyState } from '../common/DashboardEmptyState';
+import { DashboardSkeleton } from '../common/DashboardSkeleton';
+import { Loader2, MoveUp, MoveDown, Plus, GripVertical, Edit2, Trash2, Link as LinkIcon, Instagram, Youtube, Facebook, Twitter, Smartphone, ExternalLink, Mail, Phone, Palette, Copy, Share2, QrCode, BarChart2, Eye, MousePointerClick, MessageCircle, Send, Linkedin, MessageSquare, FileText, Folder, Globe, Briefcase, ShoppingBag, Layout } from 'lucide-react';
 import QRCode from 'qrcode';
 import { SafeImage } from '../common/SafeImage';
 
@@ -51,8 +53,18 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
   const [analytics, setAnalytics] = useState({ views: 0, clicks: 0, clicksPerLink: {} });
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   
-  const publicUrl = getBioLinkUrl(business.slug);
+  const routingMode = business.bioRouting || 'standalone';
+  const standaloneUrl = getBioLinkUrl(business.slug);
+  const storefrontUrl = getDigitalStoreUrl(business.slug);
+  const publicUrl = (routingMode === 'storefront' || routingMode === 'both') ? storefrontUrl : standaloneUrl;
 
+  const handleRoutingChange = async (val: 'standalone' | 'storefront' | 'both') => {
+    await updateBusinessProfile(business.id, { bioRouting: val });
+    window.location.reload(); // Simple way to refresh the parent state and qr code
+  };
+
+  
+  
   useEffect(() => {
     loadLinks();
     QRCode.toDataURL(publicUrl, { width: 160, margin: 1, color: { dark: '#0F172A', light: '#FFFFFF' } })
@@ -62,7 +74,7 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
   const loadLinks = async () => {
     setLoading(true);
     const [data, stats] = await Promise.all([
-      getBioLinks(business.id),
+      getBioLinks(business.id) as Promise<any[]>,
       getBioLinkAnalytics(business.id)
     ]);
     setLinks(data.sort((a,b) => (a.order || 0) - (b.order || 0)));
@@ -208,15 +220,20 @@ export const BioProfileManager: React.FC<Props> = ({ business }) => {
               )}
 
               {loading ? (
-                <div className="py-12 flex justify-center text-slate-400"><Loader2 className="w-8 h-8 animate-spin" /></div>
-              ) : links.length === 0 && !isEditing ? (
-                <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl">
-                  <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
-                    <LinkIcon className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 mb-1">No Links Yet</h3>
-                  <p className="text-slate-500 text-sm mb-4">Add your first link to start building your bio page.</p>
+                <div className="py-4">
+                  <DashboardSkeleton count={3} type="list" />
                 </div>
+              ) : links.length === 0 && !isEditing ? (
+                <DashboardEmptyState
+                  icon={LinkIcon}
+                  title="No Links Yet"
+                  description="Add your first link to start building your bio page."
+                  actionLabel="Add New Link"
+                  onAction={() => {
+                    setEditingLink(null); setTitle(''); setUrl(''); setType('custom');
+                    setIsEditing(true);
+                  }}
+                />
               ) : (
                 <div className="space-y-3">
                   {links.map((link, index) => {

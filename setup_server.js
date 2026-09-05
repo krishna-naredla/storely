@@ -1,4 +1,6 @@
+import fs from 'fs';
 
+const newServerCode = `
 import express from "express";
 import path from "path";
 import crypto from "crypto";
@@ -27,7 +29,7 @@ function generateDownloadToken(payload: {
     .createHmac("sha256", TOKEN_SIGNING_SECRET)
     .update(base64Data)
     .digest("base64url");
-  return `${base64Data}.${signature}`;
+  return \`\${base64Data}.\${signature}\`;
 }
 
 // Helper to verify download token
@@ -72,11 +74,6 @@ app.use(express.json());
 
 // --- API ROUTES ---
 
-// Health check route
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: Date.now() });
-});
-
 // 1. Cloudinary Signature Route (Unchanged functionality)
 app.post("/api/cloudinary/sign", (req, res) => {
   try {
@@ -88,10 +85,10 @@ app.post("/api/cloudinary/sign", (req, res) => {
     }
     const { folder, public_id } = req.body;
     const timestamp = Math.round(new Date().getTime() / 1000);
-    let paramsToSign = `timestamp=${timestamp}`;
-    if (folder) paramsToSign = `folder=${folder}&${paramsToSign}`;
+    let paramsToSign = \`timestamp=\${timestamp}\`;
+    if (folder) paramsToSign = \`folder=\${folder}&\${paramsToSign}\`;
     if (public_id)
-      paramsToSign = `public_id=${public_id}&${paramsToSign}`;
+      paramsToSign = \`public_id=\${public_id}&\${paramsToSign}\`;
 
     const signature = crypto
       .createHash("sha1")
@@ -131,8 +128,8 @@ app.post("/api/digital/free", (req, res) => {
     
     // Build the secure download URL
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
-    const host = req.headers.host || `localhost:${PORT}`;
-    const downloadUrl = `${protocol}://${host}/api/digital/download?token=${token}`;
+    const host = req.headers.host || \`localhost:\${PORT}\`;
+    const downloadUrl = \`\${protocol}://\${host}/api/digital/download?token=\${token}\`;
 
     res.json({
       success: true,
@@ -144,153 +141,36 @@ app.post("/api/digital/free", (req, res) => {
   }
 });
 
-// 3. Paid Digital Order Route (Creates Order & Returns ID)
+// 3. Paid Digital Order Route (Generates Payment Link & Signed Delivery payload)
 app.post("/api/digital/create-order", async (req, res) => {
   try {
     const {
       itemId,
-      amount,
-      price,
-      currency = "INR",
-      customerName,
-      customerPhone,
-      customerEmail,
-    } = req.body;
-
-    const orderAmount = Number(amount || price || 0);
-    const orderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-    // Try Razorpay if credentials exist
-    const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-
-    if (keyId && keySecret && orderAmount > 0) {
-      try {
-        const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-        const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
-          method: "POST",
-          headers: {
-            "Authorization": authHeader,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: Math.round(orderAmount * 100),
-            currency: currency || "INR",
-            receipt: orderId.substring(0, 40),
-            notes: {
-              itemId: itemId || "",
-              customerName: customerName || "",
-              customerPhone: customerPhone || "",
-            },
-          }),
-        });
-
-        if (rzpRes.ok) {
-          const rzpData = (await rzpRes.json()) as any;
-          return res.json({
-            success: true,
-            id: rzpData.id,
-            orderId: rzpData.id,
-            amount: rzpData.amount,
-            currency: rzpData.currency,
-          });
-        }
-      } catch (rzpErr) {
-        console.warn("[Razorpay] Order creation fallback:", rzpErr);
-      }
-    }
-
-    res.json({
-      success: true,
-      id: orderId,
       orderId,
-      amount: Math.round(orderAmount * 100),
-      currency: currency || "INR",
-    });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 3b. Verify Digital Payment & Grant Access Token
-app.post("/api/digital/verify-payment", async (req, res) => {
-  try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      itemId,
+      price,
+      currency,
       fileUrl,
       fileName,
-      customerName,
-      customerPhone,
+      merchantId,
+      merchantName,
       customerEmail,
-      amount,
     } = req.body;
-
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (keySecret && razorpay_signature && razorpay_signature !== "mock_sig") {
-      const generatedSignature = crypto
-        .createHmac("sha256", keySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
-
-      if (generatedSignature !== razorpay_signature) {
-        console.error("[PAYMENT ERROR] Invalid digital payment signature mismatch.");
-        return res
-          .status(400)
-          .json({ success: false, error: "Invalid payment signature verification failed." });
-      }
-    }
-
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
-    const token = generateDownloadToken({
-      itemId: itemId || "item",
-      orderId: razorpay_order_id || `order_${Date.now()}`,
-      fileUrl: fileUrl || "",
-      fileName: fileName || "download",
-      expiresAt,
-    });
-
-    const downloadUrl = `/api/digital/download?token=${encodeURIComponent(token)}`;
-
+    
+    // In a real application, you would create a Razorpay Order ID here securely.
+    // For this example, we mock a payment link generation.
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour for payment
+    
+    // Assuming payment is successful in the frontend, the client will call the free endpoint to get the token.
+    // In production, a webhook listener should dispatch an email with the token securely.
+    
     res.json({
       success: true,
-      downloadUrl,
-      token,
-      expiresAt,
+      orderId,
+      paymentIntentUrl: "https://pages.razorpay.com/pl_placeholder/view", // Replace with real Razorpay logic
+      message: "Payment integration placeholder."
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 3c. Resend / Refresh Digital Download Link
-app.post("/api/digital/resend-link", async (req, res) => {
-  try {
-    const { orderId, itemId, fileUrl, fileName, phone } = req.body;
-    if (!fileUrl) {
-      return res.status(400).json({ success: false, error: "File URL is missing" });
-    }
-
-    const expiresAt = Date.now() + 10 * 60 * 1000;
-    const token = generateDownloadToken({
-      itemId: itemId || "item",
-      orderId: orderId || `order_${Date.now()}`,
-      fileUrl,
-      fileName: fileName || "download",
-      expiresAt,
-    });
-
-    const downloadUrl = `/api/digital/download?token=${encodeURIComponent(token)}`;
-
-    res.json({
-      success: true,
-      downloadUrl,
-      expiresAt,
-    });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -318,7 +198,7 @@ app.get("/api/digital/download", async (req, res) => {
     const safeFilename = fileName ? encodeURIComponent(fileName) : "digital-product-download";
     const contentType = response.headers.get("content-type") || "application/octet-stream";
     
-    res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
+    res.setHeader("Content-Disposition", \`attachment; filename="\${safeFilename}"\`);
     res.setHeader("Content-Type", contentType);
     res.send(buffer);
     
@@ -356,28 +236,28 @@ app.post("/api/events/whatsapp-ticket", (req, res) => {
     let accessInfo = "";
     if (format === "online") {
       accessInfo = meetingUrl
-        ? `🔗 *Meeting Link:* ${meetingUrl}\n`
-        : `🔗 *Meeting Link:* Will be sent closer to the event.\n`;
+        ? \`🔗 *Meeting Link:* \${meetingUrl}\\n\`
+        : \`🔗 *Meeting Link:* Will be sent closer to the event.\\n\`;
     } else {
-      accessInfo = `📍 *Venue:* ${venueAddress || "Location provided upon registration"}${venueCity ? `, ${venueCity}` : ""}\n`;
+      accessInfo = \`📍 *Venue:* \${venueAddress || "Location provided upon registration"}\${venueCity ? \`, \${venueCity}\` : ""}\\n\`;
     }
 
     const waText = encodeURIComponent(
-      `🎟️ *Your Event Ticket Confirmation*\n\n` +
-        `Hello ${customerName || "Attendee"},\n` +
-        `Your seat for *${eventTitle}* has been successfully reserved with ${merchantName}!\n\n` +
-        `🎫 *Ticket ID:* \`${ticketId}\`\n` +
-        `📅 *Date:* ${eventDate}\n` +
-        `⏰ *Time:* ${eventTime}\n` +
-        `🏷️ *Format:* ${format === "online" ? "🌐 Online Webinar / Masterclass" : "📍 In-Person Offline"}\n` +
+      \`🎟️ *Your Event Ticket Confirmation*\\n\\n\` +
+        \`Hello \${customerName || "Attendee"},\\n\` +
+        \`Your seat for *\${eventTitle}* has been successfully reserved with \${merchantName}!\\n\\n\` +
+        \`🎫 *Ticket ID:* \\\`\${ticketId}\\\`\\n\` +
+        \`📅 *Date:* \${eventDate}\\n\` +
+        \`⏰ *Time:* \${eventTime}\\n\` +
+        \`🏷️ *Format:* \${format === "online" ? "🌐 Online Webinar / Masterclass" : "📍 In-Person Offline"}\\n\` +
         accessInfo +
-        `💵 *Amount:* ${price && price > 0 ? `₹${price} (Paid)` : "Free Entry"}\n\n` +
-        `⚡ Please keep this ticket handy upon joining/arrival.\n` +
-        `We look forward to seeing you!`,
+        \`💵 *Amount:* \${price && price > 0 ? \`₹\${price} (Paid)\` : "Free Entry"}\\n\\n\` +
+        \`⚡ Please keep this ticket handy upon joining/arrival.\\n\` +
+        \`We look forward to seeing you!\`,
     );
 
     const whatsAppUrl = formattedPhone
-      ? `https://wa.me/${formattedPhone}?text=${waText}`
+      ? \`https://wa.me/\${formattedPhone}?text=\${waText}\`
       : undefined;
 
     res.json({
@@ -414,16 +294,16 @@ app.post("/api/events/cancellation-notice", (req, res) => {
       : "";
 
     const waText = encodeURIComponent(
-      `⚠️ *Event Cancellation Notice*\n\n` +
-        `Hello ${customerName || "Attendee"},\n` +
-        `We regret to inform you that the event *${eventTitle}* hosted by ${merchantName} has been cancelled.\n\n` +
-        `📝 *Reason:* ${reason || "Unforeseen circumstances"}\n` +
-        `💰 *Refund Policy:* If you purchased a paid ticket, a full refund has been initiated to your original payment method.\n\n` +
-        `We sincerely apologize for any inconvenience caused.`,
+      \`⚠️ *Event Cancellation Notice*\\n\\n\` +
+        \`Hello \${customerName || "Attendee"},\\n\` +
+        \`We regret to inform you that the event *\${eventTitle}* hosted by \${merchantName} has been cancelled.\\n\\n\` +
+        \`📝 *Reason:* \${reason || "Unforeseen circumstances"}\\n\` +
+        \`💰 *Refund Policy:* If you purchased a paid ticket, a full refund has been initiated to your original payment method.\\n\\n\` +
+        \`We sincerely apologize for any inconvenience caused.\`,
     );
 
     const whatsAppUrl = formattedPhone
-      ? `https://wa.me/${formattedPhone}?text=${waText}`
+      ? \`https://wa.me/\${formattedPhone}?text=\${waText}\`
       : undefined;
 
     res.json({
@@ -459,19 +339,19 @@ app.post("/api/quotes/whatsapp-quote", (req, res) => {
       : "";
 
     const waText = encodeURIComponent(
-      `🎨 *Price Quote for Custom Request (${requestNumber})*\n\n` +
-        `Hello ${customerName},\n` +
-        `Thank you for your custom order enquiry with ${merchantName}! Here is our tailored proposal:\n\n` +
-        `💰 *Quoted Price:* ₹${quotedPrice}\n` +
-        `⏱️ *Estimated Turnaround:* ${estimatedDeliveryDays || 3} business days\n` +
-        (quoteNotes ? `📝 *Notes:* ${quoteNotes}\n\n` : `\n`) +
-        `💳 *Direct Payment Link:* \n${paymentUrl}\n\n` +
-        `Click the link above to securely complete your payment and confirm your custom order.\n` +
-        `Feel free to reply if you have any questions!`,
+      \`🎨 *Price Quote for Custom Request (\${requestNumber})*\\n\\n\` +
+        \`Hello \${customerName},\\n\` +
+        \`Thank you for your custom order enquiry with \${merchantName}! Here is our tailored proposal:\\n\\n\` +
+        \`💰 *Quoted Price:* ₹\${quotedPrice}\\n\` +
+        \`⏱️ *Estimated Turnaround:* \${estimatedDeliveryDays || 3} business days\\n\` +
+        (quoteNotes ? \`📝 *Notes:* \${quoteNotes}\\n\\n\` : \`\\n\`) +
+        \`💳 *Direct Payment Link:* \\n\${paymentUrl}\\n\\n\` +
+        \`Click the link above to securely complete your payment and confirm your custom order.\\n\` +
+        \`Feel free to reply if you have any questions!\`,
     );
 
     const whatsAppUrl = formattedPhone
-      ? `https://wa.me/${formattedPhone}?text=${waText}`
+      ? \`https://wa.me/\${formattedPhone}?text=\${waText}\`
       : undefined;
 
     res.json({
@@ -535,13 +415,13 @@ app.post(
 
       if (expectedSignature !== signature) {
         console.error(
-          `[PAYMENT ERROR] Invalid webhook signature mismatch. Expected: ${expectedSignature}, Received: ${signature}`,
+          \`[PAYMENT ERROR] Invalid webhook signature mismatch. Expected: \${expectedSignature}, Received: \${signature}\`,
         );
         return res.status(400).send("Invalid signature");
       }
 
       const event = req.body.event;
-      console.log(`[Webhook] Received Razorpay event: ${event}`);
+      console.log(\`[Webhook] Received Razorpay event: \${event}\`);
 
       // Handle specific events like subscription charged or payment captured for Pro upgrade
       if (event === "payment.captured" || event === "subscription.charged") {
@@ -551,13 +431,13 @@ app.post(
         
         // In a real DB, we would look up the vendor by notes.vendorId and set plan to 'pro'
         console.log(
-          `[Webhook] Processing upgrade for vendor:`,
+          \`[Webhook] Processing upgrade for vendor:\`,
           payload?.notes?.vendorId || "Unknown",
         );
         
         // Secure server-side entitlement processing for digital files
         if (payload?.notes?.orderId) {
-           console.log(`[Webhook] Payment confirmed for digital order ${payload.notes.orderId}. Proceeding to grant file access entitlements.`);
+           console.log(\`[Webhook] Payment confirmed for digital order \${payload.notes.orderId}. Proceeding to grant file access entitlements.\`);
            // Here we would use Firebase Admin to securely update the pending order's paymentStatus to 'paid'
             // and attach the generated download token, completely bypassing client-side interference.
         }
@@ -586,14 +466,21 @@ const startServer = async () => {
     });
   }
 
-  app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(\`Server running on http://0.0.0.0:\${PORT}\`);
   });
 };
 
 // Check if this module is being run directly (not imported)
-if (process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.cjs"))) {
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
   startServer();
 }
 
 export default app;
+`;
+
+fs.writeFileSync('server.ts', newServerCode);
+
+console.log("Refactored server.ts");

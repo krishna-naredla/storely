@@ -1,3 +1,5 @@
+import { DashboardEmptyState } from "../common/DashboardEmptyState";
+import { DashboardSkeleton } from "../common/DashboardSkeleton";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText,
@@ -518,22 +520,15 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
 
       {/* Requests List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-2">
-          <RefreshCw className="w-8 h-8 animate-spin text-purple-600" />
-          <span className="text-xs font-medium">Loading commission inquiries...</span>
+        <div className="py-8">
+          <DashboardSkeleton count={6} type="list" />
         </div>
       ) : filteredRequests.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200 p-8 space-y-3 shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto border border-purple-100">
-            <FileText className="w-7 h-7" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-900">No quote requests found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            {searchQuery
-              ? 'No requests match your search criteria.'
-              : 'When visitors submit custom order requests on your storefront, they will appear here with full specifications and photo references.'}
-          </p>
-        </div>
+        <DashboardEmptyState
+          icon={FileText}
+          title="No commission inquiries"
+          description={searchQuery ? 'No requests match your search query.' : 'You have no custom quote requests matching this filter.'}
+        />
       ) : (
         <div className="space-y-4">
           {filteredRequests.map((req) => {

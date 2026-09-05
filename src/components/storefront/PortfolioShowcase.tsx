@@ -45,6 +45,8 @@ import {
 import { SafeImage } from '../common/SafeImage';
 
 interface PortfolioShowcaseProps {
+  items?: PortfolioItem[];
+  testimonials?: Testimonial[];
   business: BusinessProfile;
   onBookConsultation?: (item?: CatalogItem) => void;
 }
@@ -64,10 +66,12 @@ const CATEGORIES: PortfolioCategory[] = [
 
 export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
   business,
+  items: passedItems,
+  testimonials: passedTestimonials,
   onBookConsultation,
 }) => {
-  const [items, setItems] = useState<PortfolioItem[]>([]);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [items, setItems] = useState<PortfolioItem[]>(passedItems || []);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(passedTestimonials || []);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
@@ -75,24 +79,9 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
-    const loadPublicData = async () => {
-      setIsLoading(true);
-      try {
-        const [fetchedItems, fetchedTestimonials] = await Promise.all([
-          getPortfolioItems(business.id, true), // active only
-          getTestimonials(business.id, true), // active only
-        ]);
-        setItems(fetchedItems);
-        recordAnalyticsEvent(business.id, 'portfolio_views', { slug: business.slug }).catch(() => {});
-        setTestimonials(fetchedTestimonials);
-      } catch (err) {
-        console.error('Error fetching public portfolio:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadPublicData();
-  }, [business.id]);
+    if (passedItems) setItems(passedItems);
+    if (passedTestimonials) setTestimonials(passedTestimonials);
+  }, [passedItems, passedTestimonials]);
 
   // Open Item Detail / Lightbox
   const handleOpenItem = (item: PortfolioItem) => {

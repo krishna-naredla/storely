@@ -1,3 +1,5 @@
+import { DashboardEmptyState } from "../common/DashboardEmptyState";
+import { DashboardSkeleton } from "../common/DashboardSkeleton";
 import React, { useState, useEffect } from 'react';
 import {
   Briefcase,
@@ -766,26 +768,13 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
               ))}
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-200 p-8 space-y-4">
-              <div className="w-16 h-16 rounded-3xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto shadow-inner">
-                <Briefcase className="w-8 h-8" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900">
-                  No work samples found
-                </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Add projects, case studies, showreels, and photo galleries to show off your capabilities.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleOpenCreateItem}
-                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer inline-flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Add Your First Work Sample
-              </button>
-            </div>
+            <DashboardEmptyState
+              icon={Briefcase}
+              title="No portfolio items found"
+              description={searchQuery ? 'No items match your search query.' : 'Showcase your best work, case studies, or design mockups to attract potential clients.'}
+              actionLabel="Add Portfolio Item"
+              onAction={() => handleOpenCreateItem()}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems.map((item, index) => {

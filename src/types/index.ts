@@ -145,7 +145,7 @@ export interface BusinessProfile {
   seoMetaKeywords?: string;
   seoMetaImage?: string;
   modules: BusinessModuleConfig;
-  status: 'active' | 'inactive' | 'draft' | 'suspended' | 'maintenance';
+  status: 'active' | 'inactive' | 'draft' | 'suspended' | 'maintenance' | 'deleted';
   maintenanceMode?: boolean;
   maintenanceMessage?: string;
   maintenanceImage?: string;
@@ -153,6 +153,8 @@ export interface BusinessProfile {
   accentColor?: string; // Specific for creators
   publicProfileStatus?: 'published' | 'draft'; // Specific for creators
   shareCount?: number;
+  bioRouting?: 'standalone' | 'storefront' | 'both';
+  bioTheme?: any;
   portfolioSettings?: PortfolioSettings;
   createdAt: number;
   updatedAt: number;

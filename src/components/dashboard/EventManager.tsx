@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { DashboardEmptyState } from '../common/DashboardEmptyState';
+import { DashboardSkeleton } from '../common/DashboardSkeleton';
 import {
   Plus,
   Calendar,
@@ -450,27 +452,13 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
           <span className="text-xs font-medium">Loading events...</span>
         </div>
       ) : filteredEvents.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200 p-8 space-y-4 shadow-xs">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
-            <Calendar className="w-8 h-8" />
-          </div>
-          <div className="space-y-1 max-w-sm mx-auto">
-            <h3 className="text-sm font-bold text-slate-900">No events found</h3>
-            <p className="text-xs text-slate-500">
-              {searchQuery
-                ? 'No events match your search query.'
-                : 'Host your first webinar or workshop! Multiple attendees can purchase tickets simultaneously.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleOpenCreateModal()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition inline-flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create Masterclass / Event</span>
-          </button>
-        </div>
+        <DashboardEmptyState
+          icon={Calendar}
+          title="No events found"
+          description={searchQuery ? 'No events match your search query.' : 'Host your first webinar or workshop! Multiple attendees can purchase tickets simultaneously.'}
+          actionLabel="Create Masterclass / Event"
+          onAction={() => handleOpenCreateModal()}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredEvents.map((event) => {
