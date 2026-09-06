@@ -1,4 +1,154 @@
-import { BusinessProfile, PortfolioThemeConfig, PortfolioCardStyle, PortfolioFontStyle, PortfolioThemeColor } from '../types';
+import { BusinessProfile, PortfolioThemeConfig, PortfolioCardStyle, PortfolioFontStyle, PortfolioThemeColor, PortfolioTemplateId, PortfolioBlock } from '../types';
+
+export interface PortfolioTemplateDefinition {
+  id: PortfolioTemplateId;
+  name: string;
+  tagline: string;
+  description: string;
+  recommendedTheme: PortfolioThemeColor;
+  recommendedCardStyle: PortfolioCardStyle;
+  recommendedFont: PortfolioFontStyle;
+  badge: string;
+  iconName: string;
+}
+
+export const PORTFOLIO_LAYOUT_TEMPLATES: PortfolioTemplateDefinition[] = [
+  {
+    id: 'modern_showcase',
+    name: 'Modern Showcase',
+    tagline: 'High-Impact Creative Agency',
+    description: 'Hero presentation banner, floating quick stats, filterable gallery, and streamlined WhatsApp booking triggers.',
+    recommendedTheme: 'default',
+    recommendedCardStyle: 'bordered',
+    recommendedFont: 'sans',
+    badge: 'Popular',
+    iconName: 'Sparkles',
+  },
+  {
+    id: 'minimalist_studio',
+    name: 'Minimalist Studio',
+    tagline: 'Art & Design Focused',
+    description: 'Editorial whitespace, refined typography hierarchy, edge-to-edge photography showcase, and quiet luxury aesthetic.',
+    recommendedTheme: 'minimal',
+    recommendedCardStyle: 'minimal',
+    recommendedFont: 'serif',
+    badge: 'Aesthetic',
+    iconName: 'Camera',
+  },
+  {
+    id: 'dark_luxury',
+    name: 'Dark Luxury / Cinematic',
+    tagline: 'Obsidian & Neon Glow',
+    description: 'Deep obsidian dark canvas, spotlight glow project cards, cinematic showreels, and verified brand partnerships.',
+    recommendedTheme: 'dark',
+    recommendedCardStyle: 'glassmorphism',
+    recommendedFont: 'sans',
+    badge: 'Cinematic',
+    iconName: 'Film',
+  },
+  {
+    id: 'bento_grid',
+    name: 'Bento Grid',
+    tagline: 'Apple / Linear Inspired',
+    description: 'Dynamic asymmetric modular grid combining bio cards, live follower metrics, featured project widgets, and tech stack chips.',
+    recommendedTheme: 'indigo',
+    recommendedCardStyle: 'elevated',
+    recommendedFont: 'display',
+    badge: 'Trending',
+    iconName: 'LayoutGrid',
+  },
+  {
+    id: 'creative_masonry',
+    name: 'Visual Masonry Feed',
+    tagline: 'Behance & Pinterest Flow',
+    description: 'Staggered visual card flow, interactive tag pills, detailed case study expandable overlays, and client testimonials.',
+    recommendedTheme: 'rose',
+    recommendedCardStyle: 'bordered',
+    recommendedFont: 'sans',
+    badge: 'Visual',
+    iconName: 'Brush',
+  },
+  {
+    id: 'executive_agency',
+    name: 'Executive & Agency',
+    tagline: 'High-Converting Consultant',
+    description: 'Enterprise client trust logos, verified milestone numbers, structured service deliverables matrix, and custom quote builder.',
+    recommendedTheme: 'emerald',
+    recommendedCardStyle: 'bordered',
+    recommendedFont: 'sans',
+    badge: 'Conversion',
+    iconName: 'Briefcase',
+  },
+];
+
+export function getDefaultPortfolioBlocks(business?: BusinessProfile): PortfolioBlock[] {
+  return [
+    {
+      id: 'block_hero',
+      type: 'hero',
+      title: 'Hero & Introduction',
+      subtitle: 'Creator avatar, profession badge, headline, and primary call-to-actions',
+      enabled: true,
+      order: 1,
+    },
+    {
+      id: 'block_works',
+      type: 'works',
+      title: 'Works & Case Studies Showcase',
+      subtitle: 'Filterable gallery of verified client projects, showreels, and case studies',
+      enabled: true,
+      order: 2,
+    },
+    {
+      id: 'block_about',
+      type: 'about',
+      title: 'About Story & Experience',
+      subtitle: 'Narrative bio, years of industry experience, and milestones',
+      enabled: true,
+      order: 3,
+    },
+    {
+      id: 'block_skills',
+      type: 'skills',
+      title: 'Specializations & Tech Stack',
+      subtitle: 'Core competencies, software tools, and domain specializations',
+      enabled: true,
+      order: 4,
+    },
+    {
+      id: 'block_services',
+      type: 'services',
+      title: 'Services & Pricing Packages',
+      subtitle: 'Structured service tiers, deliverable checklists, and WhatsApp inquiry buttons',
+      enabled: true,
+      order: 5,
+    },
+    {
+      id: 'block_testimonials',
+      type: 'testimonials',
+      title: 'Client Reviews & Social Proof',
+      subtitle: 'Verified client feedback, star ratings, and company/role badges',
+      enabled: true,
+      order: 6,
+    },
+    {
+      id: 'block_mediakit',
+      type: 'mediakit',
+      title: 'Media Kit & Collabs',
+      subtitle: 'Social audience reach, platform follower counts, and sponsor logos',
+      enabled: true,
+      order: 7,
+    },
+    {
+      id: 'block_contact',
+      type: 'contact',
+      title: 'Inquiry & Direct Booking',
+      subtitle: 'Direct WhatsApp project inquiry form and contact channels',
+      enabled: true,
+      order: 8,
+    },
+  ];
+}
 
 export const DEFAULT_PORTFOLIO_THEME: PortfolioThemeConfig = {
   primaryColor: '#4f46e5', // Modern Indigo

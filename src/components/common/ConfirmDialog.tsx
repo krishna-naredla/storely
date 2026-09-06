@@ -13,6 +13,9 @@ interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
+export { ConfirmActionModal } from './ConfirmActionModal';
+export type { ConfirmActionModalProps } from './ConfirmActionModal';
+
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   title,

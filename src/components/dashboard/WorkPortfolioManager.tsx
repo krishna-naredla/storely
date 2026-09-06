@@ -76,6 +76,8 @@ import {
   PortfolioCardStyle,
   PortfolioServicePackage,
   PortfolioThemeConfig,
+  PortfolioBlock,
+  PortfolioTemplateId,
 } from '../../types';
 import {
   getPortfolioItems,
@@ -96,18 +98,22 @@ import {
   uploadDigitalFileToCloudinary,
   deleteImageFromStorage,
 } from '../../services/cloudinary';
-import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 import { SafeImage } from '../common/SafeImage';
 import { PortfolioUrlBanner } from '../portfolio/PortfolioUrlBanner';
 import { PortfolioItemEditor } from '../portfolio/PortfolioItemEditor';
 import { PortfolioDetailModal } from '../portfolio/PortfolioDetailModal';
 import { PortfolioLiveMockup } from '../portfolio/PortfolioLiveMockup';
+import { PortfolioBlocksManager } from '../portfolio/PortfolioBlocksManager';
+import { PortfolioTemplateSelector } from '../portfolio/PortfolioTemplateSelector';
 import { PORTFOLIO_PRESETS, PortfolioPreset } from '../../data/portfolioPresets';
 import {
   PORTFOLIO_THEME_PALETTES,
   PORTFOLIO_FONT_OPTIONS,
   PORTFOLIO_CARD_STYLES,
   BORDER_RADIUS_OPTIONS,
+  PORTFOLIO_LAYOUT_TEMPLATES,
+  getDefaultPortfolioBlocks,
   getEffectivePortfolioTheme,
 } from '../../utils/portfolioTheme';
 import { DashboardEmptyState } from '../common/DashboardEmptyState';
@@ -154,7 +160,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   onBusinessUpdated,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'works' | 'appearance' | 'services' | 'skills' | 'testimonials' | 'mediakit' | 'cta'
+    'works' | 'templates' | 'blocks' | 'appearance' | 'services' | 'skills' | 'testimonials' | 'mediakit' | 'cta'
   >('works');
 
   const [items, setItems] = useState<PortfolioItem[]>([]);
@@ -186,6 +192,16 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   // ==========================================
   const initialSettings = business.portfolioSettings || { ctaMode: 'whatsapp' };
   const initialThemeConfig = getEffectivePortfolioTheme(business);
+
+  // Template & Dynamic Blocks
+  const [selectedTemplateId, setSelectedTemplateId] = useState<PortfolioTemplateId>(
+    initialSettings.templateId || 'modern_showcase'
+  );
+  const [blocks, setBlocks] = useState<PortfolioBlock[]>(
+    initialSettings.blocks && initialSettings.blocks.length > 0
+      ? initialSettings.blocks
+      : getDefaultPortfolioBlocks(business)
+  );
 
   const [selectedProfession, setSelectedProfession] = useState<PortfolioProfession>(
     initialSettings.profession || 'custom'
@@ -254,6 +270,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       ? initialSettings.services
       : PORTFOLIO_PRESETS[selectedProfession]?.suggestedServices || []
   );
+  const [serviceToDelete, setServiceToDelete] = useState<PortfolioServicePackage | null>(null);
 
   // Testimonials State
   const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false);
@@ -273,9 +290,15 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   const [platformStats, setPlatformStats] = useState<PlatformStat[]>(
     initialSettings.mediaKit?.platformStats || []
   );
+  const [statToDelete, setStatToDelete] = useState<PlatformStat | null>(null);
   const [brandCollabs, setBrandCollabs] = useState<BrandCollab[]>(
     initialSettings.mediaKit?.brandCollabs || []
   );
+  const [collabToDelete, setCollabToDelete] = useState<BrandCollab | null>(null);
+
+  // Skill / Tool Delete Confirmations
+  const [skillToDelete, setSkillToDelete] = useState<string | null>(null);
+  const [toolToDelete, setToolToDelete] = useState<string | null>(null);
 
   // CTA & WhatsApp Settings
   const [primaryCtaText, setPrimaryCtaText] = useState(
@@ -362,8 +385,8 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       setSkillsList(p.skillsList);
       setToolsList(p.toolsList);
       setThemeColor(p.themeColor || 'default');
-      setFontFamily(p.fontFamily || 'sans');
-      setCardStyle(p.cardStyle || 'bordered');
+      setFontFamily(p.fontStyle || 'sans');
+      setCardStyle('bordered');
       setLayoutMode(p.layoutMode || 'grid');
       setPrimaryCtaText(p.primaryCtaText || 'WhatsApp');
       setSecondaryCtaText(p.secondaryCtaText || 'Hire Me');
@@ -404,6 +427,8 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
 
       const updatedSettings: PortfolioSettings = {
         ...business.portfolioSettings,
+        templateId: selectedTemplateId,
+        blocks,
         profession: selectedProfession,
         professionTitle: professionTitle.trim(),
         specializations,
@@ -596,8 +621,10 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     markDirty();
   };
 
-  const handleRemoveServicePackage = (id: string) => {
-    setServices(services.filter((p) => p.id !== id));
+  const handleConfirmDeleteServicePackage = () => {
+    if (!serviceToDelete) return;
+    setServices(services.filter((p) => p.id !== serviceToDelete.id));
+    setServiceToDelete(null);
     markDirty();
   };
 
@@ -691,8 +718,10 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     markDirty();
   };
 
-  const handleRemovePlatformStat = (id: string) => {
-    setPlatformStats(platformStats.filter((s) => s.id !== id));
+  const handleConfirmDeletePlatformStat = () => {
+    if (!statToDelete) return;
+    setPlatformStats(platformStats.filter((s) => s.id !== statToDelete.id));
+    setStatToDelete(null);
     markDirty();
   };
 
@@ -712,8 +741,10 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     markDirty();
   };
 
-  const handleRemoveBrandCollab = (id: string) => {
-    setBrandCollabs(brandCollabs.filter((c) => c.id !== id));
+  const handleConfirmDeleteBrandCollab = () => {
+    if (!collabToDelete) return;
+    setBrandCollabs(brandCollabs.filter((c) => c.id !== collabToDelete.id));
+    setCollabToDelete(null);
     markDirty();
   };
 
@@ -742,8 +773,10 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     setSkillInput('');
   };
 
-  const handleRemoveSkill = (s: string) => {
-    setSkillsList(skillsList.filter((item) => item !== s));
+  const handleConfirmDeleteSkill = () => {
+    if (!skillToDelete) return;
+    setSkillsList(skillsList.filter((item) => item !== skillToDelete));
+    setSkillToDelete(null);
     markDirty();
   };
 
@@ -756,8 +789,10 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     setToolInput('');
   };
 
-  const handleRemoveTool = (t: string) => {
-    setToolsList(toolsList.filter((item) => item !== t));
+  const handleConfirmDeleteTool = () => {
+    if (!toolToDelete) return;
+    setToolsList(toolsList.filter((item) => item !== toolToDelete));
+    setToolToDelete(null);
     markDirty();
   };
 
@@ -788,6 +823,8 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
 
   const currentWorkingSettings: PortfolioSettings = {
     ...business.portfolioSettings,
+    templateId: selectedTemplateId,
+    blocks,
     profession: selectedProfession,
     professionTitle,
     specializations,
@@ -897,6 +934,32 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
 
             <button
               type="button"
+              onClick={() => setActiveTab('templates')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeTab === 'templates'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-black'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Templates</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('blocks')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                activeTab === 'blocks'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-black'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Page Blocks ({blocks.filter((b) => b.enabled).length})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('appearance')}
               className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === 'appearance'
@@ -905,7 +968,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
               }`}
             >
               <Palette className="w-3.5 h-3.5" />
-              <span>Templates & Style</span>
+              <span>Colors & Style</span>
             </button>
 
             <button
@@ -1186,6 +1249,41 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
           )}
 
           {/* ===================================================== */}
+          {/* TAB: TEMPLATES SELECTION */}
+          {/* ===================================================== */}
+          {activeTab === 'templates' && (
+            <PortfolioTemplateSelector
+              selectedTemplateId={selectedTemplateId}
+              business={business}
+              onBusinessUpdated={onBusinessUpdated}
+              onSelectTemplate={(tmplOrId) => {
+                const tmplId = typeof tmplOrId === 'string' ? tmplOrId : tmplOrId.id;
+                setSelectedTemplateId(tmplId);
+                markDirty();
+              }}
+            />
+          )}
+
+          {/* ===================================================== */}
+          {/* TAB: DYNAMIC PAGE BLOCKS (FULL CRUD & REORDER) */}
+          {/* ===================================================== */}
+          {activeTab === 'blocks' && (
+            <PortfolioBlocksManager
+              blocks={blocks}
+              onChangeBlocks={(newBlocks) => {
+                setBlocks(newBlocks);
+                markDirty();
+              }}
+              onChange={(newBlocks) => {
+                setBlocks(newBlocks);
+                markDirty();
+              }}
+              business={business}
+              onBusinessUpdated={onBusinessUpdated}
+            />
+          )}
+
+          {/* ===================================================== */}
           {/* TAB 2: TEMPLATES & APPEARANCE CUSTOMIZATION */}
           {/* ===================================================== */}
           {activeTab === 'appearance' && (
@@ -1368,7 +1466,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                     >
                       {PORTFOLIO_FONT_OPTIONS.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.label} ({f.desc})
+                          {f.label} ({f.sample})
                         </option>
                       ))}
                     </select>
@@ -1525,7 +1623,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                     >
                       <button
                         type="button"
-                        onClick={() => handleRemoveServicePackage(pkg.id)}
+                        onClick={() => setServiceToDelete(pkg)}
                         className="absolute top-3.5 right-3.5 text-slate-400 hover:text-red-600 p-1 cursor-pointer"
                         title="Delete Package"
                       >
@@ -1743,7 +1841,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                         <span>{skill}</span>
                         <X
                           className="w-3 h-3 cursor-pointer text-indigo-400 hover:text-red-500"
-                          onClick={() => handleRemoveSkill(skill)}
+                          onClick={() => setSkillToDelete(skill)}
                         />
                       </span>
                     ))}
@@ -1781,7 +1879,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                         <span>{tool}</span>
                         <X
                           className="w-3 h-3 cursor-pointer text-slate-400 hover:text-red-500"
-                          onClick={() => handleRemoveTool(tool)}
+                          onClick={() => setToolToDelete(tool)}
                         />
                       </span>
                     ))}
@@ -1926,7 +2024,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                     >
                       <button
                         type="button"
-                        onClick={() => handleRemovePlatformStat(stat.id)}
+                        onClick={() => setStatToDelete(stat)}
                         className="absolute top-3 right-3 text-slate-400 hover:text-red-600 cursor-pointer"
                         title="Delete Stat"
                       >
@@ -2019,7 +2117,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                       />
                       <button
                         type="button"
-                        onClick={() => handleRemoveBrandCollab(collab.id)}
+                        onClick={() => setCollabToDelete(collab)}
                         className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -2337,28 +2435,93 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       {/* DELETE CONFIRM DIALOGS */}
       {/* ===================================================== */}
       {itemToDelete && (
-        <ConfirmDialog
+        <ConfirmActionModal
           isOpen={Boolean(itemToDelete)}
           title="Delete Portfolio Work Sample?"
           message={`Are you sure you want to permanently delete "${itemToDelete.title}"?`}
-          confirmLabel="Delete Sample"
-          cancelLabel="Keep Sample"
-          isDestructive
+          confirmText="Delete Sample"
+          cancelText="Keep Sample"
+          isDestructive={true}
           onConfirm={handleConfirmDeleteItem}
           onCancel={() => setItemToDelete(null)}
         />
       )}
 
       {testimonialToDelete && (
-        <ConfirmDialog
+        <ConfirmActionModal
           isOpen={Boolean(testimonialToDelete)}
           title="Delete Testimonial?"
           message={`Are you sure you want to delete the review by "${testimonialToDelete.clientName}"?`}
-          confirmLabel="Delete Review"
-          cancelLabel="Keep Review"
-          isDestructive
+          confirmText="Delete Review"
+          cancelText="Keep Review"
+          isDestructive={true}
           onConfirm={handleConfirmDeleteTestimonial}
           onCancel={() => setTestimonialToDelete(null)}
+        />
+      )}
+
+      {serviceToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(serviceToDelete)}
+          title="Delete Service Package?"
+          message={`Are you sure you want to delete "${serviceToDelete.title}"?`}
+          confirmText="Delete Package"
+          cancelText="Keep Package"
+          isDestructive={true}
+          onConfirm={handleConfirmDeleteServicePackage}
+          onCancel={() => setServiceToDelete(null)}
+        />
+      )}
+
+      {statToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(statToDelete)}
+          title="Delete Platform Stat?"
+          message={`Are you sure you want to delete the stat counter for ${statToDelete.platform}?`}
+          confirmText="Delete Stat"
+          cancelText="Keep Stat"
+          isDestructive={true}
+          onConfirm={handleConfirmDeletePlatformStat}
+          onCancel={() => setStatToDelete(null)}
+        />
+      )}
+
+      {collabToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(collabToDelete)}
+          title="Delete Brand Collaboration?"
+          message={`Are you sure you want to delete collaboration "${collabToDelete.brandName}"?`}
+          confirmText="Delete Brand"
+          cancelText="Keep Brand"
+          isDestructive={true}
+          onConfirm={handleConfirmDeleteBrandCollab}
+          onCancel={() => setCollabToDelete(null)}
+        />
+      )}
+
+      {skillToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(skillToDelete)}
+          title="Delete Skill?"
+          message={`Are you sure you want to remove skill "${skillToDelete}"?`}
+          confirmText="Remove Skill"
+          cancelText="Keep Skill"
+          isDestructive={true}
+          onConfirm={handleConfirmDeleteSkill}
+          onCancel={() => setSkillToDelete(null)}
+        />
+      )}
+
+      {toolToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(toolToDelete)}
+          title="Delete Tool / Tech Stack?"
+          message={`Are you sure you want to remove "${toolToDelete}" from your tech stack?`}
+          confirmText="Remove Tool"
+          cancelText="Keep Tool"
+          isDestructive={true}
+          onConfirm={handleConfirmDeleteTool}
+          onCancel={() => setToolToDelete(null)}
         />
       )}
     </div>

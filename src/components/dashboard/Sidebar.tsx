@@ -98,152 +98,125 @@ export const Sidebar: React.FC<SidebarProps> = ({
     icon: React.ElementType;
     badge?: string;
     visible: boolean;
-  }[] = isCreator ? [
-    { id: "overview", label: "Overview", icon: LayoutDashboard, visible: true },
-    { id: "modules", label: "Creator Modules", icon: Layers, badge: "Modules", visible: true },
-    { id: "portfolio", label: "Work Portfolio", icon: Briefcase, badge: "Showcase", visible: !!modules?.work_portfolio || !!modules?.portfolio },
-    { id: "biolink", label: "Universal Bio Link", icon: Link, badge: "@link", visible: !!modules?.universal_links },
-    { id: "catalog", label: "Digital Store", icon: ShoppingBag, visible: !!modules?.digital_products || !!modules?.digitalProducts },
-    { id: "orders", label: "Downloads & Orders", icon: Package, visible: !!modules?.digital_products || !!modules?.digitalProducts || !!modules?.cart_ordering },
-    { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: !!modules?.booking_appointments },
-    { id: "quotes", label: "Custom Quotes", icon: FileText, visible: !!modules?.custom_quotes },
-    { id: "events", label: "Events & Ticketing", icon: Ticket, visible: !!modules?.events_tickets || !!modules?.events_ticketing },
-    { id: "reviews", label: "Client Testimonials", icon: Star, visible: !!modules?.reviews !== false },
-    { id: "analytics", label: "Analytics & Traffic", icon: BarChart3, visible: true },
-    { id: "payments", label: "Payment Setup", icon: CreditCard, visible: true },
-    { id: "settings", label: "Creator Profile", icon: Settings, visible: true },
-  ] : [
-    {
-      id: "overview",
-      label: t("sidebar.dashboard"),
-      icon: LayoutDashboard,
-      visible: true,
-    },
-    {
-      id: "catalog",
-      label: bizMeta.itemPlural || t("sidebar.catalog"),
-      icon: Package,
-      visible:
-        !!modules?.products ||
-        !!modules?.services ||
-        !!modules?.menu ||
-        !!modules?.rooms ||
-        !!modules?.vehicles ||
-        !!modules?.digital_products,
-    },
-    {
-      id: "portfolio",
-      label: "Work Portfolio",
-      icon: Briefcase,
-      badge: "Showcase",
-      visible: !!modules?.work_portfolio || !!modules?.portfolio,
-    },
-    {
-      id: "events",
-      label: "Events & Webinars",
-      icon: Ticket,
-      badge: "Ticketing",
-      visible: !!modules?.events_ticketing,
-    },
-    {
-      id: "quotes",
-      label: "Custom Quotes",
-      icon: FileText,
-      badge: "Bespoke",
-      visible: !!modules?.custom_quotes,
-    },
-    {
-      id: "categories",
-      label: t("sidebar.categories"),
-      icon: Layers,
-      visible:
-        !!modules?.products ||
-        !!modules?.services ||
-        !!modules?.menu ||
-        !!modules?.rooms ||
-        !!modules?.vehicles ||
-        !!modules?.digital_products,
-    },
-    {
-      id: "orders",
-      label: t("sidebar.orders"),
-      icon: ShoppingBag,
-      badge: pendingOrdersCount > 0 ? pendingOrdersCount.toString() : undefined,
-      visible:
-        !!modules?.cart_ordering || !!modules?.menu || !!modules?.products,
-    },
-    {
-      id: "bookings",
-      label: t("sidebar.bookings"),
-      icon: CalendarCheck,
-      visible:
-        !!modules?.booking_appointments ||
-        !!modules?.stay_booking ||
-        !!modules?.rental_booking,
-    },
-    {
-      id: "customers",
-      label: t("sidebar.customers"),
-      icon: Users,
-      visible: true,
-    },
-    {
-      id: "reviews",
-      label: t("sidebar.reviews"),
-      icon: Star,
-      visible: !!modules?.reviews,
-    },
-    {
-      id: "offers",
-      label: t("sidebar.offers"),
-      icon: Tag,
-      visible: !!modules?.offers,
-    },
-    {
-      id: "biolink",
-      label: "Universal Bio Link",
-      icon: Link,
-      badge: "New",
-      visible: !!modules?.universal_links,
-    },
-    {
-      id: "share",
-      label: "Digital Card & QR",
-      icon: Share2,
-      badge: "Core",
-      visible: !!modules?.digital_card,
-    },
-    {
-      id: "analytics",
-      label: t("sidebar.analytics"),
-      icon: BarChart3,
-      visible: true,
-    },
-    {
-      id: "modules",
-      label: t("sidebar.modules"),
-      icon: Sliders,
-      visible: true,
-    },
-    {
-      id: "payments",
-      label: t("sidebar.payments"),
-      icon: CreditCard,
-      visible: true,
-    },
-    {
-      id: "notifications",
-      label: t("sidebar.notifications"),
-      icon: Bell,
-      visible: true,
-    },
-    {
-      id: "settings",
-      label: t("sidebar.settings"),
-      icon: Settings,
-      visible: true,
-    },
-  ];
+  }[] = isCreator
+    ? [
+        { id: "overview", label: "Overview", icon: LayoutDashboard, visible: true },
+        { id: "modules", label: "Creator Modules", icon: Layers, badge: "Modules", visible: true },
+        { id: "portfolio", label: "Work Portfolio", icon: Briefcase, badge: "Showcase", visible: !!modules?.work_portfolio || !!modules?.portfolio },
+        { id: "biolink", label: "Universal Bio Link", icon: Link, badge: "@link", visible: !!modules?.universal_links },
+        { id: "catalog", label: "Digital Store", icon: ShoppingBag, visible: !!modules?.digital_products || !!modules?.digitalProducts },
+        { id: "orders", label: "Downloads & Orders", icon: Package, visible: !!modules?.digital_products || !!modules?.digitalProducts || !!modules?.cart_ordering },
+        { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: !!modules?.booking_appointments },
+        { id: "quotes", label: "Custom Quotes", icon: FileText, visible: !!modules?.custom_quotes },
+        { id: "events", label: "Events & Ticketing", icon: Ticket, visible: !!modules?.events_tickets || !!modules?.events_ticketing },
+        { id: "reviews", label: "Client Testimonials", icon: Star, visible: !!modules?.reviews !== false },
+        { id: "analytics", label: "Analytics & Traffic", icon: BarChart3, visible: true },
+        { id: "payments", label: "Payment Setup", icon: CreditCard, visible: true },
+        { id: "notifications", label: "Notifications", icon: Bell, visible: true },
+        { id: "settings", label: "Creator Profile", icon: Settings, visible: true },
+      ]
+    : [
+        {
+          id: "overview",
+          label: t("sidebar.dashboard"),
+          icon: LayoutDashboard,
+          visible: true,
+        },
+        {
+          id: "catalog",
+          label: bizMeta.itemPlural || t("sidebar.catalog"),
+          icon: Package,
+          visible:
+            !!modules?.products ||
+            !!modules?.services ||
+            !!modules?.menu ||
+            !!modules?.rooms ||
+            !!modules?.vehicles,
+        },
+        {
+          id: "categories",
+          label: t("sidebar.categories"),
+          icon: Layers,
+          visible:
+            !!modules?.products ||
+            !!modules?.services ||
+            !!modules?.menu ||
+            !!modules?.rooms ||
+            !!modules?.vehicles,
+        },
+        {
+          id: "orders",
+          label: t("sidebar.orders"),
+          icon: ShoppingBag,
+          badge: pendingOrdersCount > 0 ? pendingOrdersCount.toString() : undefined,
+          visible:
+            !!modules?.cart_ordering || !!modules?.menu || !!modules?.products || !!modules?.table_delivery || !!modules?.inquiries,
+        },
+        {
+          id: "bookings",
+          label: t("sidebar.bookings"),
+          icon: CalendarCheck,
+          visible:
+            !!modules?.booking_appointments ||
+            !!modules?.stay_booking ||
+            !!modules?.rental_booking,
+        },
+        {
+          id: "customers",
+          label: t("sidebar.customers"),
+          icon: Users,
+          visible: true,
+        },
+        {
+          id: "reviews",
+          label: t("sidebar.reviews"),
+          icon: Star,
+          visible: !!modules?.reviews,
+        },
+        {
+          id: "offers",
+          label: t("sidebar.offers"),
+          icon: Tag,
+          visible: !!modules?.offers,
+        },
+        {
+          id: "share",
+          label: "Digital Card & QR",
+          icon: Share2,
+          badge: "Core",
+          visible: !!modules?.digital_card,
+        },
+        {
+          id: "analytics",
+          label: t("sidebar.analytics"),
+          icon: BarChart3,
+          visible: true,
+        },
+        {
+          id: "modules",
+          label: t("sidebar.modules"),
+          icon: Sliders,
+          visible: true,
+        },
+        {
+          id: "payments",
+          label: t("sidebar.payments"),
+          icon: CreditCard,
+          visible: true,
+        },
+        {
+          id: "notifications",
+          label: t("sidebar.notifications"),
+          icon: Bell,
+          visible: true,
+        },
+        {
+          id: "settings",
+          label: t("sidebar.settings"),
+          icon: Settings,
+          visible: true,
+        },
+      ];
 
   return (
     <>

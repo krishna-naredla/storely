@@ -25,7 +25,7 @@ import {
   reorderTestimonials,
 } from '../../services/firebaseService';
 import { uploadFileToStorage } from '../../services/firebaseService';
-import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 
 interface TestimonialsManagerProps {
   business: BusinessProfile;
@@ -474,12 +474,12 @@ export const TestimonialsManager: React.FC<TestimonialsManagerProps> = ({
       )}
 
       {/* Delete Testimonial Dialog */}
-      <ConfirmDialog
+      <ConfirmActionModal
         isOpen={!!testimonialToDelete}
         title="Delete Testimonial?"
         message={`Are you sure you want to delete the testimonial from "${testimonialToDelete?.clientName}"?`}
-        confirmText="Delete"
-        confirmVariant="danger"
+        confirmText="Delete Review"
+        isDestructive={true}
         onConfirm={handleConfirmDelete}
         onCancel={() => setTestimonialToDelete(null)}
       />

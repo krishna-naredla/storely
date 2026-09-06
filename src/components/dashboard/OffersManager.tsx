@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, Offer } from '../../types';
 import { getOffers, createOffer, updateOffer, deleteOffer } from '../../services/firebaseService';
-import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 
 interface OffersManagerProps {
   business: BusinessProfile;
@@ -344,7 +344,7 @@ export const OffersManager: React.FC<OffersManagerProps> = ({ business }) => {
       )}
 
       {/* Delete Confirm */}
-      <ConfirmDialog
+      <ConfirmActionModal
         isOpen={!!offerToDelete}
         title={`Delete Offer "${offerToDelete?.title}"?`}
         message="This promotion will immediately disappear from your public storefront."

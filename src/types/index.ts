@@ -90,6 +90,7 @@ export interface BusinessProfile {
   name: string;
   slug: string;
   username?: string; // For @username URLs
+  template?: string; // Active layout template id
   profileType?: ProfileType; // Explicit 'vendor' vs 'creator' separation
   storeType?: ProfileType; // Backward-compatible alias
   type: BusinessType;
@@ -518,6 +519,47 @@ export type PortfolioFontStyle = 'sans' | 'serif' | 'mono' | 'display';
 
 export type PortfolioCardStyle = 'minimal' | 'bordered' | 'elevated' | 'glassmorphism' | 'brutalist';
 
+export type PortfolioTemplateId =
+  | 'modern_showcase'
+  | 'minimalist_studio'
+  | 'dark_luxury'
+  | 'bento_grid'
+  | 'creative_masonry'
+  | 'executive_agency';
+
+export type PortfolioBlockType =
+  | 'hero'
+  | 'works'
+  | 'about'
+  | 'skills'
+  | 'services'
+  | 'testimonials'
+  | 'mediakit'
+  | 'contact'
+  | 'custom'
+  | 'custom_cta'
+  | 'custom_rich_text'
+  | 'custom_rich';
+
+export interface PortfolioBlock {
+  id: string;
+  type: PortfolioBlockType;
+  title: string;
+  subtitle?: string;
+  enabled: boolean;
+  order: number;
+  content?: string;
+  customContent?: {
+    badge?: string;
+    bodyText?: string;
+    highlightText?: string;
+    imageUrl?: string;
+    buttonText?: string;
+    buttonUrl?: string;
+    layout?: 'split' | 'centered' | 'banner' | 'card_grid';
+  };
+}
+
 export interface PortfolioThemeConfig {
   primaryColor: string; // e.g. '#4f46e5'
   accentColor?: string;
@@ -618,11 +660,13 @@ export interface PortfolioServicePackage {
 
 export interface PortfolioSettings {
   profession?: PortfolioProfession;
+  templateId?: PortfolioTemplateId;
   themeColor?: PortfolioThemeColor;
   fontStyle?: PortfolioFontStyle;
   layoutMode?: PortfolioLayoutMode;
   themeConfig?: PortfolioThemeConfig;
   template?: 'default' | 'developer' | 'designer' | 'photographer' | 'youtuber' | 'writer' | 'coach' | 'artist' | 'event_planner' | 'beauty';
+  blocks?: PortfolioBlock[];
   ctaMode?: 'whatsapp' | 'booking' | 'custom_quote'; // Enquiry mode
   customCtaText?: string;
   primaryCtaText?: string;

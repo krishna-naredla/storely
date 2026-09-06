@@ -735,18 +735,24 @@ export async function getOrders(businessId: string, status?: OrderStatus): Promi
 }
 
 export function subscribeToOrders(businessId: string, callback: (orders: Order[]) => void): () => void {
-  const colRef = collection(db, 'businesses', businessId, 'orders');
-  const q = query(colRef, where('businessId', '==', businessId));
-  
-  const unsubscribe = onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => d.data() as Order);
-    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    callback(list);
-  }, (err) => {
-    console.error('Error subscribing to orders:', err);
-  });
-  
-  return unsubscribe;
+  if (!businessId) return () => {};
+  try {
+    const colRef = collection(db, 'businesses', businessId, 'orders');
+    const q = query(colRef, where('businessId', '==', businessId));
+    
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => d.data() as Order);
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      callback(list);
+    }, (err) => {
+      console.warn('Firestore orders subscription notice:', err.message || err);
+    });
+    
+    return unsubscribe;
+  } catch (e) {
+    console.warn('Could not initialize orders subscription:', e);
+    return () => {};
+  }
 }
 
 export async function updateOrderStatus(businessId: string, orderId: string, status: OrderStatus): Promise<void> {
@@ -835,18 +841,24 @@ export async function updateBookingStatus(businessId: string, bookingId: string,
 }
 
 export function subscribeToBookings(businessId: string, callback: (bookings: Booking[]) => void): () => void {
-  const colRef = collection(db, 'businesses', businessId, 'bookings');
-  const q = query(colRef, where('businessId', '==', businessId));
-  
-  const unsubscribe = onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => d.data() as Booking);
-    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    callback(list);
-  }, (err) => {
-    console.error('Error subscribing to bookings:', err);
-  });
-  
-  return unsubscribe;
+  if (!businessId) return () => {};
+  try {
+    const colRef = collection(db, 'businesses', businessId, 'bookings');
+    const q = query(colRef, where('businessId', '==', businessId));
+    
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => d.data() as Booking);
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      callback(list);
+    }, (err) => {
+      console.warn('Firestore bookings subscription notice:', err.message || err);
+    });
+    
+    return unsubscribe;
+  } catch (e) {
+    console.warn('Could not initialize bookings subscription:', e);
+    return () => {};
+  }
 }
 
 /**
@@ -1625,10 +1637,14 @@ export async function updatePortfolioSettings(
 ): Promise<void> {
   const bizRef = doc(db, 'businesses', businessId);
   const cleanSettings = sanitizeForFirestore(settings);
-  await updateDoc(bizRef, {
+  const updatePayload: Record<string, any> = {
     portfolioSettings: cleanSettings,
     updatedAt: Date.now(),
-  });
+  };
+  if (cleanSettings.templateId) {
+    updatePayload.template = cleanSettings.templateId;
+  }
+  await updateDoc(bizRef, updatePayload);
 }
 
 // ==========================================

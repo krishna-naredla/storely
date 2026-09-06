@@ -16,54 +16,59 @@ import {
   BedDouble,
   Car,
   Layers,
-  Briefcase,
+  Share2,
+  Box,
+  Sliders,
 } from "lucide-react";
 import { BusinessProfile, BusinessModules } from "../../types";
 import { updateBusinessProfile } from "../../services/firebaseService";
+import { ConfirmActionModal } from "../common/ConfirmActionModal";
+import { isCreatorProfile } from "../../utils/profileHelper";
 
 interface ModuleManagerProps {
   business: BusinessProfile;
   onBusinessUpdated: (updated: BusinessProfile) => void;
+  onNavigateTab?: (tab: any) => void;
 }
 
 interface ModuleDefinition {
   key: keyof BusinessModules;
   title: string;
   description: string;
-  category: "Catalog" | "Ordering" | "Bookings" | "Marketing" | "Creator";
+  category: "Catalog" | "Ordering" | "Bookings" | "Marketing";
   icon: React.ReactNode;
 }
 
-const MODULE_DEFINITIONS: ModuleDefinition[] = [
+const COMMERCE_MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
     key: "products",
     title: "Physical Products Catalog",
     description:
-      "Sell retail items, grocery, electronics, clothing with SKU, inventory & variants.",
+      "Sell retail goods, groceries, electronics, apparel with variants, SKUs and inventory tracking.",
     category: "Catalog",
     icon: <ShoppingBag className="w-4 h-4 text-emerald-600" />,
-  },
-  {
-    key: "services",
-    title: "Services & Appointments",
-    description:
-      "Display salon, spa, freelance, medical services with duration and pricing.",
-    category: "Catalog",
-    icon: <Sparkles className="w-4 h-4 text-purple-600" />,
   },
   {
     key: "menu",
     title: "Restaurant & Food Menu",
     description:
-      "Food categories, veg/non-veg tags, spice levels, prep time & toppings.",
+      "Digital food menu with veg/non-veg tags, spice levels, preparation times & custom toppings.",
     category: "Catalog",
     icon: <UtensilsCrossed className="w-4 h-4 text-amber-600" />,
+  },
+  {
+    key: "services",
+    title: "Services & Rates",
+    description:
+      "Display salon, spa, freelance, medical, and repair services with duration and transparent pricing.",
+    category: "Catalog",
+    icon: <Sparkles className="w-4 h-4 text-purple-600" />,
   },
   {
     key: "rooms",
     title: "Hotel Rooms & Stays",
     description:
-      "Room guest capacities, bed types, amenities checklist & per-night pricing.",
+      "Room guest capacities, bed types, amenities checklist & per-night pricing for hotels and homestays.",
     category: "Catalog",
     icon: <BedDouble className="w-4 h-4 text-blue-600" />,
   },
@@ -71,15 +76,23 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "vehicles",
     title: "Vehicle Fleet & Rentals",
     description:
-      "Car/bike model, fuel type, transmission, seating capacity & daily rates.",
+      "Car and bike model listings, fuel types, transmission, seating capacity & daily rates.",
     category: "Catalog",
     icon: <Car className="w-4 h-4 text-teal-600" />,
+  },
+  {
+    key: "inventory_tracking",
+    title: "Inventory & Stock Tracking",
+    description:
+      "Track real-time stock levels, low-stock warnings, and out-of-stock badges on product items.",
+    category: "Catalog",
+    icon: <Box className="w-4 h-4 text-indigo-600" />,
   },
   {
     key: "cart_ordering",
     title: "Direct Cart & Checkout",
     description:
-      "Allow customers to add items to cart, select delivery/takeaway, and place orders.",
+      "Allow buyers to add multiple items to cart, choose delivery or pickup, and place orders online.",
     category: "Ordering",
     icon: <ShoppingBag className="w-4 h-4 text-emerald-600" />,
   },
@@ -87,7 +100,7 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "table_delivery",
     title: "Dine-In / Table QR Ordering",
     description:
-      "Let customers enter table number for contactless in-restaurant ordering.",
+      "Let in-house diners scan a table QR code and submit contactless kitchen food orders.",
     category: "Ordering",
     icon: <UtensilsCrossed className="w-4 h-4 text-amber-600" />,
   },
@@ -95,7 +108,7 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "inquiries",
     title: "Direct WhatsApp Checkout",
     description:
-      "One-click checkout that sends formatted order details directly to your WhatsApp.",
+      "One-click ordering button that sends item summary and customer details straight to your WhatsApp.",
     category: "Ordering",
     icon: <MessageCircle className="w-4 h-4 text-emerald-600" />,
   },
@@ -103,7 +116,7 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "booking_appointments",
     title: "Appointment Booking Engine",
     description:
-      "Allow clients to pick dates and available time slots for salon/consulting.",
+      "Allow clients to select dates and choose available time slots for service sessions.",
     category: "Bookings",
     icon: <CalendarCheck className="w-4 h-4 text-purple-600" />,
   },
@@ -111,7 +124,7 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "stay_booking",
     title: "Room Reservation Engine",
     description:
-      "Check-in and check-out dates selector for homestays, resorts and hotels.",
+      "Check-in and check-out date picker for homestays, resorts, boutique hotels and villas.",
     category: "Bookings",
     icon: <BedDouble className="w-4 h-4 text-blue-600" />,
   },
@@ -119,15 +132,15 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "rental_booking",
     title: "Vehicle Rental Booking",
     description:
-      "Trip start and end dates selector for car, bike, and equipment rental.",
+      "Trip start and end date selector for rental cars, bikes, cameras, and equipment.",
     category: "Bookings",
     icon: <Car className="w-4 h-4 text-teal-600" />,
   },
   {
     key: "reviews",
-    title: "Storefront Customer Reviews",
+    title: "Customer Reviews & Ratings",
     description:
-      "Allow buyers to submit ratings, reviews, and read your vendor responses.",
+      "Allow verified buyers to submit star ratings, reviews, and read vendor replies on your store.",
     category: "Marketing",
     icon: <Star className="w-4 h-4 text-amber-600" />,
   },
@@ -135,63 +148,33 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
     key: "offers",
     title: "Promotions & Discount Coupons",
     description:
-      "Display percentage/flat promo banners and discount codes on storefront.",
+      "Display banner promotions, percentage discounts, and coupon code entry during checkout.",
     category: "Marketing",
     icon: <Tag className="w-4 h-4 text-emerald-600" />,
   },
   {
-    key: "work_portfolio",
-    title: "Work Portfolio / Showcase",
+    key: "digital_card",
+    title: "Digital Visiting Card & QR",
     description:
-      "Showcase showreels, galleries, case studies, client reviews, and media kit stats.",
+      "Generate shareable digital business cards with your contact details, map location, and QR code.",
     category: "Marketing",
-    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
-  },
-  {
-    key: "digital_products",
-    title: "Digital Products & Downloads",
-    description:
-      "Sell eBooks, guides, templates, and digital courses directly to your audience.",
-    category: "Creator",
-    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
-  },
-  {
-    key: "universal_links",
-    title: "Bio Link & Community",
-    description:
-      "Create a custom Link-in-Bio page with your community links, socials, and top products.",
-    category: "Creator",
-    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
-  },
-  {
-    key: "events_ticketing",
-    title: "Events & Webinars",
-    description:
-      "Host masterclasses, offline meetups, and paid live webinars with ticket management.",
-    category: "Creator",
-    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
-  },
-  {
-    key: "custom_quotes",
-    title: "Custom Quote Requests",
-    description:
-      "Allow clients to submit tailored project requests for bespoke services.",
-    category: "Creator",
-    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+    icon: <Share2 className="w-4 h-4 text-indigo-600" />,
   },
 ];
 
 export const ModuleManager: React.FC<ModuleManagerProps> = ({
   business,
   onBusinessUpdated,
+  onNavigateTab,
 }) => {
   const [modules, setModules] = useState<BusinessModules>(business.modules);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [moduleToDisable, setModuleToDisable] = useState<ModuleDefinition | null>(null);
 
-  const handleToggle = async (key: keyof BusinessModules) => {
+  const applyToggle = async (key: keyof BusinessModules, nextValue: boolean) => {
     const updated = {
       ...modules,
-      [key]: !modules[key],
+      [key]: nextValue,
     };
     setModules(updated);
     setSavingKey(key);
@@ -211,30 +194,85 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
     }
   };
 
+  const handleToggleClick = (mod: ModuleDefinition) => {
+    const isCurrentlyEnabled = !!modules[mod.key];
+    if (isCurrentlyEnabled) {
+      // Opening confirm dialog before disabling
+      setModuleToDisable(mod);
+    } else {
+      // Enable immediately
+      applyToggle(mod.key, true);
+    }
+  };
+
+  const confirmDisableModule = () => {
+    if (moduleToDisable) {
+      applyToggle(moduleToDisable.key, false);
+      setModuleToDisable(null);
+    }
+  };
+
   const categories = ["Catalog", "Ordering", "Bookings", "Marketing"] as const;
+  const isCreator = isCreatorProfile(business);
+
+  if (isCreator) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              Creator Account Detected
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
+              Creator Modules Studio
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              This profile is registered as a Creator account. Manage your Portfolio Showcase, Bio Links, Digital Downloads, and 1:1 Bookings in the Creator Modules Hub.
+            </p>
+          </div>
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('modules')}
+              className="py-3 px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <span>Open Creator Modules</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-          Dynamic Business Modules
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Enable or disable capabilities on the fly. Your storefront and
-          dashboard navigation update instantly.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white shadow-xl">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+            Vendor Commerce Engine
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
+            Dynamic Store Modules
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+            Configure business capabilities for your retail storefront. Activated features immediately reflect on your navigation sidebar and live store.
+          </p>
+        </div>
       </div>
 
       {/* Module Categories */}
       <div className="space-y-6">
         {categories.map((cat) => {
-          const catModules = MODULE_DEFINITIONS.filter(
+          const catModules = COMMERCE_MODULE_DEFINITIONS.filter(
             (m) => m.category === cat,
           );
           return (
             <div key={cat} className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 {cat} Capabilities
               </h3>
 
@@ -275,12 +313,13 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
                       <button
                         type="button"
                         disabled={isSavingThis}
-                        onClick={() => handleToggle(mod.key)}
+                        onClick={() => handleToggleClick(mod)}
                         className={`p-1 rounded-xl transition cursor-pointer shrink-0 ${
                           isEnabled
                             ? "text-emerald-600"
                             : "text-slate-300 hover:text-slate-400"
                         }`}
+                        title={isEnabled ? "Click to disable module" : "Click to enable module"}
                       >
                         {isSavingThis ? (
                           <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
@@ -298,6 +337,18 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
           );
         })}
       </div>
+
+      {/* Confirmation Dialog for Disabling Module */}
+      <ConfirmActionModal
+        isOpen={!!moduleToDisable}
+        title={`Deactivate ${moduleToDisable?.title || "Module"}?`}
+        message={`Are you sure you want to turn off "${moduleToDisable?.title}"? This will hide the corresponding capability from your storefront and dashboard until you enable it again.`}
+        confirmText="Deactivate Module"
+        cancelText="Keep Active"
+        isDestructive={true}
+        onConfirm={confirmDisableModule}
+        onCancel={() => setModuleToDisable(null)}
+      />
     </div>
   );
 };

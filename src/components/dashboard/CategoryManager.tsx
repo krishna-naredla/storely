@@ -24,7 +24,7 @@ import {
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { ImageSizeWarning } from '../common/ImageSizeWarning';
-import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 
 interface CategoryManagerProps {
   business: BusinessProfile;
@@ -434,7 +434,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ business }) =>
       )}
 
       {/* Delete Confirmation */}
-      <ConfirmDialog
+      <ConfirmActionModal
         isOpen={!!catToDelete}
         title={`Delete Category "${catToDelete?.name}"?`}
         message="Items in this category will not be deleted, but they will become uncategorized."

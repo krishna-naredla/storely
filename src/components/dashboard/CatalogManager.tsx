@@ -59,7 +59,7 @@ import {
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { ImageSizeWarning } from '../common/ImageSizeWarning';
-import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 import { SwipeToDelete } from '../common/SwipeToDelete';
 import {
   deleteImageFromStorage,
@@ -93,6 +93,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   // Delete Confirm State
   const [itemToDelete, setItemToDelete] = useState<CatalogItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // Item Form Fields
   const [name, setName] = useState('');
@@ -417,9 +418,13 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedItemIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedItemIds.size} items?`)) return;
+    setIsBulkDeleteOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedItemIds.size === 0) return;
     setIsBulkProcessing(true);
     try {
       for (const id of selectedItemIds) {
@@ -436,6 +441,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       }
       setItems(prev => prev.filter(i => !selectedItemIds.has(i.id)));
       setSelectedItemIds(new Set());
+      setIsBulkDeleteOpen(false);
     } finally {
       setIsBulkProcessing(false);
     }
@@ -1099,15 +1105,28 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
         </div>
       )}
 
-      <ConfirmDialog
+      {/* Single Item Delete Confirmation */}
+      <ConfirmActionModal
         isOpen={!!itemToDelete}
-        title="Delete Item?"
-        message="Permanently remove this item and delete associated files?"
-        confirmText="Delete"
+        title={`Delete "${itemToDelete?.name || 'Item'}"?`}
+        message="Permanently remove this item and delete associated media files from storage?"
+        confirmText="Delete Item"
         isDestructive={true}
         isLoading={isDeleting}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setItemToDelete(null)}
+      />
+
+      {/* Bulk Delete Confirmation */}
+      <ConfirmActionModal
+        isOpen={isBulkDeleteOpen}
+        title={`Delete ${selectedItemIds.size} Selected Items?`}
+        message={`Are you sure you want to permanently delete all ${selectedItemIds.size} selected items? This action cannot be undone.`}
+        confirmText={`Delete ${selectedItemIds.size} Items`}
+        isDestructive={true}
+        isLoading={isBulkProcessing}
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setIsBulkDeleteOpen(false)}
       />
     </div>
   );

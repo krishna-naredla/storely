@@ -20,6 +20,8 @@ import {
 import { BusinessProfile } from '../../types';
 import { updateBusinessProfile, getDigitalStoreUrl, getBioLinkUrl, getPortfolioUrl } from '../../services/firebaseService';
 import { DashboardTab } from './Sidebar';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
+import { isCreatorProfile } from '../../utils/profileHelper';
 
 interface Props {
   business: BusinessProfile;
@@ -27,16 +29,30 @@ interface Props {
   onNavigateTab?: (tab: DashboardTab) => void;
 }
 
+interface CreatorModuleItem {
+  id: string;
+  keys: string[];
+  title: string;
+  description: string;
+  tabId: DashboardTab;
+  tabLabel: string;
+  icon: React.ElementType;
+  badgeColor: string;
+  activeBg: string;
+  url: string;
+  enabled: boolean;
+}
+
 export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpdated, onNavigateTab }) => {
   const [updating, setUpdating] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [moduleToDisable, setModuleToDisable] = useState<CreatorModuleItem | null>(null);
 
-  const toggleModule = async (keys: string[], currentValue: boolean) => {
+  const applyModuleToggle = async (keys: string[], nextVal: boolean) => {
     const primaryKey = keys[0];
     setUpdating(primaryKey);
     try {
       const updatedModules = { ...business.modules };
-      const nextVal = !currentValue;
       for (const k of keys) {
         (updatedModules as any)[k] = nextVal;
       }
@@ -57,6 +73,21 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
     }
   };
 
+  const handleToggleModule = (mod: CreatorModuleItem) => {
+    if (mod.enabled) {
+      setModuleToDisable(mod);
+    } else {
+      applyModuleToggle(mod.keys, true);
+    }
+  };
+
+  const confirmDisableModule = () => {
+    if (moduleToDisable) {
+      applyModuleToggle(moduleToDisable.keys, false);
+      setModuleToDisable(null);
+    }
+  };
+
   const copyUrl = (key: string, url: string) => {
     navigator.clipboard.writeText(url);
     setCopiedKey(key);
@@ -65,19 +96,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
 
   const handleSlug = business.username || business.slug;
 
-  const modules: {
-    id: string;
-    keys: string[];
-    title: string;
-    description: string;
-    tabId: DashboardTab;
-    tabLabel: string;
-    icon: React.ElementType;
-    badgeColor: string;
-    activeBg: string;
-    url: string;
-    enabled: boolean;
-  }[] = [
+  const modules: CreatorModuleItem[] = [
     {
       id: 'portfolio',
       keys: ['work_portfolio', 'portfolio'],
@@ -172,6 +191,37 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
   ];
 
   const activeCount = modules.filter((m) => m.enabled).length;
+  const isCreator = isCreatorProfile(business);
+
+  if (!isCreator) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+              <Store className="w-3.5 h-3.5 text-emerald-400" />
+              Vendor Store Account Detected
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
+              Vendor Store Modules
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
+              This profile is registered as a Commerce Vendor account. Configure catalog, physical products, table delivery, and booking engines in Store Modules.
+            </p>
+          </div>
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('modules')}
+              className="py-3 px-5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <span>Open Store Modules</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -294,7 +344,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
 
                     <button
                       type="button"
-                      onClick={() => toggleModule(mod.keys, mod.enabled)}
+                      onClick={() => handleToggleModule(mod)}
                       disabled={updating === mod.keys[0]}
                       className="text-slate-400 hover:text-rose-600 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
                     >
@@ -309,7 +359,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
               ) : (
                 <button
                   type="button"
-                  onClick={() => toggleModule(mod.keys, mod.enabled)}
+                  onClick={() => handleToggleModule(mod)}
                   disabled={updating === mod.keys[0]}
                   className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition shadow-sm cursor-pointer"
                 >
@@ -327,6 +377,18 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
           </div>
         ))}
       </div>
+
+      {/* Confirmation Dialog for Disabling Creator Module */}
+      <ConfirmActionModal
+        isOpen={!!moduleToDisable}
+        title={`Deactivate ${moduleToDisable?.title || "Creator Module"}?`}
+        message={`Are you sure you want to deactivate "${moduleToDisable?.title}"? This will hide its section from your public profile and creator dashboard until you turn it back on.`}
+        confirmText="Deactivate Module"
+        cancelText="Keep Active"
+        isDestructive={true}
+        onConfirm={confirmDisableModule}
+        onCancel={() => setModuleToDisable(null)}
+      />
     </div>
   );
 };
