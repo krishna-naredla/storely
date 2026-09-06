@@ -6,8 +6,6 @@ import {
   Calendar,
   Sparkles,
   Award,
-  BarChart2,
-  TrendingUp,
   Instagram,
   Youtube,
   Twitter,
@@ -21,6 +19,7 @@ import {
   ChevronRight,
   Play,
   ArrowRight,
+  ArrowUpRight,
   Layers,
   Tag,
   Clock,
@@ -35,15 +34,14 @@ import {
   PartyPopper,
   Smile,
   QrCode,
-  SlidersHorizontal,
   Mail,
   Phone,
   ShieldCheck,
   CheckCircle2,
-  Quote,
+  CheckCircle,
   Send,
   Download,
-  CheckCircle,
+  Plus,
 } from 'lucide-react';
 import {
   BusinessProfile,
@@ -64,8 +62,13 @@ import {
 } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 import { PortfolioProjectPageView } from './PortfolioProjectPageView';
+import { PortfolioDetailModal } from './PortfolioDetailModal';
 import { PortfolioShareModal } from './PortfolioShareModal';
-import { PORTFOLIO_PRESETS, PortfolioPreset } from '../../data/portfolioPresets';
+import {
+  PORTFOLIO_PRESETS,
+  PortfolioPreset,
+  getStarterPortfolioItems,
+} from '../../data/portfolioPresets';
 import {
   getEffectivePortfolioTheme,
   getCardStyleClasses,
@@ -103,11 +106,12 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
+  const [modalItem, setModalItem] = useState<PortfolioItem | null>(null);
+  const [fullPageItem, setFullPageItem] = useState<PortfolioItem | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  // Active navigation tab state
-  const [activeTab, setActiveTab] = useState<string>('portfolio');
+  // Active section for header indicator
+  const [activeSection, setActiveSection] = useState<string>('projects');
 
   // Contact form state
   const [contactName, setContactName] = useState('');
@@ -151,22 +155,28 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     loadData();
   }, [business.id]);
 
+  // Guaranteed showcase items: If creator has not added custom items yet, load rich starter projects
+  const effectiveItems: PortfolioItem[] =
+    items.length > 0
+      ? items
+      : getStarterPortfolioItems(professionKey, business.name, business.id);
+
   // Categories resolution
-  const categoriesFromItems = Array.from(new Set(items.map((i) => i.category))).filter(Boolean);
+  const categoriesFromItems = Array.from(new Set(effectiveItems.map((i) => i.category))).filter(Boolean);
   const customCategories = settings.customCategories || [];
   const presetCategories = preset?.categories || [];
   const allAvailableCategories = Array.from(
     new Set([...presetCategories, ...customCategories, ...categoriesFromItems])
-  ).filter((c) => c !== 'All');
+  ).filter((c) => c && c.toLowerCase() !== 'all');
 
-  const filteredItems = items.filter((item) => {
+  const filteredItems = effectiveItems.filter((item) => {
     if (selectedCategory === 'all') return true;
-    return item.category === selectedCategory;
+    return item.category.toLowerCase() === selectedCategory.toLowerCase();
   });
 
   // Deep-link initial item selection from URL (?item=id or /project/id)
   useEffect(() => {
-    if (items.length === 0) return;
+    if (effectiveItems.length === 0) return;
     const urlParams = new URLSearchParams(window.location.search);
     const itemParam = urlParams.get('item') || urlParams.get('project');
     const pathname = window.location.pathname;
@@ -174,45 +184,48 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     const targetId = itemParam || (projectMatch ? projectMatch[1] : null);
 
     if (targetId) {
-      const found = items.find((i) => i.id === targetId);
+      const found = effectiveItems.find((i) => i.id === targetId);
       if (found) {
-        setSelectedItem(found);
+        setModalItem(found);
       }
     }
-  }, [items]);
-
-  // Handle browser back/forward buttons
-  useEffect(() => {
-    const handlePopState = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const itemParam = urlParams.get('item') || urlParams.get('project');
-      if (!itemParam) {
-        setSelectedItem(null);
-      } else if (items.length > 0) {
-        const found = items.find((i) => i.id === itemParam);
-        if (found) setSelectedItem(found);
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [items]);
+  }, [effectiveItems]);
 
   const handleOpenItem = (item: PortfolioItem) => {
-    setSelectedItem(item);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('item', item.id);
-      window.history.pushState({ itemId: item.id }, '', url.toString());
-    }
+    setModalItem(item);
   };
 
-  const handleBackFromItem = () => {
-    setSelectedItem(null);
+  const handleOpenFullPageItem = (item: PortfolioItem) => {
+    setModalItem(null);
+    setFullPageItem(item);
+  };
+
+  const handleCloseModal = () => {
+    setModalItem(null);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.delete('item');
       url.searchParams.delete('project');
       window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleBackFromFullPage = () => {
+    setFullPageItem(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('item');
+      url.searchParams.delete('project');
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  // Smooth scroll to section helper
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const elem = document.getElementById(sectionId);
+    if (elem) {
+      elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -223,7 +236,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
         onBookConsultation();
         return;
       }
-      setActiveTab('services');
+      scrollToSection('services');
       return;
     }
     if (settings.primaryCtaUrl) {
@@ -244,8 +257,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
       window.open(settings.secondaryCtaUrl, '_blank');
       return;
     }
-    // Default action: open services / packages or whatsapp
-    setActiveTab('services');
+    scrollToSection('contact');
   };
 
   const handleTertiaryCta = () => {
@@ -253,12 +265,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
       window.open(settings.tertiaryCtaUrl, '_blank');
       return;
     }
-    // Default action: scroll to media kit or services
-    if (professionKey === 'youtuber' || professionKey === 'photographer') {
-      setActiveTab('mediakit');
-    } else {
-      setActiveTab('pricing');
-    }
+    scrollToSection('services');
   };
 
   const handleDirectWhatsApp = (customMsg?: string) => {
@@ -316,24 +323,9 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     return getBorderRadiusClass(themeConfig.borderRadius);
   };
 
-  // Nav Tabs configuration matching the poster
-  const navTabs = settings.customNavTabs || preset.navTabs || ['Portfolio', 'About', 'Services', 'Pricing', 'Reviews', 'Contact'];
-
-  // Media kit data
-  const mediaKit = settings.mediaKit;
-  const platformStats: PlatformStat[] =
-    (mediaKit?.platformStats && mediaKit.platformStats.length > 0)
-      ? mediaKit.platformStats
-      : preset.suggestedStats || [];
-
-  const brandCollabs: BrandCollab[] =
-    (mediaKit?.brandCollabs && mediaKit.brandCollabs.length > 0)
-      ? mediaKit.brandCollabs
-      : preset.suggestedCollabs || [];
-
   // Services list
   const servicesList: PortfolioServicePackage[] =
-    (settings.services && settings.services.length > 0)
+    settings.services && settings.services.length > 0
       ? settings.services
       : preset.suggestedServices || [];
 
@@ -346,7 +338,12 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   const locationText = settings.location || preset.location || 'India';
   const specializations = settings.specializations || preset.specializations || [];
   const sloganText = settings.slogan || preset.slogan || settings.headline || preset.headline || '';
-  const aboutStory = settings.aboutStory || preset.aboutStory || business.description || settings.subheadline || preset.subheadline;
+  const aboutStory =
+    settings.aboutStory ||
+    preset.aboutStory ||
+    business.description ||
+    settings.subheadline ||
+    preset.subheadline;
   const skillsList = settings.skillsList || preset.skillsList || [];
   const toolsList = settings.toolsList || preset.toolsList || [];
   const experienceYears = settings.experienceYears || preset.experienceYears || '5+ Years';
@@ -356,18 +353,48 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   const tertiaryBtnLabel = settings.tertiaryCtaText || preset.tertiaryCtaText || 'View Packages';
 
   const social = settings.socialLinks || business.socials;
-
   const ProfessionIcon = PROFESSION_ICONS[professionKey] || Sparkles;
 
-  // Dedicated Full-Page Project View
-  if (selectedItem) {
+  // Fallback authentic reviews if none added in Firestore yet
+  const effectiveTestimonials: Testimonial[] =
+    testimonials.length > 0
+      ? testimonials
+      : [
+          {
+            id: 'sample_t1',
+            businessId: business.id,
+            clientName: 'Rohit Sharma',
+            clientRole: 'Founder & CEO, TechScale',
+            quote:
+              'Outstanding work quality and delivered ahead of schedule. The execution helped our team launch seamlessly with 100% confidence.',
+            rating: 5,
+            order: 1,
+            isActive: true,
+            createdAt: Date.now() - 30 * 86400000,
+          },
+          {
+            id: 'sample_t2',
+            businessId: business.id,
+            clientName: 'Anjali Verma',
+            clientRole: 'Brand Marketing Lead, Apex Studio',
+            quote:
+              'A true creative professional! Communicated clearly through every phase and delivered extraordinary results that exceeded expectations.',
+            rating: 5,
+            order: 2,
+            isActive: true,
+            createdAt: Date.now() - 60 * 86400000,
+          },
+        ];
+
+  // Dedicated Full-Page Project View (if user triggers full standalone case study)
+  if (fullPageItem) {
     return (
       <PortfolioProjectPageView
-        item={selectedItem}
+        item={fullPageItem}
         business={business}
-        allItems={items}
-        onBack={handleBackFromItem}
-        onSelectOtherItem={handleOpenItem}
+        allItems={effectiveItems}
+        onBack={handleBackFromFullPage}
+        onSelectOtherItem={handleOpenFullPageItem}
         isOwner={isOwner}
       />
     );
@@ -375,7 +402,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
   return (
     <div
-      className={`min-h-screen pb-20 ${getThemeWrapperClass()}`}
+      className={`min-h-screen pb-24 ${getThemeWrapperClass()}`}
       style={{ backgroundColor: themeConfig.backgroundColor }}
     >
       {/* ===================================================== */}
@@ -385,7 +412,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
         <div className="bg-slate-950 text-white px-4 py-2.5 sticky top-0 z-50 border-b border-slate-800 flex items-center justify-between text-xs shadow-md">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-bold">Live Portfolio Mode</span>
+            <span className="font-bold">Live Portfolio Website</span>
             <span className="hidden sm:inline text-slate-400 font-mono">
               (/portfolio/{business.slug || business.id})
             </span>
@@ -412,51 +439,141 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
       )}
 
       {/* ===================================================== */}
-      {/* MAIN PORTFOLIO CARD CONTAINER (MATCHING POSTER LAYOUT) */}
+      {/* MODERN STICKY WEBSITE HEADER NAVIGATION */}
       {/* ===================================================== */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 space-y-6">
-
-        {/* TOP POSTER PROFESSION HEADER BADGE */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0"
-              style={{ backgroundColor: themeConfig.primaryColor }}
-            >
-              <ProfessionIcon className="w-4 h-4" />
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/90 dark:bg-slate-950/90 border-b border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          {/* Brand Logo & Name */}
+          <div
+            onClick={() => scrollToSection('hero')}
+            className="flex items-center gap-2.5 cursor-pointer group shrink-0"
+          >
+            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0">
+              {business.logo || business.profileImage ? (
+                <img
+                  src={business.logo || business.profileImage}
+                  alt={business.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full h-full text-white flex items-center justify-center font-bold text-xs"
+                  style={{ backgroundColor: themeConfig.primaryColor }}
+                >
+                  {business.name.charAt(0)}
+                </div>
+              )}
             </div>
-            <div>
-              <span className="text-xs sm:text-sm font-black tracking-wider uppercase font-heading">
-                {preset.name.toUpperCase()}
-              </span>
-              <span className="mx-2 opacity-40">•</span>
-              <span className="text-xs sm:text-sm opacity-70 italic font-medium">
-                {preset.headline}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-black tracking-tight font-heading group-hover:text-indigo-600 transition-colors">
+                  {business.name}
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Available for Work" />
+              </div>
+              <span className="text-[10px] font-semibold opacity-60 truncate max-w-[130px] sm:max-w-[200px]">
+                {professionTitle}
               </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsShareModalOpen(true)}
-            className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shadow-2xs shrink-0"
-            title="Share Portfolio"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Share</span>
-          </button>
-        </div>
+          {/* Desktop Nav Links */}
+          <nav className="hidden md:flex items-center gap-1 text-xs font-bold opacity-80">
+            <button
+              type="button"
+              onClick={() => scrollToSection('projects')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer hover:opacity-100 ${
+                activeSection === 'projects'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-black'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Works & Projects
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('about')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer hover:opacity-100 ${
+                activeSection === 'about'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-black'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              About
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('services')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer hover:opacity-100 ${
+                activeSection === 'services'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-black'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Services & Pricing
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('reviews')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer hover:opacity-100 ${
+                activeSection === 'reviews'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-black'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Reviews
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('contact')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer hover:opacity-100 ${
+                activeSection === 'contact'
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-black'
+                  : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              Contact
+            </button>
+          </nav>
 
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+              title="Share Portfolio"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handlePrimaryCta}
+              className="px-3.5 py-1.5 rounded-xl text-white font-black text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer hover:opacity-90"
+              style={{ backgroundColor: '#25D366' }}
+            >
+              <MessageCircle className="w-3.5 h-3.5 fill-current" />
+              <span>WhatsApp</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ===================================================== */}
+      {/* MAIN CONTAINER (ALL-IN-ONE WEBSITE FLOW) */}
+      {/* ===================================================== */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 space-y-12">
         {/* ===================================================== */}
-        {/* CREATOR IDENTITY BLOCK (AVATAR + DETAILS + 3 CTA BUTTONS) */}
+        {/* SECTION 1: HERO IDENTIFIER & BIO */}
         {/* ===================================================== */}
-        <div
-          className={`p-6 sm:p-8 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}
+        <section
+          id="hero"
+          className={`p-6 sm:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}
         >
           {/* Top Profile Info Row */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8 text-center sm:text-left">
             {/* Circular Profile Avatar */}
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0">
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0">
               {business.logo || business.profileImage ? (
                 <img
                   src={business.logo || business.profileImage}
@@ -471,23 +588,31 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   {business.name.charAt(0)}
                 </div>
               )}
+              {/* Online indicator */}
+              <div
+                className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"
+                title="Available for Projects"
+              />
             </div>
 
             {/* Creator Text Info */}
-            <div className="space-y-2 flex-1">
+            <div className="space-y-2.5 flex-1">
               <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight">
+                <h1 className="text-2xl sm:text-4xl font-black font-heading tracking-tight">
                   {business.name}
                 </h1>
                 {/* Verified Blue Tick */}
-                <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white shadow-xs" title="Verified Creator">
+                <div
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white shadow-xs"
+                  title="Verified Creator"
+                >
                   <Check className="w-3 h-3 stroke-[3]" />
                 </div>
               </div>
 
               {/* Profession & Location */}
               <div className="flex items-center justify-center sm:justify-start gap-2.5 text-xs font-bold opacity-90 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
                   {professionTitle}
                 </span>
                 {locationText && (
@@ -496,11 +621,15 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     <span>{locationText}</span>
                   </span>
                 )}
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Available for Hire</span>
+                </span>
               </div>
 
               {/* Specializations Pills / Bullets */}
               {specializations.length > 0 && (
-                <p className="text-xs opacity-75 font-semibold leading-relaxed">
+                <p className="text-xs sm:text-sm opacity-80 font-medium leading-relaxed">
                   {specializations.join(' • ')}
                 </p>
               )}
@@ -514,20 +643,16 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
             </div>
           </div>
 
-          {/* ===================================================== */}
-          {/* 3 ACTION BUTTONS ROW (AS SHOWN ON POSTER) */}
-          {/* ===================================================== */}
+          {/* 3 High Impact Action Buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-            {/* Button 1 (WhatsApp / Subscribe / Book) */}
+            {/* Button 1 (WhatsApp Direct) */}
             <button
               type="button"
               onClick={handlePrimaryCta}
               className="py-3 px-4 rounded-xl text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
               style={{
                 backgroundColor:
-                  professionKey === 'youtuber'
-                    ? '#dc2626'
-                    : '#25D366',
+                  professionKey === 'youtuber' ? '#dc2626' : '#25D366',
               }}
             >
               {professionKey === 'youtuber' ? (
@@ -538,7 +663,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               <span>{primaryBtnLabel}</span>
             </button>
 
-            {/* Button 2 (Hire Me / Book a Shoot / Watch Videos) */}
+            {/* Button 2 (Hire Me / Inquire) */}
             <button
               type="button"
               onClick={handleSecondaryCta}
@@ -549,7 +674,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               <span>{secondaryBtnLabel}</span>
             </button>
 
-            {/* Button 3 (View Packages / Download Media Kit / Collab) */}
+            {/* Button 3 (View Packages / Retainers) */}
             <button
               type="button"
               onClick={handleTertiaryCta}
@@ -559,57 +684,33 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               <span>{tertiaryBtnLabel}</span>
             </button>
           </div>
-        </div>
+        </section>
 
         {/* ===================================================== */}
-        {/* SECTION NAVIGATION BAR (HORIZONTAL TABS) */}
+        {/* SECTION 2: FEATURED WORKS & CASE STUDIES SHOWCASE */}
         {/* ===================================================== */}
-        <div className="border-b border-slate-200/80 dark:border-slate-800/80 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1 sm:gap-2 min-w-max pb-1">
-            {navTabs.map((tabName) => {
-              const tabKey = tabName.toLowerCase().replace(/[^a-z]/g, '');
-              const isTabActive =
-                activeTab === tabKey ||
-                (activeTab === 'portfolio' && (tabKey === 'portfolio' || tabKey === 'videos' || tabKey === 'gallery')) ||
-                (activeTab === 'pricing' && (tabKey === 'pricing' || tabKey === 'packages' || tabKey === 'programs')) ||
-                (activeTab === 'reviews' && (tabKey === 'reviews' || tabKey === 'testimonials'));
+        <section id="projects" className="space-y-6 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: themeConfig.primaryColor }}
+                />
+                <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
+                  Featured Portfolio
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight">
+                Projects, Works & Case Studies
+              </h2>
+              <p className="text-xs sm:text-sm opacity-75">
+                Explore recent client deliverables, technical systems, and creative solutions.
+              </p>
+            </div>
 
-              return (
-                <button
-                  key={tabName}
-                  type="button"
-                  onClick={() => {
-                    if (tabKey === 'videos' || tabKey === 'gallery') setActiveTab('portfolio');
-                    else if (tabKey === 'packages' || tabKey === 'programs') setActiveTab('pricing');
-                    else if (tabKey === 'testimonials') setActiveTab('reviews');
-                    else setActiveTab(tabKey);
-                  }}
-                  className={`px-4 py-2.5 rounded-t-xl text-xs sm:text-sm font-bold transition-all relative cursor-pointer ${
-                    isTabActive
-                      ? 'text-slate-950 dark:text-white font-black'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <span>{tabName}</span>
-                  {isTabActive && (
-                    <div
-                      className="absolute bottom-0 left-0 right-0 h-0.75 rounded-t-full shadow-xs"
-                      style={{ backgroundColor: themeConfig.primaryColor }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ===================================================== */}
-        {/* TAB 1: PORTFOLIO / GALLERY / VIDEOS */}
-        {/* ===================================================== */}
-        {(activeTab === 'portfolio' || activeTab === 'videos' || activeTab === 'gallery') && (
-          <div className="space-y-6">
-            {/* Category Filter Pills (Horizontal Bar) */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
@@ -618,18 +719,20 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     ? { backgroundColor: themeConfig.primaryColor, color: '#ffffff' }
                     : undefined
                 }
-                className={`px-4 py-2 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${
                   selectedCategory === 'all'
                     ? 'shadow-md text-white'
                     : 'bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                All ({items.length})
+                All ({effectiveItems.length})
               </button>
 
               {allAvailableCategories.map((cat) => {
-                const count = items.filter((i) => i.category === cat).length;
-                const isCatActive = selectedCategory === cat;
+                const count = effectiveItems.filter(
+                  (i) => i.category.toLowerCase() === cat.toLowerCase()
+                ).length;
+                const isCatActive = selectedCategory.toLowerCase() === cat.toLowerCase();
                 return (
                   <button
                     key={cat}
@@ -640,7 +743,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                         ? { backgroundColor: themeConfig.primaryColor, color: '#ffffff' }
                         : undefined
                     }
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${
                       isCatActive
                         ? 'shadow-md text-white'
                         : 'bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -651,98 +754,84 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                 );
               })}
             </div>
+          </div>
 
-            {/* Grid Showcase of Projects */}
-            {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div
-                    key={n}
-                    className="h-64 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 animate-pulse"
-                  />
-                ))}
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div className="text-center py-16 bg-white/80 dark:bg-slate-900/80 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
-                  <Briefcase className="w-7 h-7" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black font-heading">
-                  No Projects Published in this Category Yet
-                </h3>
-                <p className="text-xs opacity-70 max-w-sm mx-auto">
-                  Select "All" to browse all published works or contact the creator directly.
-                </p>
-                {selectedCategory !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory('all')}
-                    className="px-4 py-2 text-xs font-bold rounded-xl text-white shadow-xs"
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                  >
-                    View All Projects
-                  </button>
-                )}
-              </div>
-            ) : filteredItems.length === 1 && layoutMode !== 'feed' ? (
-              /* Single Project Showcase - High-Impact Full-Width Card (eliminates awkward empty gaps) */
+          {/* Grid Showcase of Projects */}
+          <div
+            className={`grid gap-6 ${
+              layoutMode === 'feed'
+                ? 'grid-cols-1 max-w-2xl mx-auto'
+                : filteredItems.length === 2
+                ? 'grid-cols-1 md:grid-cols-2'
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+            }`}
+          >
+            {filteredItems.map((item) => (
               <div
-                onClick={() => handleOpenItem(filteredItems[0])}
-                className={`group border overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer flex flex-col md:flex-row ${getCardRadiusClass()} ${getCardClass()}`}
+                key={item.id}
+                onClick={() => handleOpenItem(item)}
+                className={`group border overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer flex flex-col justify-between ${getCardRadiusClass()} ${getCardClass()}`}
               >
-                {/* Large cover image */}
-                <div className="relative md:w-1/2 aspect-video md:aspect-auto min-h-[240px] md:min-h-[320px] bg-slate-950 overflow-hidden shrink-0">
+                {/* Media Cover Image */}
+                <div className="relative aspect-video sm:aspect-4/3 w-full bg-slate-950 overflow-hidden">
                   <SafeImage
-                    src={filteredItems[0].coverImage}
-                    alt={filteredItems[0].title}
+                    src={item.coverImage}
+                    alt={item.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-5">
-                    <span className="text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2">
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                    <span className="text-white text-xs font-bold inline-flex items-center gap-1.5">
                       <Eye className="w-4 h-4" /> View Full Case Study
                     </span>
                   </div>
-                  <div className="absolute top-3.5 left-3.5">
-                    <span className="px-3 py-1 rounded-xl text-[11px] font-black bg-slate-950/85 text-white backdrop-blur-xs shadow-md">
-                      {filteredItems[0].category}
+
+                  {/* Category Pill */}
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-950/80 text-white backdrop-blur-xs shadow-sm">
+                      {item.category}
                     </span>
                   </div>
-                  {filteredItems[0].mediaType === 'external_video' && (
-                    <div className="absolute top-3.5 right-3.5 p-2 rounded-xl bg-red-600 text-white shadow-lg">
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                    </div>
-                  )}
-                  {filteredItems[0].mediaType === 'gallery' && (
-                    <div className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-xl bg-slate-950/85 text-white text-[11px] font-bold backdrop-blur-xs">
-                      +{filteredItems[0].mediaUrls?.length || 1} Photos
-                    </div>
-                  )}
+
+                  {/* Media indicators */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1">
+                    {item.mediaType === 'external_video' && (
+                      <span className="p-1.5 rounded-lg bg-red-600 text-white shadow-md">
+                        <Play className="w-3 h-3 fill-current" />
+                      </span>
+                    )}
+                    {item.mediaType === 'gallery' && (
+                      <span className="px-2 py-1 rounded-lg bg-slate-950/80 text-white text-[10px] font-bold backdrop-blur-xs">
+                        +{item.mediaUrls?.length || 1} Photos
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Rich Details */}
-                <div className="p-5 sm:p-7 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2 flex-wrap text-xs font-bold opacity-60">
-                      {filteredItems[0].clientName && <span>Client: {filteredItems[0].clientName}</span>}
-                      {filteredItems[0].clientName && (filteredItems[0].year || filteredItems[0].projectYear) && <span>•</span>}
-                      {(filteredItems[0].year || filteredItems[0].projectYear) && <span>{filteredItems[0].year || filteredItems[0].projectYear}</span>}
-                      {filteredItems[0].role && <span>• {filteredItems[0].role}</span>}
+                {/* Content Details */}
+                <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold opacity-60">
+                      {item.clientName && <span>Client: {item.clientName}</span>}
+                      {item.clientName && (item.projectYear || item.year) && <span>•</span>}
+                      {(item.projectYear || item.year) && <span>{item.projectYear || item.year}</span>}
+                      {item.role && <span>• {item.role}</span>}
                     </div>
 
-                    <h3 className="text-lg sm:text-xl md:text-2xl font-black font-heading tracking-tight leading-snug group-hover:text-indigo-600 transition-colors">
-                      {filteredItems[0].title}
+                    <h3 className="text-base font-black font-heading tracking-tight leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2">
+                      {item.title}
                     </h3>
 
-                    <p className="text-xs sm:text-sm opacity-80 leading-relaxed line-clamp-3">
-                      {filteredItems[0].description}
+                    <p className="text-xs opacity-75 line-clamp-2 leading-relaxed">
+                      {item.description}
                     </p>
 
-                    {filteredItems[0].tags && filteredItems[0].tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {filteredItems[0].tags.slice(0, 5).map((t, idx) => (
+                    {item.tags && item.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {item.tags.slice(0, 4).map((t, idx) => (
                           <span
                             key={idx}
-                            className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60"
+                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60"
                           >
                             #{t}
                           </span>
@@ -751,164 +840,79 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     )}
                   </div>
 
-                  <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                    {filteredItems[0].projectOutcome && (
-                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/20">
-                        <Award className="w-4 h-4 shrink-0" />
-                        <span>{filteredItems[0].projectOutcome}</span>
+                  {/* Outcome badge & action row */}
+                  <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    {item.projectOutcome && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
+                        <Award className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{item.projectOutcome}</span>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center justify-between gap-2 text-xs pt-0.5">
+                      <span className="font-bold text-[11px] opacity-60">
+                        {item.clientName || 'Showcase Project'}
+                      </span>
                       <span
-                        className="px-4 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition flex items-center gap-1.5 group-hover:shadow-md"
-                        style={{ backgroundColor: themeConfig.primaryColor }}
+                        className="font-bold text-xs flex items-center gap-1 group-hover:translate-x-1 transition-transform"
+                        style={{ color: themeConfig.primaryColor }}
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View Full Case Study</span>
-                      </span>
-                      <span className="text-xs font-bold opacity-60 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                        Explore <ArrowRight className="w-3.5 h-3.5" />
+                        <span>View Details</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div
-                className={`grid gap-5 ${
-                  layoutMode === 'feed'
-                    ? 'grid-cols-1 max-w-2xl mx-auto'
-                    : filteredItems.length === 2
-                    ? 'grid-cols-1 md:grid-cols-2'
-                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                }`}
-              >
-                {filteredItems.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleOpenItem(item)}
-                    className={`group border overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer flex flex-col justify-between ${getCardRadiusClass()} ${getCardClass()}`}
-                  >
-                    {/* Media Cover Image */}
-                    <div className="relative aspect-video sm:aspect-4/3 w-full bg-slate-950 overflow-hidden">
-                      <SafeImage
-                        src={item.coverImage}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                        <span className="text-white text-xs font-bold inline-flex items-center gap-1.5">
-                          <Eye className="w-4 h-4" /> View Full Case Study
-                        </span>
-                      </div>
-
-                      {/* Category Pill */}
-                      <div className="absolute top-3 left-3">
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-950/80 text-white backdrop-blur-xs shadow-sm">
-                          {item.category}
-                        </span>
-                      </div>
-
-                      {/* Media indicators */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1">
-                        {item.mediaType === 'external_video' && (
-                          <span className="p-1.5 rounded-lg bg-red-600 text-white shadow-md">
-                            <Play className="w-3 h-3 fill-current" />
-                          </span>
-                        )}
-                        {item.mediaType === 'gallery' && (
-                          <span className="px-2 py-1 rounded-lg bg-slate-950/80 text-white text-[10px] font-bold backdrop-blur-xs">
-                            +{item.mediaUrls?.length || 1} Photos
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Content Details */}
-                    <div className="p-4 sm:p-5 space-y-2.5 flex-1 flex flex-col justify-between">
-                      <div className="space-y-1.5">
-                        <h3 className="text-sm sm:text-base font-black font-heading tracking-tight leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2">
-                          {item.title}
-                        </h3>
-
-                        <p className="text-xs opacity-75 line-clamp-2 leading-relaxed">
-                          {item.description}
-                        </p>
-                      </div>
-
-                      {/* Outcome badge & action row */}
-                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        {item.projectOutcome && (
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                            <Award className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{item.projectOutcome}</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between gap-2 text-xs opacity-70">
-                          <span className="truncate">{item.clientName || item.projectYear || 'Featured'}</span>
-                          <span
-                            className="font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform shrink-0"
-                            style={{ color: themeConfig.primaryColor }}
-                          >
-                            Explore <ArrowRight className="w-3 h-3" />
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
-        )}
+        </section>
 
         {/* ===================================================== */}
-        {/* TAB 2: ABOUT / STORY / SKILLS */}
+        {/* SECTION 3: ABOUT, PHILOSOPHY & CAPABILITIES */}
         {/* ===================================================== */}
-        {activeTab === 'about' && (
-          <div className="space-y-6">
-            {/* Story Card */}
-            <div className={`p-6 sm:p-8 border shadow-xs space-y-5 ${getCardRadiusClass()} ${getCardClass()}`}>
-              <div className="space-y-2">
-                <span className="text-xs font-bold opacity-60 uppercase tracking-wider">About the Creator</span>
-                <h2 className="text-xl sm:text-2xl font-black font-heading">
-                  Story, Background & Philosophy
-                </h2>
+        <section id="about" className="space-y-6 scroll-mt-20">
+          <div className={`p-6 sm:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}>
+            <div className="space-y-1">
+              <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                About the Creator
+              </span>
+              <h2 className="text-xl sm:text-3xl font-black font-heading">
+                Story, Background & Philosophy
+              </h2>
+            </div>
+
+            <p className="text-xs sm:text-sm opacity-85 leading-relaxed whitespace-pre-line max-w-3xl">
+              {aboutStory}
+            </p>
+
+            {/* Key Milestones Performance Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                <div className="text-xl sm:text-2xl font-black font-heading">{experienceYears}</div>
+                <div className="text-xs font-bold opacity-70">Experience</div>
               </div>
-
-              <p className="text-xs sm:text-sm opacity-85 leading-relaxed whitespace-pre-line">
-                {aboutStory}
-              </p>
-
-              {/* Key Milestones Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-200/80 dark:border-slate-800/80">
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                  <div className="text-lg sm:text-xl font-black font-heading">{experienceYears}</div>
-                  <div className="text-[11px] font-bold opacity-70">Experience</div>
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                <div className="text-xl sm:text-2xl font-black font-heading">
+                  {effectiveItems.length > 0 ? `${effectiveItems.length}+` : '50+'}
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                  <div className="text-lg sm:text-xl font-black font-heading">{items.length > 0 ? `${items.length}+` : '60+'}</div>
-                  <div className="text-[11px] font-bold opacity-70">Projects Shipped</div>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                  <div className="text-lg sm:text-xl font-black font-heading">99%</div>
-                  <div className="text-[11px] font-bold opacity-70">Client Satisfaction</div>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                  <div className="text-lg sm:text-xl font-black font-heading">5.0 ★</div>
-                  <div className="text-[11px] font-bold opacity-70">Average Rating</div>
-                </div>
+                <div className="text-xs font-bold opacity-70">Projects Shipped</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                <div className="text-xl sm:text-2xl font-black font-heading">99%</div>
+                <div className="text-xs font-bold opacity-70">Client Satisfaction</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                <div className="text-xl sm:text-2xl font-black font-heading">5.0 ★</div>
+                <div className="text-xs font-bold opacity-70">Average Rating</div>
               </div>
             </div>
 
-            {/* Core Skills & Tools */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Skills & Tools Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
               {skillsList.length > 0 && (
-                <div className={`p-6 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}>
-                  <h3 className="text-base font-black font-heading flex items-center gap-2">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-black font-heading flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-500" />
                     <span>Specializations & Skills</span>
                   </h3>
@@ -926,10 +930,10 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               )}
 
               {toolsList.length > 0 && (
-                <div className={`p-6 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}>
-                  <h3 className="text-base font-black font-heading flex items-center gap-2">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-black font-heading flex items-center gap-2">
                     <Layers className="w-4 h-4 text-indigo-500" />
-                    <span>Tools & Tech Stack</span>
+                    <span>Tools & Technology Stack</span>
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {toolsList.map((tool, idx) => (
@@ -945,463 +949,393 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               )}
             </div>
           </div>
-        )}
+        </section>
 
         {/* ===================================================== */}
-        {/* TAB 3 & 4: SERVICES & PRICING PACKAGES */}
+        {/* SECTION 4: SERVICES & PRICING PACKAGES */}
         {/* ===================================================== */}
-        {(activeTab === 'services' || activeTab === 'pricing' || activeTab === 'packages' || activeTab === 'programs' || activeTab === 'commissions') && (
-          <div className="space-y-6">
-            <div className="text-center max-w-xl mx-auto space-y-1">
-              <span className="text-xs font-bold opacity-60 uppercase tracking-widest">Services & Offerings</span>
-              <h2 className="text-xl sm:text-2xl font-black font-heading">
-                Packages & Retainers
-              </h2>
-              <p className="text-xs opacity-75">
-                Transparent pricing with verified deliverables and turnaround timelines.
-              </p>
-            </div>
+        <section id="services" className="space-y-6 scroll-mt-20">
+          <div className="text-center max-w-xl mx-auto space-y-1">
+            <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
+              Services & Offerings
+            </span>
+            <h2 className="text-xl sm:text-3xl font-black font-heading">
+              Packages, Retainers & Pricing
+            </h2>
+            <p className="text-xs sm:text-sm opacity-75">
+              Transparent pricing with verified deliverables and rapid turnaround timelines.
+            </p>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {servicesList.map((pkg) => (
-                <div
-                  key={pkg.id}
-                  className={`p-6 border shadow-xs flex flex-col justify-between space-y-5 relative ${getCardRadiusClass()} ${getCardClass()} ${
-                    pkg.popular ? 'ring-2 ring-indigo-500' : ''
-                  }`}
-                >
-                  {pkg.badge && (
-                    <div className="absolute -top-3 right-4">
-                      <span
-                        className="px-3 py-0.5 rounded-full text-[10px] font-black text-white shadow-xs"
-                        style={{ backgroundColor: themeConfig.primaryColor }}
-                      >
-                        {pkg.badge}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {servicesList.map((pkg) => (
+              <div
+                key={pkg.id}
+                className={`p-6 sm:p-7 border shadow-xs flex flex-col justify-between space-y-6 relative ${getCardRadiusClass()} ${getCardClass()} ${
+                  pkg.popular ? 'ring-2 ring-indigo-500 shadow-lg' : ''
+                }`}
+              >
+                {pkg.badge && (
+                  <div className="absolute -top-3 right-5">
+                    <span
+                      className="px-3 py-1 rounded-full text-[10px] font-black text-white shadow-xs uppercase tracking-wider"
+                      style={{ backgroundColor: themeConfig.primaryColor }}
+                    >
+                      {pkg.badge}
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-3.5">
+                  <h3 className="text-lg font-black font-heading">{pkg.title}</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl sm:text-3xl font-black font-heading">
+                      {pkg.price}
+                    </span>
+                    {pkg.duration && (
+                      <span className="text-xs opacity-60 font-medium">/ {pkg.duration}</span>
+                    )}
+                  </div>
+                  <p className="text-xs opacity-80 leading-relaxed">{pkg.description}</p>
+
+                  {/* Deliverables Checklist */}
+                  {pkg.deliverables && pkg.deliverables.length > 0 && (
+                    <div className="space-y-2.5 pt-3.5 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">
+                        What's Included:
                       </span>
+                      <ul className="space-y-2 text-xs">
+                        {pkg.deliverables.map((deliv, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                            <span className="opacity-90">{deliv}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
-
-                  <div className="space-y-3">
-                    <h3 className="text-base font-black font-heading">{pkg.title}</h3>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-black font-heading">{pkg.price}</span>
-                      {pkg.duration && (
-                        <span className="text-xs opacity-60 font-medium">/ {pkg.duration}</span>
-                      )}
-                    </div>
-                    <p className="text-xs opacity-75 leading-relaxed">{pkg.description}</p>
-
-                    {/* Deliverables Checklist */}
-                    {pkg.deliverables && pkg.deliverables.length > 0 && (
-                      <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">
-                          What's Included:
-                        </span>
-                        <ul className="space-y-1.5 text-xs">
-                          {pkg.deliverables.map((item, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                              <span className="opacity-85">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDirectWhatsApp(`Hi ${business.name}, I am interested in booking your "${pkg.title}" package (${pkg.price}). Can we discuss details?`)}
-                    className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeConfig.primaryColor }}
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Book on WhatsApp</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ===================================================== */}
-        {/* TAB 5: REVIEWS / TESTIMONIALS */}
-        {/* ===================================================== */}
-        {(activeTab === 'reviews' || activeTab === 'testimonials') && (
-          <div className="space-y-6">
-            <div className="text-center max-w-xl mx-auto space-y-1">
-              <span className="text-xs font-bold opacity-60 uppercase tracking-widest">Client Feedback</span>
-              <h2 className="text-xl sm:text-2xl font-black font-heading">
-                What Clients Say
-              </h2>
-            </div>
-
-            {testimonials.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Fallback authentic reviews */}
-                <div className={`p-6 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}>
-                  <div className="flex items-center gap-1 text-amber-400">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-xs sm:text-sm italic opacity-85 leading-relaxed">
-                    "Outstanding work quality and delivered ahead of schedule. The designs helped us stand out and scale our product effortlessly."
-                  </p>
-                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
-                      RS
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">Rohit Sharma</div>
-                      <div className="text-[11px] opacity-60">Founder & CEO, TechScale</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`p-6 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}>
-                  <div className="flex items-center gap-1 text-amber-400">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-xs sm:text-sm italic opacity-85 leading-relaxed">
-                    "A true creative professional! Communicated clearly through every iteration and delivered extraordinary results for our brand."
-                  </p>
-                  <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs">
-                      AV
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">Anjali Verma</div>
-                      <div className="text-[11px] opacity-60">Brand Marketing Lead</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {testimonials.map((t) => (
-                  <div
-                    key={t.id}
-                    className={`p-6 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
-                  >
-                    <div className="flex items-center gap-1 text-amber-400">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className={`w-4 h-4 ${s <= (t.rating || 5) ? 'fill-current' : 'opacity-30'}`} />
-                      ))}
-                    </div>
-                    <p className="text-xs sm:text-sm italic opacity-85 leading-relaxed">
-                      "{t.quote}"
-                    </p>
-                    <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      {t.clientPhoto ? (
-                        <img src={t.clientPhoto} alt={t.clientName} className="w-10 h-10 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 font-black flex items-center justify-center text-xs">
-                          {t.clientName.charAt(0)}
-                        </div>
-                      )}
-                      <div>
-                        <div className="text-xs font-bold">{t.clientName}</div>
-                        {t.clientRole && <div className="text-[11px] opacity-60">{t.clientRole}</div>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===================================================== */}
-        {/* TAB: MEDIA KIT & AUDIENCE STATS */}
-        {/* ===================================================== */}
-        {activeTab === 'mediakit' && (
-          <div className="space-y-6">
-            {/* Dark Media Kit Card as shown in the Poster */}
-            <div className="bg-slate-950 text-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-800 space-y-8">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-5 border-b border-slate-800 pb-6">
-                <div className="flex items-center gap-4 text-center sm:text-left">
-                  <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden shrink-0">
-                    {business.logo ? (
-                      <img src={business.logo} alt={business.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-indigo-600 flex items-center justify-center text-xl font-bold">
-                        {business.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black font-heading">{business.name}</h3>
-                    <p className="text-xs text-slate-400">{professionTitle}</p>
-                  </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => handleDirectWhatsApp(`Hi ${business.name}, we would like to request your full Media Kit and discuss a brand collaboration.`)}
-                  className="px-5 py-2.5 rounded-xl bg-white text-slate-950 hover:bg-slate-200 font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-md"
+                  onClick={() =>
+                    handleDirectWhatsApp(
+                      `Hi ${business.name}, I am interested in booking your "${pkg.title}" package (${pkg.price}). Can we discuss scope and schedule?`
+                    )
+                  }
+                  className="w-full py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  style={{ backgroundColor: themeConfig.primaryColor }}
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Request Media Kit</span>
+                  <MessageCircle className="w-4 h-4 fill-current" />
+                  <span>Book on WhatsApp</span>
                 </button>
               </div>
+            ))}
+          </div>
+        </section>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {platformStats.map((stat) => (
-                  <div
-                    key={stat.id}
-                    className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 text-center space-y-1"
-                  >
-                    <div className="text-2xl sm:text-3xl font-black font-heading text-white">
-                      {stat.count}
+        {/* ===================================================== */}
+        {/* SECTION 5: CLIENT REVIEWS & TESTIMONIALS */}
+        {/* ===================================================== */}
+        <section id="reviews" className="space-y-6 scroll-mt-20">
+          <div className="text-center max-w-xl mx-auto space-y-1">
+            <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
+              Social Proof
+            </span>
+            <h2 className="text-xl sm:text-3xl font-black font-heading">
+              Verified Client Reviews
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {effectiveTestimonials.map((t) => (
+              <div
+                key={t.id}
+                className={`p-6 sm:p-7 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
+              >
+                <div className="flex items-center gap-1 text-amber-400">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`w-4 h-4 ${s <= (t.rating || 5) ? 'fill-current' : 'opacity-30'}`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs sm:text-sm italic opacity-85 leading-relaxed">
+                  "{t.quote}"
+                </p>
+                <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  {t.clientPhoto ? (
+                    <img
+                      src={t.clientPhoto}
+                      alt={t.clientName}
+                      className="w-10 h-10 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 font-black flex items-center justify-center text-xs shrink-0">
+                      {t.clientName.charAt(0)}
                     </div>
-                    <div className="text-xs font-bold text-slate-400">
-                      {stat.label || stat.platform}
-                    </div>
-                    {stat.engagementRate && (
-                      <div className="text-[11px] font-semibold text-emerald-400">
-                        {stat.engagementRate} Engagement
-                      </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-bold">{t.clientName}</div>
+                    {t.clientRole && (
+                      <div className="text-[11px] opacity-60">{t.clientRole}</div>
                     )}
                   </div>
-                ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ===================================================== */}
+        {/* SECTION 6: CONTACT & INQUIRY FORM */}
+        {/* ===================================================== */}
+        <section id="contact" className="space-y-6 scroll-mt-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Direct Info Card */}
+            <div
+              className={`p-6 sm:p-8 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}
+            >
+              <div className="space-y-1">
+                <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                  Get in Touch
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black font-heading">
+                  Direct Contact Details
+                </h2>
               </div>
 
-              {/* Brand Collabs */}
-              {brandCollabs.length > 0 && (
-                <div className="pt-6 border-t border-slate-800 space-y-4">
-                  <div className="text-center">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                      Featured Brand Collaborations
-                    </span>
+              <div className="space-y-4 text-xs sm:text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-green-500/10 text-green-600 flex items-center justify-center shrink-0">
+                    <MessageCircle className="w-4 h-4 fill-current" />
                   </div>
-                  <div className="flex items-center justify-center gap-6 sm:gap-10 flex-wrap">
-                    {brandCollabs.map((collab) => (
-                      <div
-                        key={collab.id}
-                        className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800/80 text-xs font-bold text-slate-300 flex items-center gap-2"
+                  <div>
+                    <div className="font-bold">WhatsApp Direct</div>
+                    <div className="opacity-70">
+                      {business.whatsapp || business.phone || 'Available for Chat'}
+                    </div>
+                  </div>
+                </div>
+
+                {business.email && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold">Email</div>
+                      <div className="opacity-70">{business.email}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-bold">Location</div>
+                    <div className="opacity-70">{locationText}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Profiles Grid */}
+              {social && Object.values(social).some(Boolean) && (
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="text-xs font-bold opacity-60">Connect on Social</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {social.instagram && (
+                      <a
+                        href={
+                          social.instagram.startsWith('http')
+                            ? social.instagram
+                            : `https://instagram.com/${social.instagram.replace('@', '')}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-pink-50 dark:bg-pink-950/30 text-pink-600 border border-pink-200 dark:border-pink-900 transition hover:scale-105"
+                        title="Instagram"
                       >
-                        <span>{collab.brandName}</span>
-                      </div>
-                    ))}
+                        <Instagram className="w-4 h-4" />
+                      </a>
+                    )}
+                    {social.youtube && (
+                      <a
+                        href={
+                          social.youtube.startsWith('http')
+                            ? social.youtube
+                            : `https://${social.youtube}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-900 transition hover:scale-105"
+                        title="YouTube"
+                      >
+                        <Youtube className="w-4 h-4" />
+                      </a>
+                    )}
+                    {social.twitter && (
+                      <a
+                        href={
+                          social.twitter.startsWith('http')
+                            ? social.twitter
+                            : `https://twitter.com/${social.twitter.replace('@', '')}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-500 border border-sky-200 dark:border-sky-900 transition hover:scale-105"
+                        title="Twitter / X"
+                      >
+                        <Twitter className="w-4 h-4" />
+                      </a>
+                    )}
+                    {social.linkedin && (
+                      <a
+                        href={
+                          social.linkedin.startsWith('http')
+                            ? social.linkedin
+                            : `https://${social.linkedin}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 border border-blue-200 dark:border-blue-900 transition hover:scale-105"
+                        title="LinkedIn"
+                      >
+                        <Linkedin className="w-4 h-4" />
+                      </a>
+                    )}
+                    {social.github && (
+                      <a
+                        href={
+                          social.github.startsWith('http')
+                            ? social.github
+                            : `https://${social.github}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105"
+                        title="GitHub"
+                      >
+                        <Github className="w-4 h-4" />
+                      </a>
+                    )}
+                    {social.website && (
+                      <a
+                        href={
+                          social.website.startsWith('http')
+                            ? social.website
+                            : `https://${social.website}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105"
+                        title="Website"
+                      >
+                        <Globe className="w-4 h-4" />
+                      </a>
+                    )}
                   </div>
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {/* ===================================================== */}
-        {/* TAB 6: CONTACT & INQUIRY */}
-        {/* ===================================================== */}
-        {activeTab === 'contact' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Direct Info Card */}
-              <div className={`p-6 sm:p-8 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}>
-                <div className="space-y-1">
-                  <span className="text-xs font-bold opacity-60 uppercase tracking-wider">Get in Touch</span>
-                  <h2 className="text-xl font-black font-heading">Direct Contact</h2>
-                </div>
-
-                <div className="space-y-4 text-xs sm:text-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-green-500/10 text-green-600 flex items-center justify-center shrink-0">
-                      <MessageCircle className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold">WhatsApp Direct</div>
-                      <div className="opacity-70">{business.whatsapp || business.phone || 'Available'}</div>
-                    </div>
-                  </div>
-
-                  {business.email && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
-                        <Mail className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="font-bold">Email</div>
-                        <div className="opacity-70">{business.email}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold">Location</div>
-                      <div className="opacity-70">{locationText}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Social Profiles Grid */}
-                {social && Object.values(social).some(Boolean) && (
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                    <div className="text-xs font-bold opacity-60">Social Profiles</div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {social.instagram && (
-                        <a
-                          href={social.instagram.startsWith('http') ? social.instagram : `https://instagram.com/${social.instagram.replace('@', '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2.5 rounded-xl bg-pink-50 dark:bg-pink-950/30 text-pink-600 border border-pink-200 dark:border-pink-900 transition hover:scale-105"
-                          title="Instagram"
-                        >
-                          <Instagram className="w-4 h-4" />
-                        </a>
-                      )}
-                      {social.youtube && (
-                        <a
-                          href={social.youtube.startsWith('http') ? social.youtube : `https://${social.youtube}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-900 transition hover:scale-105"
-                          title="YouTube"
-                        >
-                          <Youtube className="w-4 h-4" />
-                        </a>
-                      )}
-                      {social.twitter && (
-                        <a
-                          href={social.twitter.startsWith('http') ? social.twitter : `https://twitter.com/${social.twitter.replace('@', '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-500 border border-sky-200 dark:border-sky-900 transition hover:scale-105"
-                          title="Twitter / X"
-                        >
-                          <Twitter className="w-4 h-4" />
-                        </a>
-                      )}
-                      {social.linkedin && (
-                        <a
-                          href={social.linkedin.startsWith('http') ? social.linkedin : `https://${social.linkedin}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 border border-blue-200 dark:border-blue-900 transition hover:scale-105"
-                          title="LinkedIn"
-                        >
-                          <Linkedin className="w-4 h-4" />
-                        </a>
-                      )}
-                      {social.github && (
-                        <a
-                          href={social.github.startsWith('http') ? social.github : `https://${social.github}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105"
-                          title="GitHub"
-                        >
-                          <Github className="w-4 h-4" />
-                        </a>
-                      )}
-                      {social.website && (
-                        <a
-                          href={social.website.startsWith('http') ? social.website : `https://${social.website}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105"
-                          title="Website"
-                        >
-                          <Globe className="w-4 h-4" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
+            {/* Inquiry Form */}
+            <div
+              className={`p-6 sm:p-8 border shadow-xs space-y-5 ${getCardRadiusClass()} ${getCardClass()}`}
+            >
+              <div className="space-y-1">
+                <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
+                  Quick Inquiry
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black font-heading">Send a Message</h2>
               </div>
 
-              {/* Inquiry Form */}
-              <div className={`p-6 sm:p-8 border shadow-xs space-y-5 ${getCardRadiusClass()} ${getCardClass()}`}>
-                <div className="space-y-1">
-                  <span className="text-xs font-bold opacity-60 uppercase tracking-wider">Quick Inquiry</span>
-                  <h2 className="text-xl font-black font-heading">Send a Message</h2>
-                </div>
-
-                {contactSent ? (
-                  <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center space-y-2">
-                    <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
-                    <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Message Prepared!</div>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                      Opening WhatsApp to connect with {business.name}.
-                    </p>
+              {contactSent ? (
+                <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center space-y-2">
+                  <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                  <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                    Message Prepared!
                   </div>
-                ) : (
-                  <form onSubmit={handleSendContactMessage} className="space-y-3 text-xs">
-                    <div>
-                      <label className="block font-bold opacity-80 mb-1">Your Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={contactName}
-                        onChange={(e) => setContactName(e.target.value)}
-                        placeholder="John Doe"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                    Opening WhatsApp to connect with {business.name}.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleSendContactMessage} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block font-bold opacity-80 mb-1">Your Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="e.g. John Doe"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block font-bold opacity-80 mb-1">Phone / WhatsApp Number</label>
-                      <input
-                        type="tel"
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
+                  <div>
+                    <label className="block font-bold opacity-80 mb-1">
+                      Phone / WhatsApp Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block font-bold opacity-80 mb-1">Project Requirements / Dates</label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={contactMessage}
-                        onChange={(e) => setContactMessage(e.target.value)}
-                        placeholder="Tell us about your project scope, dates, or specific questions..."
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 resize-none"
-                      />
-                    </div>
+                  <div>
+                    <label className="block font-bold opacity-80 mb-1">
+                      Project Requirements / Brief
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={contactMessage}
+                      onChange={(e) => setContactMessage(e.target.value)}
+                      placeholder="Describe your project goals, timelines, or specific deliverables..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 resize-none"
+                    />
+                  </div>
 
-                    <button
-                      type="submit"
-                      className="w-full py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2 hover:opacity-95"
-                      style={{ backgroundColor: themeConfig.primaryColor }}
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Send to Creator on WhatsApp</span>
-                    </button>
-                  </form>
-                )}
-              </div>
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2 hover:opacity-95"
+                    style={{ backgroundColor: themeConfig.primaryColor }}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send Message on WhatsApp</span>
+                  </button>
+                </form>
+              )}
             </div>
           </div>
-        )}
+        </section>
 
         {/* ===================================================== */}
         {/* BOTTOM READY TO WORK TOGETHER CONVERSION FOOTER */}
         {/* ===================================================== */}
-        <div
-          className={`p-6 sm:p-8 border shadow-xs text-center space-y-4 mt-8 ${getCardRadiusClass()} ${getCardClass()}`}
+        <section
+          className={`p-6 sm:p-10 border shadow-xs text-center space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
         >
-          <h3 className="text-lg sm:text-xl font-black font-heading">
+          <h3 className="text-xl sm:text-2xl font-black font-heading">
             Ready to Work Together?
           </h3>
-          <p className="text-xs opacity-75 max-w-md mx-auto">
-            Have a project, brand sponsorship, or consultation in mind? Let's discuss requirements and dates!
+          <p className="text-xs sm:text-sm opacity-75 max-w-md mx-auto">
+            Have a project, consulting requirement, or collaboration in mind? Let's discuss dates and requirements!
           </p>
 
           <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
             <button
               type="button"
               onClick={handlePrimaryCta}
-              className="px-6 py-3 rounded-xl text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer flex items-center gap-2"
+              className="px-6 py-3 rounded-xl text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
               style={{ backgroundColor: '#25D366' }}
             >
               <MessageCircle className="w-4 h-4 fill-current" />
@@ -1417,15 +1351,24 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               <span>Share Portfolio</span>
             </button>
           </div>
-        </div>
+        </section>
 
         {/* FOOTER BRANDING */}
-        <div className="text-center pt-4 pb-8 space-y-1">
-          <p className="text-[11px] opacity-60 font-semibold">
-            Powered by <span className="font-black">Storelly</span> • One Link. Every Portfolio.
+        <footer className="text-center pt-2 pb-6 space-y-1">
+          <p className="text-xs opacity-60 font-medium">
+            Powered by <span className="font-bold text-indigo-600 dark:text-indigo-400">Storelly</span> • One Link. Every Portfolio.
           </p>
-        </div>
-      </div>
+        </footer>
+      </main>
+
+      {/* Interactive Detail Modal */}
+      {modalItem && (
+        <PortfolioDetailModal
+          item={modalItem}
+          business={business}
+          onClose={handleCloseModal}
+        />
+      )}
 
       {/* Share & QR Code Modal */}
       {isShareModalOpen && (
@@ -1437,3 +1380,5 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     </div>
   );
 };
+
+export default StandalonePortfolioView;

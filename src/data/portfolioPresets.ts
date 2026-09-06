@@ -6,6 +6,7 @@ import {
   PlatformStat,
   BrandCollab,
   PortfolioServicePackage,
+  PortfolioItem,
 } from '../types';
 
 export interface PortfolioPreset {
@@ -36,6 +37,7 @@ export interface PortfolioPreset {
   suggestedServices: PortfolioServicePackage[];
   suggestedStats: PlatformStat[];
   suggestedCollabs: BrandCollab[];
+  suggestedProjects?: PortfolioItem[];
 }
 
 export const PORTFOLIO_PRESETS: Record<PortfolioProfession, PortfolioPreset> = {
@@ -693,3 +695,312 @@ export const PORTFOLIO_PRESETS: Record<PortfolioProfession, PortfolioPreset> = {
     ],
   },
 };
+
+/**
+ * Returns rich starter showcase projects tailored to the profession/industry or business name
+ * so the creator's portfolio website is never empty and renders with high quality content immediately.
+ */
+export function getStarterPortfolioItems(
+  professionKey: string,
+  businessName: string,
+  businessId: string = 'demo'
+): PortfolioItem[] {
+  const name = businessName || 'Creator';
+  const isTechOrDev =
+    professionKey === 'developer' ||
+    /tech|solution|software|code|dev|digital|system|it|cloud/i.test(name);
+
+  if (isTechOrDev) {
+    return [
+      {
+        id: 'starter_dev_1',
+        businessId,
+        title: 'Enterprise Cloud Infrastructure & Platform',
+        category: 'Projects',
+        coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Engineered a resilient high-concurrency cloud platform with automated CI/CD pipelines, real-time telemetry, and secure multi-tenant role access.',
+        tags: ['React', 'TypeScript', 'Node.js', 'Cloud Architecture', 'PostgreSQL'],
+        clientName: 'ScaleTech Global',
+        projectYear: '2025',
+        role: 'Lead Architect',
+        projectOutcome: '99.99% Uptime & 40% Lower Operational Costs',
+        order: 1,
+        isActive: true,
+        createdAt: Date.now() - 30 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_dev_2',
+        businessId,
+        title: 'AI Workflow Automation & Analytics Suite',
+        category: 'Case Studies',
+        coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Designed and deployed an intelligent operations dashboard processing over 100k+ daily events with sub-second response times.',
+        tags: ['Next.js', 'Tailwind CSS', 'REST APIs', 'Automation', 'BI Dashboards'],
+        clientName: 'Apex Systems',
+        projectYear: '2024',
+        role: 'Solutions Engineer',
+        projectOutcome: 'Automated 350+ Hours of Manual Ops Weekly',
+        order: 2,
+        isActive: true,
+        createdAt: Date.now() - 60 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_dev_3',
+        businessId,
+        title: 'Omnichannel Payment Gateway & Client Portal',
+        category: 'Highlights',
+        coverImage: 'https://images.unsplash.com/photo-1556742049-0a67e5572293?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'End-to-end payment processing, automated invoicing, customer notification workflows, and webhook reconciliation system.',
+        tags: ['Stripe / UPI', 'Webhooks', 'Security', 'Microservices', 'GraphQL'],
+        clientName: 'FinScale Payments',
+        projectYear: '2024',
+        role: 'Principal Consultant',
+        projectOutcome: 'Processed ₹2.5Cr+ in Seamless Transactions',
+        order: 3,
+        isActive: true,
+        createdAt: Date.now() - 90 * 86400000,
+        updatedAt: Date.now(),
+      },
+    ];
+  }
+
+  if (professionKey === 'photographer') {
+    return [
+      {
+        id: 'starter_photo_1',
+        businessId,
+        title: 'The Royal Udaipur Palace Wedding Celebration',
+        category: 'Wedding',
+        coverImage: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Two-day grand destination wedding capturing intimate rituals, royal decor, candid smiles, and cinematic couple portraits.',
+        tags: ['Destination Wedding', 'Candid', 'Drone Cinematography', 'Night Portraits'],
+        clientName: 'Rahul & Simran',
+        projectYear: '2025',
+        role: 'Lead Photographer',
+        projectOutcome: 'Featured in WedMeGood & Vogue Wedding Book',
+        order: 1,
+        isActive: true,
+        createdAt: Date.now() - 20 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_photo_2',
+        businessId,
+        title: 'Sunset Love Story at Jaisalmer Dunes',
+        category: 'Pre-Wedding',
+        coverImage: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Romantic conceptual outdoor session with golden hour lighting, traditional styling, and cinematic video reels.',
+        tags: ['Pre-Wedding', 'Golden Hour', 'Cinematic Reel', 'Fine Art'],
+        clientName: 'Aditya & Neha',
+        projectYear: '2024',
+        role: 'Director of Photography',
+        projectOutcome: '120k+ Views on Instagram Reel Teaser',
+        order: 2,
+        isActive: true,
+        createdAt: Date.now() - 50 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_photo_3',
+        businessId,
+        title: 'Heritage Editorial & Fine Art Portraits',
+        category: 'Portraits',
+        coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Studio and on-location editorial fashion portraits with creative studio lighting and high-end magazine retouching.',
+        tags: ['Editorial', 'Studio Lighting', 'High-End Retouching', 'Magazine'],
+        clientName: 'Verve Studio',
+        projectYear: '2024',
+        role: 'Creative Director',
+        projectOutcome: 'Cover Shoot for Luxury Lifestyle Edition',
+        order: 3,
+        isActive: true,
+        createdAt: Date.now() - 80 * 86400000,
+        updatedAt: Date.now(),
+      },
+    ];
+  }
+
+  if (professionKey === 'designer') {
+    return [
+      {
+        id: 'starter_des_1',
+        businessId,
+        title: 'Aurora Fintech Brand Identity & Design System',
+        category: 'Branding',
+        coverImage: 'https://images.unsplash.com/photo-1600132806370-bf17e65e942f?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Complete brand overhaul from logo mark to comprehensive typography, color guidelines, and multi-channel asset kits.',
+        tags: ['Brand Identity', 'Logo System', 'Typography', 'Figma', 'Stationery'],
+        clientName: 'Aurora AI',
+        projectYear: '2025',
+        role: 'Brand Designer',
+        projectOutcome: 'Scaled Brand Awareness by 180% Post Launch',
+        order: 1,
+        isActive: true,
+        createdAt: Date.now() - 25 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_des_2',
+        businessId,
+        title: 'Lumina Mobile Health App UI/UX Experience',
+        category: 'Web',
+        coverImage: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'End-to-end user research, clickable high-fidelity wireframes, interactive component library, and developer specs.',
+        tags: ['UI/UX', 'Mobile App', 'Design Systems', 'Micro-interactions'],
+        clientName: 'Lumina Health',
+        projectYear: '2024',
+        role: 'Lead UI/UX Designer',
+        projectOutcome: '4.9 App Store Rating & 500k+ Active Downloads',
+        order: 2,
+        isActive: true,
+        createdAt: Date.now() - 55 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_des_3',
+        businessId,
+        title: 'Nordic Living Sustainable Packaging & Social Kit',
+        category: 'Social Media',
+        coverImage: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Eco-luxury product packaging, retail box textures, Instagram carousel templates, and launch campaign assets.',
+        tags: ['Packaging', 'Print Ready', 'Social Templates', '3D Mockups'],
+        clientName: 'Nordic Living',
+        projectYear: '2024',
+        role: 'Art Director',
+        projectOutcome: 'Featured in Packaging of the World 2025',
+        order: 3,
+        isActive: true,
+        createdAt: Date.now() - 85 * 86400000,
+        updatedAt: Date.now(),
+      },
+    ];
+  }
+
+  if (professionKey === 'youtuber') {
+    return [
+      {
+        id: 'starter_yt_1',
+        businessId,
+        title: 'Chasing Clouds: 10 Days Across Ladakh in 4K',
+        category: 'Travel Vlogs',
+        coverImage: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Cinematic travel documentary capturing high altitude passes, local culture, drone vistas, and road-trip adventures.',
+        tags: ['4K Video', 'Drone Footage', 'Travel Film', 'Sound Design'],
+        clientName: 'Self-Produced Documentary',
+        projectYear: '2025',
+        role: 'Filmmaker & Editor',
+        projectOutcome: '450K+ Views & 25K New Subscribers',
+        order: 1,
+        isActive: true,
+        createdAt: Date.now() - 15 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_yt_2',
+        businessId,
+        title: 'Ultimate Minimal Desk & Tech Setup 2025',
+        category: 'Tech & Gear',
+        coverImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Comprehensive walkthrough of camera gear, studio audio, dual monitor workflow, and creator productivity tools.',
+        tags: ['Tech Review', 'Studio Setup', 'Audio Gear', 'Sony FX3'],
+        clientName: 'Sony & Rode Collaboration',
+        projectYear: '2024',
+        role: 'Content Creator',
+        projectOutcome: '180K+ Views & 12% Conversion on Affiliate Links',
+        order: 2,
+        isActive: true,
+        createdAt: Date.now() - 45 * 86400000,
+        updatedAt: Date.now(),
+      },
+      {
+        id: 'starter_yt_3',
+        businessId,
+        title: 'Behind the Scenes: Editing Workflow Secrets',
+        category: 'Behind the Scenes',
+        coverImage: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1200&q=80',
+        mediaType: 'image',
+        description: 'Step-by-step masterclass on pacing, color grading in DaVinci Resolve, sound design layering, and viral storytelling.',
+        tags: ['Tutorial', 'Color Grading', 'DaVinci Resolve', 'Storytelling'],
+        clientName: 'Creator Academy Series',
+        projectYear: '2024',
+        role: 'Instructor',
+        projectOutcome: 'Ranked #1 for Travel Filmmaking Workflows',
+        order: 3,
+        isActive: true,
+        createdAt: Date.now() - 75 * 86400000,
+        updatedAt: Date.now(),
+      },
+    ];
+  }
+
+  // Universal Default / Custom Starter Portfolio
+  return [
+    {
+      id: 'starter_cust_1',
+      businessId,
+      title: `${name} — Strategy & Digital Execution`,
+      category: 'Projects',
+      coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+      mediaType: 'image',
+      description: 'Comprehensive strategic roadmap, technology implementation, and custom execution tailored to achieve client objectives.',
+      tags: ['Strategy', 'Execution', 'Digital Solutions', 'Project Delivery'],
+      clientName: 'Enterprise Partner',
+      projectYear: '2025',
+      role: 'Principal Consultant',
+      projectOutcome: 'Delivered On-Time with 100% Client Satisfaction',
+      order: 1,
+      isActive: true,
+      createdAt: Date.now() - 20 * 86400000,
+      updatedAt: Date.now(),
+    },
+    {
+      id: 'starter_cust_2',
+      businessId,
+      title: 'Operations Automation & Modern Workflows',
+      category: 'Case Studies',
+      coverImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+      mediaType: 'image',
+      description: 'Streamlined multi-channel workflows, integrated cloud services, and automated data synchronization systems.',
+      tags: ['Automation', 'Workflow', 'System Architecture', 'Security'],
+      clientName: 'Apex Enterprises',
+      projectYear: '2024',
+      role: 'Lead Architect',
+      projectOutcome: 'Zero Downtime & Accelerated Process Speed',
+      order: 2,
+      isActive: true,
+      createdAt: Date.now() - 40 * 86400000,
+      updatedAt: Date.now(),
+    },
+    {
+      id: 'starter_cust_3',
+      businessId,
+      title: 'Client Experience & Engagement Gateway',
+      category: 'Highlights',
+      coverImage: 'https://images.unsplash.com/photo-1556742049-0a67e5572293?auto=format&fit=crop&w=1200&q=80',
+      mediaType: 'image',
+      description: 'Designed and deployed responsive engagement touchpoints, instant customer communications, and real-time analytics.',
+      tags: ['Client Success', 'Analytics', 'Communications', 'Portals'],
+      clientName: 'Global Brands',
+      projectYear: '2024',
+      role: 'Technical Advisor',
+      projectOutcome: '5.0★ Average Rating & Long-Term Retainer',
+      order: 3,
+      isActive: true,
+      createdAt: Date.now() - 70 * 86400000,
+      updatedAt: Date.now(),
+    },
+  ];
+}
