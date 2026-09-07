@@ -126,7 +126,17 @@ export interface BusinessProfile {
   taxRate?: number;
   enableCod?: boolean;
   enableOnlinePayment?: boolean;
+  enableBankTransfer?: boolean;
   upiId?: string;
+  upiQrImage?: string;
+  bankDetails?: {
+    accountNumber?: string;
+    ifscCode?: string;
+    accountHolderName?: string;
+    bankName?: string;
+    branchName?: string;
+  };
+  paymentInstructions?: string;
   socialLinks?: {
     instagram?: string;
     facebook?: string;

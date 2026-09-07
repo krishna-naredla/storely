@@ -13,15 +13,15 @@ import {
   Sparkles,
   ArrowRight,
   Star,
-  Layers,
-  Sliders,
   Store,
+  CheckCircle2,
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { updateBusinessProfile, getDigitalStoreUrl, getBioLinkUrl, getPortfolioUrl } from '../../services/firebaseService';
 import { DashboardTab } from './Sidebar';
 import { ConfirmActionModal } from '../common/ConfirmActionModal';
 import { isCreatorProfile } from '../../utils/profileHelper';
+import { isModuleApplicableForBusiness } from '../../services/businessConfig';
 
 interface Props {
   business: BusinessProfile;
@@ -96,7 +96,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
 
   const handleSlug = business.username || business.slug;
 
-  const modules: CreatorModuleItem[] = [
+  const allCreatorModules: CreatorModuleItem[] = [
     {
       id: 'portfolio',
       keys: ['work_portfolio', 'portfolio'],
@@ -190,34 +190,60 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
     },
   ];
 
-  const activeCount = modules.filter((m) => m.enabled).length;
   const isCreator = isCreatorProfile(business);
+
+  // Filter modules strictly based on business type whitelist
+  const visibleModules = allCreatorModules.filter((m) =>
+    m.keys.some((k) => isModuleApplicableForBusiness(k, business))
+  );
+
+  const activeCount = visibleModules.filter((m) => m.enabled).length;
 
   if (!isCreator) {
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
               <Store className="w-3.5 h-3.5 text-emerald-400" />
               Vendor Store Account Detected
             </span>
             <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
-              Vendor Store Modules
+              Vendor Storefront Configuration
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              This profile is registered as a Commerce Vendor account. Configure catalog, physical products, table delivery, and booking engines in Store Modules.
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <strong>{business.name}</strong> is currently set up as a Commerce Vendor storefront. Irrelevant creator-only tools (case study portfolios, biolink hubs) are hidden to keep your dashboard focused on physical products, table ordering, menu items, and bookings.
             </p>
           </div>
           {onNavigateTab && (
             <button
               type="button"
               onClick={() => onNavigateTab('modules')}
-              className="py-3 px-5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              className="py-3.5 px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
-              <span>Open Store Modules</span>
+              <span>Manage Store Modules</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           )}
+        </div>
+
+        {/* Quick Info Grid for Vendor Mode */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Store Type</div>
+            <div className="text-base font-black text-slate-900 capitalize">{business.type.replace('_', ' ')}</div>
+            <div className="text-xs text-slate-500">Retail, Catalog &amp; Cart Checkout</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ordering Flow</div>
+            <div className="text-base font-black text-emerald-600">WhatsApp &amp; UPI Live</div>
+            <div className="text-xs text-slate-500">Zero Commission on Direct Orders</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public Storefront</div>
+            <div className="text-base font-black text-slate-900 font-mono text-xs truncate">/store/{business.slug}</div>
+            <div className="text-xs text-slate-500">Live Customer Storefront URL</div>
+          </div>
         </div>
       </div>
     );
@@ -236,7 +262,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                 Creator Modular Architecture
               </span>
               <span className="px-2.5 py-1 rounded-full bg-white/10 text-white text-xs font-semibold">
-                {activeCount} of {modules.length} Active
+                {activeCount} of {visibleModules.length} Active
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black font-heading mt-1 text-white">
@@ -263,7 +289,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
 
       {/* Modules Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {modules.map((mod) => (
+        {visibleModules.map((mod) => (
           <div
             key={mod.id}
             className={`bg-white rounded-3xl p-5 sm:p-6 shadow-xs border transition-all flex flex-col justify-between relative overflow-hidden hover:shadow-md ${
@@ -392,4 +418,3 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
     </div>
   );
 };
-

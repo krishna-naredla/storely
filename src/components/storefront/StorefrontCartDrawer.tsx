@@ -723,45 +723,52 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                       Payment Option
                     </span>
                     <div className="space-y-1.5">
-                      <label
-                        onClick={() => setPaymentMethod('online')}
-                        className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
-                          paymentMethod === 'online'
-                            ? 'bg-emerald-50/70 border-emerald-500 text-slate-900 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-600'
-                        }`}
-                      >
-                        <span>⚡ Pay Online via UPI (GPay, PhonePe, Paytm)</span>
-                        <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                      {business.enableOnlinePayment !== false && (business.upiId || business.upiQrImage) && (
+                        <label
+                          onClick={() => setPaymentMethod('online')}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                             paymentMethod === 'online'
-                              ? 'bg-emerald-600 border-emerald-600 text-white'
-                              : 'border-slate-300'
+                              ? 'bg-emerald-50/70 border-emerald-500 text-slate-900 font-semibold'
+                              : 'bg-white border-slate-200 text-slate-600'
                           }`}
                         >
-                          {paymentMethod === 'online' && '✓'}
-                        </div>
-                      </label>
+                          <span className="flex items-center gap-1.5">
+                            <span>⚡ Pay Online via UPI (GPay, PhonePe, Paytm)</span>
+                            <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full font-bold">Instant</span>
+                          </span>
+                          <div
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                              paymentMethod === 'online'
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'border-slate-300'
+                            }`}
+                          >
+                            {paymentMethod === 'online' && '✓'}
+                          </div>
+                        </label>
+                      )}
 
-                      <label
-                        onClick={() => setPaymentMethod('cod')}
-                        className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
-                          paymentMethod === 'cod'
-                            ? 'bg-emerald-50/70 border-emerald-500 text-slate-900 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-600'
-                        }`}
-                      >
-                        <span>💵 Cash on Delivery / Handover</span>
-                        <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                      {business.enableCod !== false && (
+                        <label
+                          onClick={() => setPaymentMethod('cod')}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                             paymentMethod === 'cod'
-                              ? 'bg-emerald-600 border-emerald-600 text-white'
-                              : 'border-slate-300'
+                              ? 'bg-emerald-50/70 border-emerald-500 text-slate-900 font-semibold'
+                              : 'bg-white border-slate-200 text-slate-600'
                           }`}
                         >
-                          {paymentMethod === 'cod' && '✓'}
-                        </div>
-                      </label>
+                          <span>💵 Cash on Delivery / Handover</span>
+                          <div
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                              paymentMethod === 'cod'
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'border-slate-300'
+                            }`}
+                          >
+                            {paymentMethod === 'cod' && '✓'}
+                          </div>
+                        </label>
+                      )}
 
                       <label
                         onClick={() => setPaymentMethod('upi_on_delivery')}
@@ -782,10 +789,32 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                           {paymentMethod === 'upi_on_delivery' && '✓'}
                         </div>
                       </label>
+
+                      {business.enableBankTransfer && business.bankDetails && (
+                        <label
+                          onClick={() => setPaymentMethod('bank_transfer')}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                            paymentMethod === 'bank_transfer'
+                              ? 'bg-emerald-50/70 border-emerald-500 text-slate-900 font-semibold'
+                              : 'bg-white border-slate-200 text-slate-600'
+                          }`}
+                        >
+                          <span>🏛️ Direct Bank Transfer</span>
+                          <div
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                              paymentMethod === 'bank_transfer'
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'border-slate-300'
+                            }`}
+                          >
+                            {paymentMethod === 'bank_transfer' && '✓'}
+                          </div>
+                        </label>
+                      )}
                     </div>
 
                     {/* Online UPI Payment Interactive Widget */}
-                    {paymentMethod === 'online' && (
+                    {paymentMethod === 'online' && (business.upiId || business.upiQrImage) && (
                       <div className="mt-3 p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
@@ -801,25 +830,37 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                             Scan QR with any UPI App or click Pay Now below:
                           </p>
                           <div className="flex justify-center my-1">
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
-                                `upi://pay?pa=${business.upiId || 'maninaredla218@oksbi'}&pn=${encodeURIComponent(business.name)}&am=${total}&cu=INR&tn=OrderPayment`
-                              )}`}
-                              alt="Store UPI QR Code"
-                              className="w-32 h-32 rounded-lg border p-1 bg-white shadow-xs mx-auto"
-                            />
+                            {business.upiQrImage ? (
+                              <img
+                                src={business.upiQrImage}
+                                alt="Store UPI QR Code"
+                                className="w-36 h-36 rounded-lg object-contain border p-1 bg-white shadow-xs mx-auto"
+                              />
+                            ) : business.upiId ? (
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                                  `upi://pay?pa=${business.upiId}&pn=${encodeURIComponent(business.name)}&am=${total}&cu=INR&tn=OrderPayment`
+                                )}`}
+                                alt="Store UPI QR Code"
+                                className="w-32 h-32 rounded-lg border p-1 bg-white shadow-xs mx-auto"
+                              />
+                            ) : null}
                           </div>
-                          <div className="text-xs font-mono font-bold text-slate-800 bg-slate-100 py-1 px-2 rounded-lg select-all">
-                            UPI ID: {business.upiId || 'maninaredla218@oksbi'}
-                          </div>
-                          <a
-                            href={`upi://pay?pa=${business.upiId || 'maninaredla218@oksbi'}&pn=${encodeURIComponent(business.name)}&am=${total}&cu=INR&tn=OrderPayment`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm text-center transition"
-                          >
-                            🚀 Open GPay / PhonePe / Paytm to Pay {business.currencySymbol}{total}
-                          </a>
+                          {business.upiId && (
+                            <>
+                              <div className="text-xs font-mono font-bold text-slate-800 bg-slate-100 py-1 px-2 rounded-lg select-all">
+                                UPI ID: {business.upiId}
+                              </div>
+                              <a
+                                href={`upi://pay?pa=${business.upiId}&pn=${encodeURIComponent(business.name)}&am=${total}&cu=INR&tn=OrderPayment`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm text-center transition"
+                              >
+                                🚀 Open GPay / PhonePe / Paytm to Pay {business.currencySymbol}{total}
+                              </a>
+                            </>
+                          )}
                         </div>
 
                         <div className="space-y-1">

@@ -1,4 +1,5 @@
-import { BusinessType, BusinessModuleConfig, CatalogItemType } from '../types';
+import { BusinessType, BusinessModuleConfig, CatalogItemType, BusinessProfile, ProfileType } from '../types';
+import { isCreatorProfile } from '../utils/profileHelper';
 
 export interface BusinessTypeMeta {
   id: BusinessType;
@@ -708,3 +709,67 @@ export const MODULE_DEFINITIONS: {
     recommendedFor: 'All Businesses',
   },
 ];
+
+export const AVAILABLE_MODULES = MODULE_DEFINITIONS;
+
+export const VENDOR_MODULE_WHITELIST = [
+  'products',
+  'services',
+  'menu',
+  'rooms',
+  'vehicles',
+  'cart_ordering',
+  'table_delivery',
+  'booking_appointments',
+  'stay_booking',
+  'rental_booking',
+  'inquiries',
+  'reviews',
+  'offers',
+  'digital_card',
+  'inventory_tracking',
+  'analytics',
+] as const;
+
+export const CREATOR_MODULE_WHITELIST = [
+  'work_portfolio',
+  'portfolio',
+  'universal_links',
+  'digital_products',
+  'booking_appointments',
+  'custom_quotes',
+  'events_tickets',
+  'events_ticketing',
+  'reviews',
+  'analytics',
+] as const;
+
+/**
+ * Returns the list of permitted / whitelisted module keys based on the profile type ('creator' vs 'vendor')
+ */
+export function getWhitelistedModulesForProfileType(profileType: 'creator' | 'vendor' | ProfileType): string[] {
+  if (profileType === 'creator') {
+    return [...CREATOR_MODULE_WHITELIST];
+  }
+  return [...VENDOR_MODULE_WHITELIST];
+}
+
+/**
+ * Returns the list of permitted / whitelisted module definitions for a given business profile
+ */
+export function getAvailableModulesForBusiness(business?: BusinessProfile | null) {
+  const isCreator = isCreatorProfile(business);
+  const whitelist = new Set<string>(getWhitelistedModulesForProfileType(isCreator ? 'creator' : 'vendor'));
+  return MODULE_DEFINITIONS.filter((m) => whitelist.has(String(m.key)));
+}
+
+/**
+ * Checks if a specific module key is allowed/applicable for a business profile
+ */
+export function isModuleApplicableForBusiness(moduleKey: string, business?: BusinessProfile | null): boolean {
+  const isCreator = isCreatorProfile(business);
+  const whitelist = new Set(getWhitelistedModulesForProfileType(isCreator ? 'creator' : 'vendor'));
+  return whitelist.has(moduleKey);
+}
+
+

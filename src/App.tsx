@@ -1,5 +1,6 @@
 import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useDynamicBranding } from './utils/dynamicBranding';
 import {
   Store,
   Briefcase,
@@ -155,7 +156,7 @@ function parseStoreSlugFromUrl(): string | null {
 }
 
 function generateFallbackOgImage(name: string): string {
-  const safeName = (name || 'Storelly Business').replace(/[<>&'"]/g, '');
+  const safeName = (name || 'Official Business').replace(/[<>&'"]/g, '');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
     <defs>
       <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -166,7 +167,7 @@ function generateFallbackOgImage(name: string): string {
     <rect width="1200" height="630" fill="url(#bg)" />
     <circle cx="1050" cy="150" r="250" fill="#10b981" opacity="0.15" />
     <circle cx="150" cy="500" r="200" fill="#059669" opacity="0.1" />
-    <text x="100" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#34d399" letter-spacing="4">STORELLY DIGITAL STORE</text>
+    <text x="100" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#34d399" letter-spacing="4">OFFICIAL DIGITAL STOREFRONT</text>
     <text x="100" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="#ffffff">${safeName}</text>
     <text x="100" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="500" fill="#a7f3d0">Catalog, Instant Orders &amp; Direct WhatsApp Checkout</text>
     <rect x="100" y="490" width="220" height="50" rx="25" fill="#10b981" />
@@ -207,8 +208,8 @@ function injectStoreMetadata(business: BusinessProfile) {
   viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 
   const title = isPortfolio
-    ? `${business.name} — ${business.portfolioSettings?.headline || business.tagline || 'Official Creator Portfolio & Case Studies'} | Storelly`
-    : `${business.name} - Official Store | Storelly`;
+    ? `${business.name} — ${business.portfolioSettings?.headline || business.tagline || 'Official Creator Portfolio & Case Studies'}`
+    : `${business.name} — ${business.tagline || 'Official Storefront'}`;
   document.title = title;
 
   const updateMeta = (property: string, content: string, isProperty = true) => {
@@ -228,7 +229,7 @@ function injectStoreMetadata(business: BusinessProfile) {
 
   const desc = isPortfolio
     ? (business.portfolioSettings?.subheadline || business.description || `Explore verified work samples, case studies, and creative services by ${business.name}.`)
-    : (business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`);
+    : (business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name}.`);
 
   const img = business.banner || business.logo || generateFallbackOgImage(business.name);
   const url = window.location.href;
@@ -308,6 +309,10 @@ function MainContent() {
     type: 'order' | 'booking';
   } | null>(null);
 
+  // Cache to track processed orders/bookings to prevent duplicate chimes & false triggers
+  const seenOrderIdsRef = useRef<Set<string>>(new Set());
+  const seenBookingIdsRef = useRef<Set<string>>(new Set());
+
   // Register Service Worker for PWA Web Push background alerts
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -375,6 +380,13 @@ function MainContent() {
   const [publicBusiness, setPublicBusiness] = useState<BusinessProfile | null>(null);
   const [isLoadingPublicStore, setIsLoadingPublicStore] = useState(false);
   const [publicStoreNotFound, setPublicStoreNotFound] = useState(false);
+
+  // Dynamic White-Labeling & Favicon Sync
+  const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isPortfolioPath = currentPathname.startsWith('/portfolio') || currentPathname.startsWith('/p/');
+  const currentBrandingContext = isPortfolioPath ? 'portfolio' : (publicStoreSlug || viewMode === 'storefront') ? 'store' : 'dashboard';
+  
+  useDynamicBranding(publicBusiness || selectedBusiness, currentBrandingContext, publicStoreSlug);
 
   // Quote Pay Direct Route States
   const [quotePayInfo, setQuotePayInfo] = useState<{ businessId: string; requestId: string } | null>(parseQuotePayFromUrl);
@@ -548,66 +560,87 @@ function MainContent() {
     }
   }, [currentUser, authLoading]);
 
-  // Real-time FCM Push Notification Listener for New Orders & Bookings across ALL user businesses
+  // Real-time Push Notification Listener for New Orders & Bookings strictly scoped to active selectedBusiness
   useEffect(() => {
-    if (!businesses || businesses.length === 0) return;
+    // Clear notification caches immediately on business switch or unmount to prevent cross-business notification leakage
+    seenOrderIdsRef.current.clear();
+    seenBookingIdsRef.current.clear();
 
-    const unsubs: (() => void)[] = [];
+    // Strictly isolate notifications: do NOT listen or chime when viewing public customer storefronts
+    if (!currentUser || !selectedBusiness || !selectedBusiness.id || publicStoreSlug || viewMode === 'storefront') {
+      return;
+    }
 
-    businesses.forEach((biz) => {
-      let ordersInitialized = false;
-      const unsubOrders = subscribeToOrders(biz.id, (orders) => {
-        if (!ordersInitialized) {
-          ordersInitialized = true;
-          return;
-        }
-        const latest = orders[0];
-        if (latest && latest.status === 'pending' && latest.businessId === biz.id) {
-          playNotificationChime();
-          setActiveNewOrderNotification({
-            id: latest.id,
-            title: `New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})`,
-            body: `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
-            type: 'order',
-          });
-          showMerchantNotification(
-            `📦 New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})!`,
-            `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
-            biz
-          );
-        }
+    const biz = selectedBusiness;
+    let ordersInitialized = false;
+    const unsubOrders = subscribeToOrders(biz.id, (orders) => {
+      if (!ordersInitialized) {
+        // Initialize existing order cache so existing orders never trigger notifications
+        orders.forEach((o) => seenOrderIdsRef.current.add(o.id));
+        ordersInitialized = true;
+        return;
+      }
+
+      // Filter ONLY brand new pending orders for this specific business
+      const newOrders = orders.filter(
+        (o) => !seenOrderIdsRef.current.has(o.id) && o.status === 'pending' && (!o.businessId || o.businessId === biz.id)
+      );
+
+      newOrders.forEach((latest) => {
+        seenOrderIdsRef.current.add(latest.id);
+        playNotificationChime();
+        setActiveNewOrderNotification({
+          id: latest.id,
+          title: `New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})`,
+          body: `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
+          type: 'order',
+        });
+        showMerchantNotification(
+          `📦 New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})!`,
+          `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
+          biz
+        );
       });
-      unsubs.push(unsubOrders);
+    });
 
-      let bookingsInitialized = false;
-      const unsubBookings = subscribeToBookings(biz.id, (bookings) => {
-        if (!bookingsInitialized) {
-          bookingsInitialized = true;
-          return;
-        }
-        const latestBooking = bookings[0];
-        if (latestBooking && latestBooking.status === 'pending' && latestBooking.businessId === biz.id) {
-          playNotificationChime();
-          setActiveNewOrderNotification({
-            id: latestBooking.id,
-            title: `New Appointment (${biz.name})`,
-            body: `${latestBooking.customerName} requested a booking`,
-            type: 'booking',
-          });
-          showMerchantNotification(
-            `📅 New Appointment / Booking (${biz.name})!`,
-            `${latestBooking.customerName} requested a booking`,
-            biz
-          );
-        }
+    let bookingsInitialized = false;
+    const unsubBookings = subscribeToBookings(biz.id, (bookings) => {
+      if (!bookingsInitialized) {
+        // Initialize existing booking cache
+        bookings.forEach((b) => seenBookingIdsRef.current.add(b.id));
+        bookingsInitialized = true;
+        return;
+      }
+
+      // Filter ONLY brand new pending bookings for this specific business
+      const newBookings = bookings.filter(
+        (b) => !seenBookingIdsRef.current.has(b.id) && b.status === 'pending' && (!b.businessId || b.businessId === biz.id)
+      );
+
+      newBookings.forEach((latestBooking) => {
+        seenBookingIdsRef.current.add(latestBooking.id);
+        playNotificationChime();
+        setActiveNewOrderNotification({
+          id: latestBooking.id,
+          title: `New Appointment (${biz.name})`,
+          body: `${latestBooking.customerName} requested a booking`,
+          type: 'booking',
+        });
+        showMerchantNotification(
+          `📅 New Appointment / Booking (${biz.name})!`,
+          `${latestBooking.customerName} requested a booking`,
+          biz
+        );
       });
-      unsubs.push(unsubBookings);
     });
 
     return () => {
-      unsubs.forEach((unsub) => unsub());
+      unsubOrders();
+      unsubBookings();
+      seenOrderIdsRef.current.clear();
+      seenBookingIdsRef.current.clear();
     };
-  }, [businesses]);
+  }, [currentUser, selectedBusiness?.id, publicStoreSlug, viewMode]);
 
   // Business Selector Handler
   const handleSelectBusiness = (biz: BusinessProfile) => {
@@ -726,18 +759,22 @@ function MainContent() {
               ? 'bg-slate-900/90 border border-slate-800'
               : 'bg-white/90 border border-slate-200/80'
           }`}>
-            {/* Creator / Vendor Logo or Clipart Illustration */}
+            {/* Creator / Vendor Custom Logo or Dynamic Branded Monogram */}
             <div className="relative">
-              <div className={`absolute -inset-2 rounded-3xl blur-md opacity-30 animate-pulse ${
-                isPortfolioPath
-                  ? 'bg-gradient-to-tr from-indigo-500 to-purple-500'
-                  : 'bg-gradient-to-tr from-emerald-500 to-teal-400'
-              }`} />
-              <div className={`relative w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm ${
-                isPortfolioPath
-                  ? 'bg-slate-800 border border-slate-700'
-                  : 'bg-white border border-emerald-200'
-              }`}>
+              <div
+                className={`absolute -inset-2 rounded-3xl blur-md opacity-30 animate-pulse ${
+                  isPortfolioPath
+                    ? 'bg-gradient-to-tr from-indigo-500 to-purple-500'
+                    : 'bg-gradient-to-tr from-emerald-500 to-teal-400'
+                }`}
+              />
+              <div
+                className={`relative w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm ${
+                  isPortfolioPath
+                    ? 'bg-slate-800 border border-slate-700'
+                    : 'bg-white border border-emerald-200'
+                }`}
+              >
                 {publicBusiness?.logo || publicBusiness?.profileImage ? (
                   <img
                     src={publicBusiness.logo || publicBusiness.profileImage}
@@ -746,29 +783,38 @@ function MainContent() {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <img src="/storelly3.jpg.jpeg" alt="Storelly Logo" className="w-full h-full object-cover" />
+                  <div
+                    className={`w-full h-full flex items-center justify-center text-white font-black text-2xl font-heading shadow-inner ${
+                      isPortfolioPath
+                        ? 'bg-gradient-to-br from-indigo-600 to-purple-700'
+                        : 'bg-gradient-to-br from-emerald-600 to-teal-700'
+                    }`}
+                  >
+                    {(publicBusiness?.name || publicStoreSlug || 'S').slice(0, 1).toUpperCase()}
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className={`text-base font-black font-heading tracking-tight ${
-                isPortfolioPath ? 'text-white' : 'text-slate-900'
-              }`}>
-                {publicBusiness ? publicBusiness.name : isPortfolioPath ? 'Loading Creator Portfolio...' : 'Opening Digital Storefront...'}
+              <h3
+                className={`text-base font-black font-heading tracking-tight ${
+                  isPortfolioPath ? 'text-white' : 'text-slate-900'
+                }`}
+              >
+                {publicBusiness?.name || (publicStoreSlug ? `@${publicStoreSlug}` : isPortfolioPath ? 'Creator Portfolio' : 'Storefront')}
               </h3>
               <p className={`text-xs ${isPortfolioPath ? 'text-slate-400' : 'text-slate-500'}`}>
-                {isPortfolioPath ? 'Preparing portfolio showcase for ' : 'Preparing secure catalog for '}
-                <span className={`font-mono font-bold ${isPortfolioPath ? 'text-indigo-400' : 'text-emerald-600'}`}>
-                  @{publicStoreSlug}
-                </span>
+                {isPortfolioPath
+                  ? 'Official Creator Portfolio & Showcase'
+                  : publicBusiness?.tagline || (publicStoreSlug ? `Official Storefront • @${publicStoreSlug}` : 'Connecting to secure catalog...')}
               </p>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
-              <Loader2 className={`w-5 h-5 animate-spin ${isPortfolioPath ? 'text-indigo-400' : 'text-emerald-600'}`} />
-              <span className={`text-xs font-bold tracking-wider uppercase ${isPortfolioPath ? 'text-slate-400' : 'text-slate-600'}`}>
-                {isPortfolioPath ? 'Loading Portfolio...' : 'Loading Store...'}
+              <Loader2 className={`w-4 h-4 animate-spin ${isPortfolioPath ? 'text-indigo-400' : 'text-emerald-600'}`} />
+              <span className={`text-xs font-bold tracking-wider ${isPortfolioPath ? 'text-slate-400' : 'text-slate-600'}`}>
+                Connecting...
               </span>
             </div>
           </div>
@@ -897,16 +943,35 @@ function MainContent() {
   // ROUTE 2: AUTHENTICATION & LOADING GATES
   // ==========================================
   if (authLoading || (currentUser && isLoadingBusinesses)) {
+    const isCreator = selectedBusiness ? isCreatorProfile(selectedBusiness) : false;
+    const initial = (selectedBusiness?.name || 'S').slice(0, 1).toUpperCase();
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex flex-col items-center justify-center text-slate-900 space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center shadow-md shadow-emerald-500/10 animate-pulse overflow-hidden p-1">
-          <img src="/storelly3.jpg.jpeg" alt="Storelly Logo" className="w-full h-full object-cover rounded-xl" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 flex flex-col items-center justify-center text-white space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-xl animate-pulse overflow-hidden p-1">
+          {selectedBusiness?.logo || selectedBusiness?.profileImage ? (
+            <img
+              src={selectedBusiness.logo || selectedBusiness.profileImage}
+              alt={selectedBusiness.name}
+              className="w-full h-full object-cover rounded-xl"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div
+              className={`w-full h-full rounded-xl flex items-center justify-center text-white font-black text-xl font-heading ${
+                isCreator ? 'bg-gradient-to-br from-indigo-600 to-purple-600' : 'bg-gradient-to-br from-emerald-600 to-teal-600'
+              }`}
+            >
+              {initial}
+            </div>
+          )}
         </div>
         <div className="text-center space-y-1">
-          <h2 className="text-sm font-bold text-slate-900">Storelly Business OS</h2>
-          <p className="text-xs text-slate-500 flex items-center justify-center gap-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-            Loading merchant workspace...
+          <h2 className="text-sm font-bold text-white">
+            {selectedBusiness?.name || 'Business Workspace'}
+          </h2>
+          <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            <span>Loading workspace &amp; catalog...</span>
           </p>
         </div>
       </div>

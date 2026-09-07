@@ -316,14 +316,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             </p>
           </div>
 
-          {/* Large Two-Card Decision Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+          {/* Large Two-Card Decision Grid with Visual Mockups & Service Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
             {/* VENDOR CARD */}
             <div
               onClick={() => setSelectedProfileType('vendor')}
               className={`p-6 sm:p-7 rounded-3xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
                 selectedProfileType === 'vendor'
-                  ? 'border-emerald-600 bg-emerald-50/40 ring-4 ring-emerald-500/15 shadow-xl shadow-emerald-600/10'
+                  ? 'border-emerald-600 bg-emerald-50/30 ring-4 ring-emerald-500/15 shadow-xl shadow-emerald-600/10'
                   : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/70 shadow-xs'
               }`}
             >
@@ -334,39 +334,118 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               )}
 
               <div className="space-y-4">
+                {/* Header */}
                 <div className="flex items-center gap-3">
-                  <div className={`w-13 h-13 rounded-2xl flex items-center justify-center transition ${
-                    selectedProfileType === 'vendor'
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                      : 'bg-emerald-50 text-emerald-700 group-hover:scale-105'
-                  }`}>
-                    <Store className="w-7 h-7" />
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition ${
+                      selectedProfileType === 'vendor'
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                        : 'bg-emerald-50 text-emerald-700 group-hover:scale-105'
+                    }`}
+                  >
+                    <Store className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Physical &amp; Local Business
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Commerce &amp; Local Business
                     </span>
-                    <h3 className="text-xl font-black text-slate-900 mt-1 font-heading">
-                      Vendor
+                    <h3 className="text-xl font-black text-slate-900 mt-0.5 font-heading">
+                      Vendor / Merchant Store
                     </h3>
                   </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-                  For shops, local businesses and service providers who want to sell products, manage catalog inventory, or accept customer orders directly.
+                {/* Visual Storefront Mockup Banner */}
+                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 text-white space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-xs font-black text-slate-950">
+                        🛍️
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white">Your Brand Storefront</div>
+                        <div className="text-[10px] text-emerald-400 font-mono">store.domain/@your-store</div>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      Live Catalog
+                    </span>
+                  </div>
+
+                  {/* Micro Product Tiles */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
+                      <div className="space-y-0.5">
+                        <div className="text-[11px] font-bold text-white truncate">Organic Items</div>
+                        <div className="text-[10px] text-emerald-400 font-bold">₹249</div>
+                      </div>
+                      <span className="text-[9px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded-md font-black">+ Add</span>
+                    </div>
+                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
+                      <div className="space-y-0.5">
+                        <div className="text-[11px] font-bold text-white truncate">Special Combo</div>
+                        <div className="text-[10px] text-emerald-400 font-bold">₹499</div>
+                      </div>
+                      <span className="text-[9px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded-md font-black">+ Add</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-[10px] text-slate-300">
+                    <span className="flex items-center gap-1 text-emerald-400">
+                      <Zap className="w-3 h-3 text-emerald-400" /> WhatsApp Direct Dispatch
+                    </span>
+                    <span className="font-mono text-white font-bold">UPI QR &amp; COD Active</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 font-medium">
+                  Designed for physical stores, local shops, restaurants, and retail merchants selling goods and accepting localized orders.
                 </p>
 
-                <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-200/80 space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Best suited for:
+                {/* Comprehensive Module Breakdown */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                    <span>Included Vendor Services &amp; Modules:</span>
+                    <span className="text-emerald-700 text-[10px] font-semibold">8 Active Modules</span>
                   </div>
-                  <p className="text-xs text-slate-500 leading-normal">
-                    Grocery, Kirana, Restaurants, Cafes, Bakeries, Boutiques, Retail Shops, Salons, Spas, Clinics, Hotels, Rental Services &amp; Local Merchants.
-                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">📦</span>
+                      <span className="truncate">Product &amp; SKU Catalog</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">🛒</span>
+                      <span className="truncate">Smart Cart Checkout</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">🍽️</span>
+                      <span className="truncate">Table Dining &amp; QR Order</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">📅</span>
+                      <span className="truncate">Service Appointments</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">🏨</span>
+                      <span className="truncate">Room &amp; Stay Booking</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">🚗</span>
+                      <span className="truncate">Vehicle / Rental Fleet</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">🏷️</span>
+                      <span className="truncate">Coupons &amp; Flash Offers</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-emerald-600">💳</span>
+                      <span className="truncate">Direct UPI &amp; Cash on Delivery</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
                 <span className="flex items-center gap-1.5">
                   <ShoppingBag className="w-4 h-4 text-emerald-600" />
                   Includes Digital Storefront &amp; WhatsApp Checkout
@@ -380,7 +459,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               onClick={() => setSelectedProfileType('creator')}
               className={`p-6 sm:p-7 rounded-3xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
                 selectedProfileType === 'creator'
-                  ? 'border-indigo-600 bg-indigo-50/40 ring-4 ring-indigo-500/15 shadow-xl shadow-indigo-600/10'
+                  ? 'border-indigo-600 bg-indigo-50/30 ring-4 ring-indigo-500/15 shadow-xl shadow-indigo-600/10'
                   : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/70 shadow-xs'
               }`}
             >
@@ -391,39 +470,118 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               )}
 
               <div className="space-y-4">
+                {/* Header */}
                 <div className="flex items-center gap-3">
-                  <div className={`w-13 h-13 rounded-2xl flex items-center justify-center transition ${
-                    selectedProfileType === 'creator'
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                      : 'bg-indigo-50 text-indigo-700 group-hover:scale-105'
-                  }`}>
-                    <Sparkles className="w-7 h-7" />
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition ${
+                      selectedProfileType === 'creator'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                        : 'bg-indigo-50 text-indigo-700 group-hover:scale-105'
+                    }`}
+                  >
+                    <Sparkles className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
                       Portfolio &amp; Digital Work
                     </span>
-                    <h3 className="text-xl font-black text-slate-900 mt-1 font-heading">
-                      Creator
+                    <h3 className="text-xl font-black text-slate-900 mt-0.5 font-heading">
+                      Creator / Professional Hub
                     </h3>
                   </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-                  For creators, professionals and individuals who want to showcase their work, share links, sell digital products or offer consultations.
+                {/* Visual Creator Hub Mockup Banner */}
+                <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 p-4 text-white space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-indigo-500/20 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-black text-white">
+                        ✨
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white">Your Creator Portfolio</div>
+                        <div className="text-[10px] text-indigo-400 font-mono">portfolio.domain/@handle</div>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                      Verified Bio
+                    </span>
+                  </div>
+
+                  {/* Micro Creator Asset Blocks */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
+                      <div className="space-y-0.5">
+                        <div className="text-[11px] font-bold text-white truncate">UI Design Kit</div>
+                        <div className="text-[10px] text-indigo-300 font-bold">₹799 Instant</div>
+                      </div>
+                      <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-md font-bold">📥 Asset</span>
+                    </div>
+                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
+                      <div className="space-y-0.5">
+                        <div className="text-[11px] font-bold text-white truncate">1:1 Mentorship</div>
+                        <div className="text-[10px] text-indigo-300 font-bold">₹1,499 / 45m</div>
+                      </div>
+                      <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-md font-bold">🗓️ Book</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-[10px] text-slate-300">
+                    <span className="flex items-center gap-1 text-indigo-300">
+                      <LinkIcon className="w-3 h-3 text-indigo-400" /> Bio Links (@Instagram, @YouTube)
+                    </span>
+                    <span className="font-mono text-white font-bold">Bespoke Quotes &amp; Events</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 font-medium">
+                  Designed for designers, developers, consultants, freelancers, and influencers who want to showcase case studies and sell digital assets.
                 </p>
 
-                <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-200/80 space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Best suited for:
+                {/* Comprehensive Module Breakdown */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                    <span>Included Creator Services &amp; Modules:</span>
+                    <span className="text-indigo-700 text-[10px] font-semibold">7 Active Modules</span>
                   </div>
-                  <p className="text-xs text-slate-500 leading-normal">
-                    UI/UX Designers, Developers, Photographers, Video Editors, YouTubers, Influencers, Marketers, Freelancers, Consultants, Tutors &amp; Artists.
-                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">💼</span>
+                      <span className="truncate">Portfolio Showcase Blocks</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">🔗</span>
+                      <span className="truncate">Universal Bio Link Hub</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">📥</span>
+                      <span className="truncate">Digital Downloads &amp; Files</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">🗓️</span>
+                      <span className="truncate">1:1 Strategy Consultations</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">📝</span>
+                      <span className="truncate">Custom Client Quotes</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">🎟️</span>
+                      <span className="truncate">Event &amp; Workshop Tickets</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">🌟</span>
+                      <span className="truncate">Testimonials &amp; Reviews</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="text-indigo-600">⚡</span>
+                      <span className="truncate">Direct UPI / Bank Settlements</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
+              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
                 <span className="flex items-center gap-1.5">
                   <Briefcase className="w-4 h-4 text-indigo-600" />
                   Includes Portfolio, Bio Link &amp; Digital Store
@@ -438,7 +596,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition"
+                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition cursor-pointer"
               >
                 Cancel
               </button>
