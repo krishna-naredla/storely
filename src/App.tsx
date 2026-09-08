@@ -1,5 +1,6 @@
 import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useDynamicBranding } from './utils/dynamicBranding';
 import {
   Store,
@@ -48,31 +49,13 @@ import { showMerchantNotification } from './services/fcmPushService';
 import { testFirestoreConnection, db } from './config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { BUSINESS_TYPES } from './services/businessConfig';
-import { isCreatorProfile } from './utils/profileHelper';
+import { isCreatorProfile, getPrimaryPublicDisplayPath } from './utils/profileHelper';
 import { Sidebar, DashboardTab } from './components/dashboard/Sidebar';
 import { Header } from './components/dashboard/Header';
-import { BioProfileManager } from './components/biolink/BioProfileManager';
-import { BioProfileView } from './components/biolink/BioProfileView';
+import { FloatingActionButton } from './components/dashboard/FloatingActionButton';
+import { ResponsiveDiagnostic } from './components/dashboard/ResponsiveDiagnostic';
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
-import { CatalogManager } from './components/dashboard/CatalogManager';
-import { PortfolioManager } from './components/dashboard/PortfolioManager';
-import { EventManager } from './components/dashboard/EventManager';
-import { CustomQuoteManager } from './components/dashboard/CustomQuoteManager';
-import { CategoryManager } from './components/dashboard/CategoryManager';
-import { OrderManager } from './components/dashboard/OrderManager';
-import { BookingManager } from './components/dashboard/BookingManager';
-import { CustomerManager } from './components/dashboard/CustomerManager';
-import { ReviewsManager } from './components/dashboard/ReviewsManager';
-import { OffersManager } from './components/dashboard/OffersManager';
-import { AnalyticsView } from './components/dashboard/AnalyticsView';
-import { ModuleManager } from './components/dashboard/ModuleManager';
-import { CreatorModulesManager } from './components/dashboard/CreatorModulesManager';
-import { StorePaymentsManager } from './components/dashboard/StorePaymentsManager';
-import { StoreSettings } from './components/dashboard/StoreSettings';
-import { NotificationHistoryView } from './components/dashboard/NotificationHistoryView';
-import { DigitalCardPreview } from './components/common/DigitalCardPreview';
-import { AuthModal } from './components/auth/AuthModal';
-import { OnboardingWizard } from './components/auth/OnboardingWizard';
+import { BioProfileView } from './components/biolink/BioProfileView';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { PortfolioShowcase } from './components/storefront/PortfolioShowcase';
 import { StandalonePortfolioView } from './components/portfolio/StandalonePortfolioView';
@@ -80,9 +63,52 @@ import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 import { OfflineBanner } from './components/common/OfflineBanner';
-import { MasterAdminDashboard } from './components/admin/MasterAdminDashboard';
-import { MasterAdminLogin } from './components/admin/MasterAdminLogin';
+import { AuthModal } from './components/auth/AuthModal';
 import { isUserAuthorizedAdmin } from './services/adminService';
+
+// Lazy-loaded major dashboard views to reduce initial mobile bundle size
+const CatalogManager = lazy(() => import('./components/dashboard/CatalogManager').then(m => ({ default: m.CatalogManager })));
+const PortfolioManager = lazy(() => import('./components/dashboard/PortfolioManager').then(m => ({ default: m.PortfolioManager })));
+const EventManager = lazy(() => import('./components/dashboard/EventManager').then(m => ({ default: m.EventManager })));
+const CustomQuoteManager = lazy(() => import('./components/dashboard/CustomQuoteManager').then(m => ({ default: m.CustomQuoteManager })));
+const CategoryManager = lazy(() => import('./components/dashboard/CategoryManager').then(m => ({ default: m.CategoryManager })));
+const OrderManager = lazy(() => import('./components/dashboard/OrderManager').then(m => ({ default: m.OrderManager })));
+const BookingManager = lazy(() => import('./components/dashboard/BookingManager').then(m => ({ default: m.BookingManager })));
+const CustomerManager = lazy(() => import('./components/dashboard/CustomerManager').then(m => ({ default: m.CustomerManager })));
+const ReviewsManager = lazy(() => import('./components/dashboard/ReviewsManager').then(m => ({ default: m.ReviewsManager })));
+const OffersManager = lazy(() => import('./components/dashboard/OffersManager').then(m => ({ default: m.OffersManager })));
+const AnalyticsView = lazy(() => import('./components/dashboard/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+const ModuleManager = lazy(() => import('./components/dashboard/ModuleManager').then(m => ({ default: m.ModuleManager })));
+const CreatorModulesManager = lazy(() => import('./components/dashboard/CreatorModulesManager').then(m => ({ default: m.CreatorModulesManager })));
+const StorePaymentsManager = lazy(() => import('./components/dashboard/StorePaymentsManager').then(m => ({ default: m.StorePaymentsManager })));
+const StoreSettings = lazy(() => import('./components/dashboard/StoreSettings').then(m => ({ default: m.StoreSettings })));
+const NotificationHistoryView = lazy(() => import('./components/dashboard/NotificationHistoryView').then(m => ({ default: m.NotificationHistoryView })));
+const BioProfileManager = lazy(() => import('./components/biolink/BioProfileManager').then(m => ({ default: m.BioProfileManager })));
+const DigitalCardPreview = lazy(() => import('./components/common/DigitalCardPreview').then(m => ({ default: m.DigitalCardPreview })));
+const MasterAdminDashboard = lazy(() => import('./components/admin/MasterAdminDashboard').then(m => ({ default: m.MasterAdminDashboard })));
+const MasterAdminLogin = lazy(() => import('./components/admin/MasterAdminLogin').then(m => ({ default: m.MasterAdminLogin })));
+const OnboardingWizard = lazy(() => import('./components/auth/OnboardingWizard').then(m => ({ default: m.OnboardingWizard })));
+
+/**
+ * Mobile-optimized tab loading placeholder
+ */
+const DashboardTabSkeleton: React.FC = () => (
+  <div className="space-y-4 animate-pulse p-2 sm:p-4">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      <div className="space-y-2">
+        <div className="h-6 bg-slate-200 rounded-lg w-48" />
+        <div className="h-3.5 bg-slate-200 rounded-md w-72" />
+      </div>
+      <div className="h-10 bg-slate-200 rounded-xl w-32" />
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+      <div className="h-36 bg-slate-200 rounded-2xl" />
+      <div className="h-36 bg-slate-200 rounded-2xl" />
+      <div className="h-36 bg-slate-200 rounded-2xl" />
+    </div>
+    <div className="h-64 bg-slate-200 rounded-2xl w-full" />
+  </div>
+);
 
 /**
  * Extract quote payment parameters from URL
@@ -301,7 +327,6 @@ function MainContent() {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [activeNewOrderNotification, setActiveNewOrderNotification] = useState<{
     id: string;
     title: string;
@@ -537,21 +562,39 @@ function MainContent() {
     try {
       setIsLoadingBusinesses(true);
       const userBizs = await getUserBusinesses(currentUser.uid);
-      setBusinesses(userBizs);
+      const activeBizs = (userBizs || []).filter((b) => b.status !== 'deleted');
+      setBusinesses(activeBizs);
 
-      if (userBizs.length > 0) {
+      if (activeBizs.length > 0) {
         // Restore last selected or select first
         const savedId = localStorage.getItem('storelly_active_biz');
-        const found = userBizs.find((b) => b.id === savedId) || userBizs[0];
+        const found = activeBizs.find((b) => b.id === savedId) || activeBizs[0];
         setSelectedBusiness(found);
+        localStorage.setItem('storelly_active_biz', found.id);
       } else {
         setSelectedBusiness(null);
+        localStorage.removeItem('storelly_active_biz');
       }
     } catch (err) {
       console.error('Error fetching vendor businesses:', err);
     } finally {
       setIsLoadingBusinesses(false);
     }
+  };
+
+  const handleBusinessDeleted = (deletedId: string) => {
+    setBusinesses((prev) => {
+      const remaining = prev.filter((b) => b.id !== deletedId);
+      if (remaining.length > 0) {
+        setSelectedBusiness(remaining[0]);
+        localStorage.setItem('storelly_active_biz', remaining[0].id);
+      } else {
+        setSelectedBusiness(null);
+        localStorage.removeItem('storelly_active_biz');
+      }
+      return remaining;
+    });
+    setActiveTab('overview');
   };
 
   useEffect(() => {
@@ -665,13 +708,21 @@ function MainContent() {
     return await createBusiness(ownerId, data);
   };
 
-  // Navigate cleanly into Public Storefront
-  const navigateToStorefront = (slug: string) => {
-    window.history.pushState({}, '', `/store/${encodeURIComponent(slug)}`);
+  // Navigate cleanly into Public Storefront or Creator Portfolio
+  const navigateToStorefront = (slug: string, explicitPath?: string) => {
+    let targetPath = `/store/${encodeURIComponent(slug)}`;
+    if (explicitPath) {
+      targetPath = explicitPath;
+    } else if (selectedBusiness && isCreatorProfile(selectedBusiness)) {
+      targetPath = getPrimaryPublicDisplayPath(selectedBusiness);
+    }
+
+    window.history.pushState({}, '', targetPath);
     setPublicStoreSlug(slug);
     if (selectedBusiness && selectedBusiness.slug === slug) {
       setPublicBusiness(selectedBusiness);
     }
+    setIsShareModalOpen(false);
     setViewMode('storefront');
   };
 
@@ -827,10 +878,13 @@ function MainContent() {
     if (targetBusiness && !publicStoreNotFound) {
       const isOwner = currentUser && selectedBusiness && selectedBusiness.id === targetBusiness.id;
       
-      // Check if it's a bio link or portfolio
+      // Check if it's a bio link, digital store, or portfolio
       const pathname = window.location.pathname;
       const urlParams = new URLSearchParams(window.location.search);
-      const isBioLink = pathname.startsWith('/@') || urlParams.has('bio');
+      const isBioStoreRoute =
+        Boolean(pathname.match(/^\/@[^/?#]+\/(store|shop|products|catalog)/i)) ||
+        (pathname.startsWith('/@') && (urlParams.get('view') === 'store' || urlParams.get('tab') === 'store'));
+      const isBioLink = !isBioStoreRoute && (pathname.startsWith('/@') || urlParams.has('bio'));
       const isPortfolio =
         pathname.startsWith('/portfolio') ||
         pathname.startsWith('/p/') ||
@@ -843,6 +897,7 @@ function MainContent() {
             <BioProfileView
               business={targetBusiness}
               onBackToDashboard={isOwner ? navigateToDashboard : undefined}
+              onOpenStorefront={() => navigateToStorefront(targetBusiness.slug, `/store/${targetBusiness.slug}`)}
             />
           </CreatorAuthGuard>
         );
@@ -1092,61 +1147,20 @@ function MainContent() {
 
         {/* Tab Content Router */}
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
-          {activeTab === 'overview' && (
-            <DashboardOverview
-              business={biz}
-              setActiveTab={setActiveTab}
-              onOpenStorefront={() => navigateToStorefront(biz.slug)}
-              onOpenShareModal={() => setIsShareModalOpen(true)}
-            />
-          )}
-
-          {activeTab === 'catalog' && <CatalogManager business={biz} />}
-
-          {activeTab === 'portfolio' && (
-            <PortfolioManager
-              business={biz}
-              onBusinessUpdated={(updated) => {
-                setSelectedBusiness(updated);
-                setBusinesses((prev) =>
-                  prev.map((b) => (b.id === updated.id ? updated : b))
-                );
-              }}
-            />
-          )}
-
-          {activeTab === 'events' && <EventManager business={biz} />}
-
-          {activeTab === 'quotes' && <CustomQuoteManager business={biz} />}
-
-          {activeTab === 'categories' && <CategoryManager business={biz} />}
-
-          {activeTab === 'orders' && <OrderManager business={biz} />}
-
-          {activeTab === 'bookings' && <BookingManager business={biz} />}
-
-          {activeTab === 'customers' && <CustomerManager business={biz} />}
-
-          {activeTab === 'reviews' && <ReviewsManager business={biz} />}
-
-          {activeTab === 'offers' && <OffersManager business={biz} />}
-
-          {activeTab === 'analytics' && <AnalyticsView business={biz} />}
-
-          {activeTab === 'modules' && (
-            isCreatorProfile(biz) ? (
-              <CreatorModulesManager
+          <Suspense fallback={<DashboardTabSkeleton />}>
+            {activeTab === 'overview' && (
+              <DashboardOverview
                 business={biz}
-                onNavigateTab={setActiveTab}
-                onBusinessUpdated={(updated) => {
-                  setSelectedBusiness(updated);
-                  setBusinesses((prev) =>
-                    prev.map((b) => (b.id === updated.id ? updated : b))
-                  );
-                }}
+                setActiveTab={setActiveTab}
+                onOpenStorefront={() => navigateToStorefront(biz.slug)}
+                onOpenShareModal={() => setIsShareModalOpen(true)}
               />
-            ) : (
-              <ModuleManager
+            )}
+
+            {activeTab === 'catalog' && <CatalogManager business={biz} />}
+
+            {activeTab === 'portfolio' && (
+              <PortfolioManager
                 business={biz}
                 onBusinessUpdated={(updated) => {
                   setSelectedBusiness(updated);
@@ -1155,68 +1169,112 @@ function MainContent() {
                   );
                 }}
               />
-            )
-          )}
+            )}
 
-          {activeTab === 'payments' && (
-            <StorePaymentsManager
-              business={biz}
-              onBusinessUpdated={(updated) => {
-                setSelectedBusiness(updated);
-                setBusinesses((prev) =>
-                  prev.map((b) => (b.id === updated.id ? updated : b))
-                );
-              }}
-            />
-          )}
+            {activeTab === 'events' && <EventManager business={biz} />}
 
-          {activeTab === 'notifications' && (
-            <NotificationHistoryView
-              business={biz}
-              setActiveTab={setActiveTab}
-            />
-          )}
+            {activeTab === 'quotes' && <CustomQuoteManager business={biz} />}
 
-          {activeTab === 'biolink' && (
-            <BioProfileManager
-              business={biz}
-              onBusinessUpdated={(updated) => {
-                setSelectedBusiness(updated);
-                setBusinesses((prev) =>
-                  prev.map((b) => (b.id === updated.id ? updated : b))
-                );
-              }}
-            />
-          )}
+            {activeTab === 'categories' && <CategoryManager business={biz} />}
 
-          {activeTab === 'share' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-                  Digital Visiting Card & QR
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Share your scannable QR card with customers or display it at your store checkout.
-                </p>
+            {activeTab === 'orders' && <OrderManager business={biz} />}
+
+            {activeTab === 'bookings' && <BookingManager business={biz} />}
+
+            {activeTab === 'customers' && <CustomerManager business={biz} />}
+
+            {activeTab === 'reviews' && <ReviewsManager business={biz} />}
+
+            {activeTab === 'offers' && <OffersManager business={biz} />}
+
+            {activeTab === 'analytics' && <AnalyticsView business={biz} />}
+
+            {activeTab === 'modules' && (
+              isCreatorProfile(biz) ? (
+                <CreatorModulesManager
+                  business={biz}
+                  onNavigateTab={setActiveTab}
+                  onBusinessUpdated={(updated) => {
+                    setSelectedBusiness(updated);
+                    setBusinesses((prev) =>
+                      prev.map((b) => (b.id === updated.id ? updated : b))
+                    );
+                  }}
+                />
+              ) : (
+                <ModuleManager
+                  business={biz}
+                  onBusinessUpdated={(updated) => {
+                    setSelectedBusiness(updated);
+                    setBusinesses((prev) =>
+                      prev.map((b) => (b.id === updated.id ? updated : b))
+                    );
+                  }}
+                />
+              )
+            )}
+
+            {activeTab === 'payments' && (
+              <StorePaymentsManager
+                business={biz}
+                onBusinessUpdated={(updated) => {
+                  setSelectedBusiness(updated);
+                  setBusinesses((prev) =>
+                    prev.map((b) => (b.id === updated.id ? updated : b))
+                  );
+                }}
+              />
+            )}
+
+            {activeTab === 'notifications' && (
+              <NotificationHistoryView
+                business={biz}
+                setActiveTab={setActiveTab}
+              />
+            )}
+
+            {activeTab === 'biolink' && (
+              <BioProfileManager
+                business={biz}
+                onBusinessUpdated={(updated) => {
+                  setSelectedBusiness(updated);
+                  setBusinesses((prev) =>
+                    prev.map((b) => (b.id === updated.id ? updated : b))
+                  );
+                }}
+              />
+            )}
+
+            {activeTab === 'share' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
+                    Digital Visiting Card & QR
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Share your scannable QR card with customers or display it at your store checkout.
+                  </p>
+                </div>
+                <DigitalCardPreview
+                  business={biz}
+                  onOpenStore={() => navigateToStorefront(biz.slug)}
+                />
               </div>
-              <DigitalCardPreview
-                business={biz}
-                onOpenStore={() => navigateToStorefront(biz.slug)}
-              />
-            </div>
-          )}
+            )}
 
-          {(activeTab === 'settings' || activeTab === 'profile') && (
-            <StoreSettings
-              business={biz}
-              onBusinessUpdated={(updated) => {
-                setSelectedBusiness(updated);
-                setBusinesses((prev) =>
-                  prev.map((b) => (b.id === updated.id ? updated : b))
-                );
-              }}
-            />
-          )}
+            {(activeTab === 'settings' || activeTab === 'profile') && (
+              <StoreSettings
+                business={biz}
+                onBusinessUpdated={(updated) => {
+                  setSelectedBusiness(updated);
+                  setBusinesses((prev) =>
+                    prev.map((b) => (b.id === updated.id ? updated : b))
+                  );
+                }}
+                onBusinessDeleted={handleBusinessDeleted}
+              />
+            )}
+          </Suspense>
         </main>
       </div>
 
@@ -1231,13 +1289,15 @@ function MainContent() {
             >
               ✕
             </button>
-            <DigitalCardPreview
-              business={biz}
-              onOpenStore={() => {
-                setIsShareModalOpen(false);
-                navigateToStorefront(biz.slug);
-              }}
-            />
+            <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-600 animate-spin" /></div>}>
+              <DigitalCardPreview
+                business={biz}
+                onOpenStore={() => {
+                  setIsShareModalOpen(false);
+                  navigateToStorefront(biz.slug);
+                }}
+              />
+            </Suspense>
           </div>
         </div>
       )}
@@ -1253,109 +1313,84 @@ function MainContent() {
             >
               ✕
             </button>
-            <OnboardingWizard
-              onComplete={handleOnboardingComplete}
-              onCancel={() => setIsOnboardingOpen(false)}
-              createBusinessFn={handleCreateBusiness}
-            />
+            <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-600 animate-spin" /></div>}>
+              <OnboardingWizard
+                onComplete={handleOnboardingComplete}
+                onCancel={() => setIsOnboardingOpen(false)}
+                createBusinessFn={handleCreateBusiness}
+              />
+            </Suspense>
           </div>
         </div>
       )}
 
-      {/* Floating Quick Actions Button */}
-      <div className="fixed bottom-6 right-6 z-40">
-        {isQuickActionsOpen && (
-          <div className="absolute bottom-16 right-0 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 w-56 space-y-1 animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-              Quick Actions
-            </div>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('catalog'); setIsQuickActionsOpen(false); }}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 rounded-xl transition flex items-center gap-2 cursor-pointer text-left"
+      {/* Floating Quick Actions Button with Dynamic Branding & Profile Differentiation */}
+      <FloatingActionButton
+        business={biz}
+        onSelectTab={(tab) => setActiveTab(tab as any)}
+        onOpenStorefront={() => navigateToStorefront(biz.slug)}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
+      />
+
+      {/* Real-time Order & Booking Pop-up Alert Banner with Swipe-to-Dismiss */}
+      <AnimatePresence>
+        {activeNewOrderNotification && (
+          <div className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+            <motion.div
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.7}
+              onDragEnd={(_, info) => {
+                if (Math.abs(info.offset.x) > 100 || Math.abs(info.velocity.x) > 500) {
+                  setActiveNewOrderNotification(null);
+                }
+              }}
+              initial={{ y: -50, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -30, opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              whileTap={{ cursor: 'grabbing' }}
+              className="max-w-md w-full bg-slate-900/95 backdrop-blur-md border border-emerald-500/50 text-white rounded-3xl p-5 shadow-2xl flex items-start gap-4 cursor-grab touch-pan-y pointer-events-auto select-none"
             >
-              <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700"><Plus className="w-3.5 h-3.5" /></div>
-              <span>Add Product / Item</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('offers'); setIsQuickActionsOpen(false); }}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-800 rounded-xl transition flex items-center gap-2 cursor-pointer text-left"
-            >
-              <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700"><Tag className="w-3.5 h-3.5" /></div>
-              <span>Create Offer / Coupon</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('orders'); setIsQuickActionsOpen(false); }}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-800 rounded-xl transition flex items-center gap-2 cursor-pointer text-left"
-            >
-              <div className="p-1.5 rounded-lg bg-blue-100 text-blue-700"><ShoppingBag className="w-3.5 h-3.5" /></div>
-              <span>View / Create Order</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('bookings'); setIsQuickActionsOpen(false); }}
-              className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-800 rounded-xl transition flex items-center gap-2 cursor-pointer text-left"
-            >
-              <div className="p-1.5 rounded-lg bg-amber-100 text-amber-700"><CalendarCheck className="w-3.5 h-3.5" /></div>
-              <span>New Appointment</span>
-            </button>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 overflow-hidden">
+                {biz.logo ? (
+                  <img src={biz.logo} alt={biz.name} className="w-full h-full object-cover" />
+                ) : (
+                  <ShoppingBag className="w-6 h-6 animate-bounce" />
+                )}
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">🔔 New Order Alert</span>
+                    <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">(Swipe to dismiss)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveNewOrderNotification(null)}
+                    className="text-slate-400 hover:text-white text-xs font-bold p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <h4 className="font-extrabold text-sm text-white">{activeNewOrderNotification.title}</h4>
+                <p className="text-xs text-slate-300">{activeNewOrderNotification.body}</p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(activeNewOrderNotification.type === 'order' ? 'orders' : 'bookings');
+                      setActiveNewOrderNotification(null);
+                    }}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                  >
+                    View in Orders <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
-          className="w-14 h-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center overflow-hidden transition transform hover:scale-105 active:scale-95 cursor-pointer border-2 border-white"
-          title="Quick Actions Menu"
-        >
-          {biz.logo ? (
-            <img src={biz.logo} alt={biz.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="font-black text-sm">{biz.name.slice(0, 2).toUpperCase()}</span>
-          )}
-        </button>
-      </div>
-
-      {/* Real-time Order & Booking Pop-up Alert Banner for Vendors */}
-      {activeNewOrderNotification && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-full bg-slate-900 border border-emerald-500/50 text-white rounded-3xl p-5 shadow-2xl animate-in slide-in-from-top-5 duration-300 flex items-start gap-4 mx-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 overflow-hidden">
-            {biz.logo ? (
-              <img src={biz.logo} alt={biz.name} className="w-full h-full object-cover" />
-            ) : (
-              <ShoppingBag className="w-6 h-6 animate-bounce" />
-            )}
-          </div>
-          <div className="flex-1 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">🔔 New Order Alert</span>
-              <button
-                type="button"
-                onClick={() => setActiveNewOrderNotification(null)}
-                className="text-slate-400 hover:text-white text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
-            <h4 className="font-extrabold text-sm text-white">{activeNewOrderNotification.title}</h4>
-            <p className="text-xs text-slate-300">{activeNewOrderNotification.body}</p>
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab(activeNewOrderNotification.type === 'order' ? 'orders' : 'bookings');
-                  setActiveNewOrderNotification(null);
-                }}
-                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
-              >
-                View in Orders <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1368,6 +1403,7 @@ export default function App() {
           <MainContent />
           <PWAInstallPrompt />
           <OfflineBanner />
+          <ResponsiveDiagnostic />
         </LanguageProvider>
       </StorefrontCartProvider>
     </AuthProvider>

@@ -183,6 +183,8 @@ export interface Category {
   description?: string;
   icon?: string;
   image?: string;
+  color?: string;
+  badgeColor?: string;
   sortOrder: number;
   isActive: boolean;
   createdAt: number;

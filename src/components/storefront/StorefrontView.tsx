@@ -383,15 +383,49 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   }, [business.id]);
 
   useEffect(() => {
-    if (catalogItems.length > 0) {
+    if (catalogItems.length > 0 || categories.length > 0) {
       const urlParams = new URLSearchParams(window.location.search);
-      const itemId = urlParams.get('item');
+      const itemId = urlParams.get('item') || urlParams.get('product');
+      const categoryParam = urlParams.get('category');
+      const viewParam = urlParams.get('view');
+
+      // Deep link to a specific item
       if (itemId) {
-        const item = catalogItems.find(i => i.id === itemId);
-        if (item) setSelectedItemForDetail(item);
+        const item = catalogItems.find(i => i.id === itemId || i.slug === itemId);
+        if (item) {
+          if (item.productType === 'digital_file') {
+            setSelectedItemForDigital(item);
+          } else {
+            setSelectedItemForDetail(item);
+          }
+        }
+      }
+
+      // Deep link to a specific category
+      if (categoryParam) {
+        const cat = categories.find(
+          c => c.id === categoryParam || c.slug === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
+        );
+        if (cat) {
+          setSelectedCategory(cat.id);
+        }
+      }
+
+      // Deep link to a specific view/action
+      if (viewParam === 'quotes') {
+        setIsQuoteModalOpen(true);
+      } else if (viewParam === 'reviews') {
+        const el = document.getElementById('reviews-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      } else if (viewParam === 'portfolio') {
+        const el = document.getElementById('portfolio-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      } else if (viewParam === 'events') {
+        const el = document.getElementById('events-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
     }
-  }, [catalogItems.length]);
+  }, [catalogItems, categories]);
 
   // Calculate average rating
   const averageRating =
@@ -453,22 +487,22 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
      business.modules.table_delivery);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 pb-28 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Top Admin Control Bar (if viewing from app preview / management) */}
       {onBackToDashboard && (
-        <div className="sticky top-0 z-40 bg-emerald-600 text-white px-4 py-2 flex items-center justify-between text-xs shadow-md border-b border-slate-800">
+        <aside aria-label="Customer preview toolbar" className="sticky top-0 z-40 bg-emerald-600 text-white px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shadow-md border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-slate-200">Customer Storefront Preview</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="font-semibold text-slate-200 truncate">Customer Storefront Preview</span>
             <span className="hidden sm:inline text-slate-400">({bizMeta.label})</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onOpenDigitalCard && (
               <button
                 type="button"
                 onClick={onOpenDigitalCard}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold transition flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold transition flex items-center gap-1 cursor-pointer"
               >
                 <QrCode className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Visiting Card & QR</span>
@@ -477,82 +511,91 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             <button
               type="button"
               onClick={onBackToDashboard}
-              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-white transition flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg bg-emerald-700 hover:bg-emerald-500 font-bold text-white transition flex items-center gap-1 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Dashboard</span>
+              <span>Dashboard</span>
             </button>
           </div>
-        </div>
+        </aside>
       )}
 
       {/* Main Store Banner & Profile Header */}
       <header className="relative bg-white border-b border-slate-200 shadow-xs">
         {/* Banner Cover */}
-        <div className="relative aspect-[16/5] sm:aspect-[21/6] w-full bg-slate-900 overflow-hidden">
+        <div className="relative aspect-[16/6] sm:aspect-[21/6] w-full bg-slate-900 overflow-hidden">
           {(business.banner || business.coverImage) && !bannerError ? (
-            <img
+            <SafeImage
               src={business.banner || business.coverImage}
               alt={business.name}
-              referrerPolicy="no-referrer"
+              fallbackType="banner"
               loading="eager"
-              fetchPriority="high"
               onError={() => setBannerError(true)}
               className="w-full h-full object-cover object-center"
             />
           ) : (
-                  <div className="w-full h-full bg-linear-to-r from-emerald-900 to-teal-900 opacity-90" />
+            <div className="w-full h-full bg-gradient-to-r from-emerald-900 to-teal-900 opacity-90" />
           )}
         </div>
         
         {/* Profile Info Card */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 -mt-12 sm:-mt-16 pb-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 -mt-10 sm:-mt-16 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
             {/* Logo */}
-            <div className="relative shrink-0">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-2xl sm:rounded-3xl shadow-xl border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
+            <div className="relative shrink-0 mx-auto sm:mx-0">
+              <div className="w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-2xl sm:rounded-3xl shadow-xl border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
                 {business.logo || business.profileImage ? (
-                  <img src={business.logo || business.profileImage} alt={business.name} className="w-full h-full object-cover" />
+                  <SafeImage
+                    src={business.logo || business.profileImage}
+                    alt={business.name}
+                    fallbackType="avatar"
+                    loading="eager"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <Store className="w-10 h-10 sm:w-14 sm:h-14 text-emerald-600/40" />
+                  <Store className="w-8 h-8 sm:w-14 sm:h-14 text-emerald-600/40" />
                 )}
               </div>
             </div>
             
             {/* Core Info */}
-            <div className="flex-1 space-y-1 sm:pb-2 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading truncate">{business.name}</h1>
+            <div className="flex-1 space-y-1.5 sm:pb-2 text-center sm:text-left min-w-0">
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-3xl font-black text-slate-900 font-heading truncate">{business.name}</h1>
                 <VerifiedBadge />
               </div>
               
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600 font-medium">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1.5 text-xs sm:text-sm text-slate-600 font-medium">
                 {business.category && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">
+                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700">
                     <LayoutGrid className="w-3.5 h-3.5" />
                     <span>{business.category}</span>
                   </span>
                 )}
                 {business.city && (
-                  <span className="flex items-center gap-1.5 text-slate-500">
-                    <MapPin className="w-4 h-4" />
-                    <span>{business.city}, {business.state}</span>
+                  <span className="flex items-center gap-1 text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{business.city}, {business.state}</span>
                   </span>
                 )}
               </div>
               
               {(business.tagline || business.description || business.bio) && (
-                <p className="text-sm text-slate-600 mt-2 max-w-2xl line-clamp-2 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl line-clamp-2 leading-relaxed mx-auto sm:mx-0">
                   {business.tagline || business.bio || business.description}
                 </p>
               )}
             </div>
             
             {/* Quick Actions (Share/Social) */}
-            <div className="flex items-center gap-2 shrink-0 sm:pb-2">
-              <button onClick={handleShareStore} className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition tooltip-trigger group relative">
+            <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0 sm:pb-2">
+              <button
+                type="button"
+                onClick={handleShareStore}
+                aria-label="Share Storefront"
+                className="p-3 min-h-[44px] min-w-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center justify-center cursor-pointer shadow-xs"
+              >
                 <Share2 className="w-4 h-4" />
-                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">Share</span>
               </button>
             </div>
           </div>
@@ -580,7 +623,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               {offers.map((offer) => (
                 <div
                   key={offer.id}
-                  className="p-3.5 rounded-2xl bg-linear-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 flex items-center justify-between gap-3 shadow-sm"
+                  className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 flex items-center justify-between gap-3 shadow-xs"
                 >
                   <div className="space-y-0.5 min-w-0">
                     <div className="flex items-center gap-2">
@@ -612,9 +655,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         )}
 
         {/* Search, Filter & Categories Navigation Bar */}
-        <div className="space-y-4 sticky top-12 sm:top-14 z-20 bg-slate-50/95 backdrop-blur-md pt-2 pb-3 border-b border-slate-200">
+        <div className={`space-y-4 sticky ${onBackToDashboard ? 'top-12 sm:top-14' : 'top-0'} z-20 bg-slate-50/95 backdrop-blur-md pt-2 pb-3 border-b border-slate-200 transition-all`}>
           {/* Search bar & Sort Controls */}
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -622,17 +665,17 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={`Search ${bizMeta.itemPlural.toLowerCase()}...`}
-                className="w-full pl-10 pr-4 py-2.5 bg-white text-xs border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden shadow-sm"
+                className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white text-xs border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden shadow-xs"
               />
             </div>
 
             {/* Food Diet Filter (if restaurant/bakery/food) */}
             {(business.type === 'restaurant' || business.type === 'bakery' || business.type === 'grocery') && (
-              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shrink-0">
+              <div className="flex items-center justify-between sm:justify-start gap-1 bg-white p-1 rounded-xl border border-slate-200 shrink-0">
                 <button
                   type="button"
                   onClick={() => setFoodFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  className={`flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                     foodFilter === 'all'
                       ? 'bg-emerald-600 text-white'
                       : 'text-slate-600 hover:text-slate-900'
@@ -643,7 +686,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setFoodFilter('veg')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                  className={`flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 ${
                     foodFilter === 'veg'
                       ? 'bg-emerald-600 text-white'
                       : 'text-slate-600 hover:text-emerald-700'
@@ -654,7 +697,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setFoodFilter('non_veg')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                  className={`flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 ${
                     foodFilter === 'non_veg'
                       ? 'bg-rose-600 text-white'
                       : 'text-slate-600 hover:text-rose-700'
@@ -666,11 +709,11 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             )}
 
             {/* Sort Dropdown */}
-            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-1.5 shrink-0">
               <select
                 value={sortBy}
                 onChange={(e: any) => setSortBy(e.target.value)}
-                className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-medium text-slate-700"
+                className="w-full sm:w-auto min-h-[44px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-medium text-slate-700"
               >
                 <option value="default">Default Sorting</option>
                 <option value="price_asc">Price: Low to High</option>
@@ -680,13 +723,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           </div>
 
           {/* Categories Horizontal Scroll Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar touch-pan-x">
             <button
               type="button"
               onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center ${
                 selectedCategory === 'all'
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25'
+                  ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
                   : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
               }`}
             >
@@ -701,9 +744,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25'
+                      ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
                       : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
                   }`}
                 >
@@ -724,13 +767,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         {/* Catalog Items Grid */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 py-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-6">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div
                   key={i}
                   className="rounded-2xl bg-white border border-slate-200 p-3 space-y-3 shadow-xs animate-pulse"
                 >
-                  <div className="h-36 sm:h-44 bg-slate-200 rounded-xl w-full" />
+                  <div className="h-40 sm:h-44 bg-slate-200 rounded-xl w-full" />
                   <div className="space-y-1.5 pt-1">
                     <div className="h-4 bg-slate-200 rounded-md w-4/5" />
                     <div className="h-3 bg-slate-200 rounded-md w-3/5" />
@@ -760,13 +803,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   setSearchQuery('');
                   setFoodFilter('all');
                 }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+                className="min-h-[44px] px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
               >
                 Reset Filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredItems.map((item) => {
                 const isBookable =
                   item.type === 'service' ||
@@ -775,7 +818,11 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   item.type === 'package' || 
                   item.productType === 'consultation_slot';
 
-                const isDigital = item.productType === 'digital_file';
+                const isDigital =
+                  item.productType === 'digital_file' ||
+                  Boolean(item.digitalFileUrl) ||
+                  Boolean(item.digitalFiles && item.digitalFiles.length > 0) ||
+                  item.type === 'course';
                 const displayPrice = item.salePrice || item.price;
                 const hasDiscount = item.salePrice && item.salePrice < item.price;
                 const inCart = cartItems.find((c) => c.catalogItem.id === item.id);
@@ -783,15 +830,21 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="group rounded-2xl sm:rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
+                    className="group rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
                   >
                     {/* Item Image with Badges */}
                     <div
                       onClick={() => setSelectedItemForDetail(item)}
-                      className="relative h-36 sm:h-44 bg-slate-100 overflow-hidden cursor-pointer"
+                      className="relative h-44 sm:h-48 bg-slate-100 overflow-hidden cursor-pointer"
                     >
                       {item.images?.[0] ? (
-                        <SafeImage src={item.images[0]} alt={item.name} fallbackType="product" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <SafeImage 
+                          src={item.images[0]} 
+                          alt={item.name} 
+                          fallbackType="product" 
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
                           <ShoppingBag className="w-10 h-10 stroke-1" />
@@ -801,17 +854,17 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                       {/* Badges */}
                       <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">
                         {isDigital && (
-                          <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
                             Digital File
                           </span>
                         )}
                         {item.productType === 'consultation_slot' && (
-                          <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                          <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
                             Consultation
                           </span>
                         )}
                         {item.isOffer && (
-                          <span className="px-2 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                          <span className="px-2 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
                             {item.offerText || 'Offer'}
                           </span>
                         )}
@@ -835,7 +888,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
                       {item.inStock === false && (
                         <div className="absolute inset-0 bg-white/70 backdrop-blur-xs flex items-center justify-center">
-                          <span className="px-2.5 py-1 bg-red-600 text-white text-[11px] font-bold uppercase rounded-lg shadow-sm">
+                          <span className="px-2.5 py-1 bg-red-600 text-white text-[11px] font-bold uppercase rounded-lg shadow-xs">
                             Out of Stock
                           </span>
                         </div>
@@ -848,7 +901,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                         onClick={() => setSelectedItemForDetail(item)}
                         className="cursor-pointer space-y-1"
                       >
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
                           {item.name}
                         </h4>
 
@@ -912,10 +965,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                e.stopPropagation();
                                handleDigitalPurchase(item);
                             }}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1"
+                            className="min-h-[44px] px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 touch-manipulation"
                           >
-                            <Sparkles className="w-3 h-3" />
-                            <span>{item.price === 0 ? 'Get' : 'Buy'}</span>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{item.price === 0 ? 'Get Free' : 'Buy Now'}</span>
                           </button>
                         ) : isBookable ? (
                           <button
@@ -924,10 +977,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               e.stopPropagation();
                               setSelectedItemForBooking(item);
                             }}
-                            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1"
+                            className="min-h-[44px] px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 touch-manipulation"
                           >
-                            <CalendarCheck className="w-3 h-3" />
-                            <span>Book</span>
+                            <CalendarCheck className="w-3.5 h-3.5" />
+                            <span>Book Now</span>
                           </button>
                         ) : (
                           <button
@@ -941,14 +994,14 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                 addItem(item, 1);
                               }
                             }}
-                            className={`p-2 sm:px-3 sm:py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1 cursor-pointer ${
+                            className={`min-h-[44px] px-3.5 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer touch-manipulation ${
                               inCart
                                 ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
                             }`}
                           >
-                            {inCart ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                            <span>{inCart ? 'Added' : 'Add'}</span>
+                            {inCart ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                            <span>{inCart ? 'In Cart' : 'Add to Cart'}</span>
                           </button>
                         )}
                       </div>

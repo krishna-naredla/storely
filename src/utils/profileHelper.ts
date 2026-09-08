@@ -123,7 +123,14 @@ export function getPublicDestinations(business: BusinessProfile): PublicDestinat
     }
 
     // 3. Digital Store
-    const digitalEnabled = Boolean(business.modules?.digital_products || business.modules?.digitalProducts);
+    const digitalEnabled = Boolean(
+      business.modules?.digital_products ||
+      business.modules?.digitalProducts ||
+      business.modules?.products ||
+      business.modules?.catalog ||
+      business.profileType === 'creator' ||
+      (business.type as string) === 'creator'
+    );
     if (digitalEnabled) {
       destinations.push({
         id: 'digital_store',

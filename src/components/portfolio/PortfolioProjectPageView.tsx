@@ -328,24 +328,24 @@ export const PortfolioProjectPageView: React.FC<PortfolioProjectPageViewProps> =
             <div className={`p-4 sm:p-5 rounded-2xl border ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'} grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-xs`}>
               {item.clientName && (
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
                     <User className="w-5 h-5" />
                   </div>
                   <div>
                     <span className="block text-[11px] uppercase tracking-wider text-slate-400 font-bold">Client / Brand</span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-900">{item.clientName}</span>
+                    <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.clientName}</span>
                   </div>
                 </div>
               )}
 
               {item.projectOutcome && (
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                     <Award className="w-5 h-5" />
                   </div>
                   <div>
                     <span className="block text-[11px] uppercase tracking-wider text-slate-400 font-bold">Key Project Outcome</span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-900">{item.projectOutcome}</span>
+                    <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{item.projectOutcome}</span>
                   </div>
                 </div>
               )}
@@ -564,7 +564,9 @@ export const PortfolioProjectPageView: React.FC<PortfolioProjectPageViewProps> =
             {/* Direct Hire / Enquiry Box */}
             <div className={`p-6 rounded-3xl border shadow-sm ${isDark ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-800' : 'bg-gradient-to-br from-indigo-50/70 via-white to-teal-50/50 border-indigo-100'} space-y-4`}>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-100 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center overflow-hidden shadow-sm shrink-0 ${
+                  isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-indigo-100'
+                }`}>
                   {business.logo ? (
                     <img src={business.logo} alt={business.name} className="w-full h-full object-cover" />
                   ) : (
@@ -572,12 +574,12 @@ export const PortfolioProjectPageView: React.FC<PortfolioProjectPageViewProps> =
                   )}
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">{business.name}</h4>
-                  <p className="text-xs text-slate-500">{business.tagline || 'Available for projects & commissions'}</p>
+                  <h4 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{business.name}</h4>
+                  <p className="text-xs text-slate-400">{business.tagline || 'Available for projects & commissions'}</p>
                 </div>
               </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 Interested in working on something similar? Get in touch directly to discuss requirements, deliverables, and custom estimates.
               </p>
 
@@ -597,16 +599,16 @@ export const PortfolioProjectPageView: React.FC<PortfolioProjectPageViewProps> =
         {/* RELATED PROJECTS FROM THIS CREATOR */}
         {/* =================================================== */}
         {relatedProjects.length > 0 && (
-          <div className="pt-8 border-t border-slate-200/80 space-y-6">
+          <div className={`pt-8 border-t space-y-6 ${isDark ? 'border-slate-800' : 'border-slate-200/80'}`}>
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg sm:text-xl font-black font-heading">More Work by {business.name}</h3>
-                <p className="text-xs text-slate-500">Explore other case studies and portfolio samples</p>
+                <p className="text-xs text-slate-400">Explore other case studies and portfolio samples</p>
               </div>
               <button
                 type="button"
                 onClick={onBack}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition cursor-pointer"
+                className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition cursor-pointer"
               >
                 View All Projects →
               </button>
@@ -621,7 +623,7 @@ export const PortfolioProjectPageView: React.FC<PortfolioProjectPageViewProps> =
                     isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
                   }`}
                 >
-                  <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                  <div className="relative aspect-video bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <SafeImage
                       src={relItem.coverImage}
                       alt={relItem.title}
@@ -635,10 +637,10 @@ export const PortfolioProjectPageView: React.FC<PortfolioProjectPageViewProps> =
                     </div>
                   </div>
                   <div className="p-4 space-y-1">
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition truncate">
+                    <h4 className={`text-xs sm:text-sm font-bold group-hover:text-indigo-500 transition truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {relItem.title}
                     </h4>
-                    <p className="text-xs text-slate-500 line-clamp-1">{relItem.description}</p>
+                    <p className="text-xs text-slate-400 line-clamp-1">{relItem.description}</p>
                   </div>
                 </div>
               ))}

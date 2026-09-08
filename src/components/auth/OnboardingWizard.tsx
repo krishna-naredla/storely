@@ -355,46 +355,37 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Visual Storefront Mockup Banner */}
-                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 text-white space-y-3 shadow-inner">
-                  <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-xs font-black text-slate-950">
-                        🛍️
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-white">Your Brand Storefront</div>
-                        <div className="text-[10px] text-emerald-400 font-mono">store.domain/@your-store</div>
-                      </div>
+                {/* Visual Storefront Mockup Banner with Real Storelly6 Image */}
+                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-3.5 text-white space-y-3 shadow-inner relative overflow-hidden group/img">
+                  {/* Real Storelly6 Image Background / Banner */}
+                  <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-emerald-500/30">
+                    <img
+                      src="/storelly6.jpg.jpeg"
+                      alt="Vendor Storefront Showcase"
+                      className="w-full h-full object-cover object-center group-hover/img:scale-105 transition duration-500"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/storelly6.jpg';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent"></div>
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-emerald-950/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
+                      <span>🛍️</span>
+                      <span>Real Merchant Store</span>
                     </div>
-                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-wider shadow-xs">
                       Live Catalog
-                    </span>
-                  </div>
-
-                  {/* Micro Product Tiles */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
-                      <div className="space-y-0.5">
-                        <div className="text-[11px] font-bold text-white truncate">Organic Items</div>
-                        <div className="text-[10px] text-emerald-400 font-bold">₹249</div>
-                      </div>
-                      <span className="text-[9px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded-md font-black">+ Add</span>
                     </div>
-                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
-                      <div className="space-y-0.5">
-                        <div className="text-[11px] font-bold text-white truncate">Special Combo</div>
-                        <div className="text-[10px] text-emerald-400 font-bold">₹499</div>
-                      </div>
-                      <span className="text-[9px] bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded-md font-black">+ Add</span>
+                    <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-bold text-white">
+                      <div className="truncate font-heading">Online Store &amp; WhatsApp Cart</div>
+                      <div className="text-[10px] font-mono text-emerald-300 shrink-0">store.domain/@store</div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1 text-[10px] text-slate-300">
-                    <span className="flex items-center gap-1 text-emerald-400">
+                  <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-300">
+                    <span className="flex items-center gap-1 text-emerald-400 font-bold">
                       <Zap className="w-3 h-3 text-emerald-400" /> WhatsApp Direct Dispatch
                     </span>
-                    <span className="font-mono text-white font-bold">UPI QR &amp; COD Active</span>
+                    <span className="font-mono text-white font-bold bg-white/10 px-2 py-0.5 rounded-md border border-white/10">UPI QR &amp; COD Active</span>
                   </div>
                 </div>
 
@@ -491,46 +482,34 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Visual Creator Hub Mockup Banner */}
-                <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 p-4 text-white space-y-3 shadow-inner">
-                  <div className="flex items-center justify-between border-b border-indigo-500/20 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-black text-white">
-                        ✨
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-white">Your Creator Portfolio</div>
-                        <div className="text-[10px] text-indigo-400 font-mono">portfolio.domain/@handle</div>
-                      </div>
+                {/* Visual Creator Hub Mockup Banner with Real CreatorLink Image */}
+                <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 p-3.5 text-white space-y-3 shadow-inner relative overflow-hidden group/img">
+                  {/* Real CreatorLink Image Background / Banner */}
+                  <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-indigo-500/30">
+                    <img
+                      src="/cteatorlink.jpeg"
+                      alt="Creator Link & Portfolio Showcase"
+                      className="w-full h-full object-cover object-center group-hover/img:scale-105 transition duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent"></div>
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-indigo-950/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-indigo-400/40 text-[10px] font-bold text-indigo-300">
+                      <span>✨</span>
+                      <span>Verified Creator Profile</span>
                     </div>
-                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                      Verified Bio
-                    </span>
-                  </div>
-
-                  {/* Micro Creator Asset Blocks */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
-                      <div className="space-y-0.5">
-                        <div className="text-[11px] font-bold text-white truncate">UI Design Kit</div>
-                        <div className="text-[10px] text-indigo-300 font-bold">₹799 Instant</div>
-                      </div>
-                      <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-md font-bold">📥 Asset</span>
+                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-indigo-500 text-white font-black text-[9px] uppercase tracking-wider shadow-xs">
+                      Bio Links
                     </div>
-                    <div className="bg-white/10 rounded-xl p-2 flex items-center justify-between border border-white/10">
-                      <div className="space-y-0.5">
-                        <div className="text-[11px] font-bold text-white truncate">1:1 Mentorship</div>
-                        <div className="text-[10px] text-indigo-300 font-bold">₹1,499 / 45m</div>
-                      </div>
-                      <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-md font-bold">🗓️ Book</span>
+                    <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-bold text-white">
+                      <div className="truncate font-heading">Digital Portfolio &amp; Downloads</div>
+                      <div className="text-[10px] font-mono text-indigo-300 shrink-0">portfolio.domain/@handle</div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1 text-[10px] text-slate-300">
-                    <span className="flex items-center gap-1 text-indigo-300">
+                  <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-300">
+                    <span className="flex items-center gap-1 text-indigo-300 font-bold">
                       <LinkIcon className="w-3 h-3 text-indigo-400" /> Bio Links (@Instagram, @YouTube)
                     </span>
-                    <span className="font-mono text-white font-bold">Bespoke Quotes &amp; Events</span>
+                    <span className="font-mono text-white font-bold bg-white/10 px-2 py-0.5 rounded-md border border-white/10">Bespoke Quotes &amp; Events</span>
                   </div>
                 </div>
 

@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { SafeImage } from '../common/SafeImage';
-import { BusinessProfile, BioLink } from '../../types';
+import { BusinessProfile, BioLink, CatalogItem, Category } from '../../types';
 import {
   getBioLinks,
+  getCatalogItems,
+  getCategories,
+  getDigitalStoreUrl,
   recordBioLinkClick,
   recordBioLinkView,
   recordAnalyticsEvent,
 } from '../../services/firebaseService';
+import { DigitalCheckoutModal } from '../storefront/DigitalCheckoutModal';
+import { ItemDetailModal } from '../storefront/ItemDetailModal';
 import {
   ExternalLink,
   Share2,
@@ -18,6 +23,12 @@ import {
   X,
   ArrowLeft,
   Store,
+  ShoppingBag,
+  Download,
+  Eye,
+  Search,
+  Tag,
+  ArrowUpRight,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {
@@ -29,11 +40,20 @@ import {
 interface Props {
   business: BusinessProfile;
   onBackToDashboard?: () => void;
+  onOpenStorefront?: () => void;
 }
 
-export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard }) => {
+export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard, onOpenStorefront }) => {
   const [links, setLinks] = useState<BioLink[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [activeTab, setActiveTab] = useState<'links' | 'store'>('links');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedItemForDetail, setSelectedItemForDetail] = useState<CatalogItem | null>(null);
+  const [selectedItemForDigital, setSelectedItemForDigital] = useState<CatalogItem | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -71,7 +91,18 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     const title = `${business.name} — Official Bio Link | Storelly`;
     document.title = title;
     recordBioLinkView(business.id);
-    loadLinks();
+    loadData();
+
+    // Check if query wants store tab
+    const urlParams = new URLSearchParams(window.location.search);
+    if (
+      urlParams.get('tab') === 'store' ||
+      urlParams.get('view') === 'store' ||
+      urlParams.has('store') ||
+      window.location.hash === '#store'
+    ) {
+      setActiveTab('store');
+    }
 
     // Generate QR Code for sharing
     const currentUrl = window.location.href;
@@ -84,19 +115,28 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
       .catch(() => {});
   }, [business.id]);
 
-  const loadLinks = async () => {
+  const loadData = async () => {
     try {
-      const data = (await getBioLinks(business.id)) as BioLink[];
-      const activeLinks = data
+      const [linksData, catalogData, categoriesData] = await Promise.all([
+        getBioLinks(business.id) as Promise<BioLink[]>,
+        getCatalogItems(business.id, true) as Promise<CatalogItem[]>,
+        getCategories(business.id) as Promise<Category[]>,
+      ]);
+
+      const activeLinks = (linksData || [])
         .filter((l) => l.enabled !== false)
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
       setLinks(activeLinks);
+      setCatalogItems(catalogData || []);
+      setCategories(categoriesData || []);
+
       recordAnalyticsEvent(business.id, 'bio_views', { slug: business.slug }).catch(() => {});
     } catch (err) {
-      console.error('Error loading biolinks:', err);
+      console.error('Error loading biolinks & catalog:', err);
     } finally {
       setLoading(false);
+      setLoadingCatalog(false);
     }
   };
 
@@ -110,6 +150,11 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
 
     if (link.url === '#share') {
       handleShare();
+      return;
+    }
+
+    if (link.type === 'digital_store' || link.url === '#store' || link.url.includes('/store')) {
+      setActiveTab('store');
       return;
     }
 
@@ -247,7 +292,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
       type: 'digital_store',
       title: 'Explore My Digital Store & Catalog',
       subtitle: 'Browse notes, courses, eBooks & offers',
-      url: window.location.origin + `/@${business.slug}/store`,
+      url: '#store',
       enabled: true,
       highlight: true,
       order: 1,
@@ -282,6 +327,19 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
 
   const displayedLinks = links.length > 0 ? links : smartStarterLinks;
 
+  // Filtered digital store products
+  const filteredProducts = catalogItems.filter((item) => {
+    const matchesCategory = selectedCategory === 'all' || item.categoryId === selectedCategory;
+    const matchesQuery =
+      !searchQuery.trim() ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.shortDescription && item.shortDescription.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesQuery;
+  });
+
+  const currency = business.currencySymbol || '₹';
+  const fullStoreUrl = getDigitalStoreUrl(business.slug);
+
   return (
     <div
       className={`min-h-screen ${getFontFamilyClass()} flex flex-col items-center relative overflow-x-hidden selection:bg-emerald-500 selection:text-white`}
@@ -311,14 +369,28 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           </div>
         )}
 
-        <button
-          onClick={handleShare}
-          aria-label="Share profile"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition backdrop-blur-md bg-black/20 hover:bg-black/40 text-white border border-white/10 shadow-sm hover:scale-105 active:scale-95"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          <span>Share</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={fullStoreUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open full digital store"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition backdrop-blur-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 shadow-sm"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Store</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+
+          <button
+            onClick={handleShare}
+            aria-label="Share profile"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition backdrop-blur-md bg-black/20 hover:bg-black/40 text-white border border-white/10 shadow-sm hover:scale-105 active:scale-95"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Share</span>
+          </button>
+        </div>
       </div>
 
       {/* Profile Header Container */}
@@ -536,85 +608,476 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           </div>
         )}
 
-        {/* Primary Action Links Cards Stack */}
-        <div className="w-full mt-6 space-y-3">
-          {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center space-y-3">
-              <div className="w-8 h-8 border-3 border-current border-t-transparent rounded-full animate-spin opacity-60" />
-              <span className="text-xs font-semibold tracking-wider uppercase opacity-60">
-                Loading links...
+        {/* Modern Segmented Navigation Tabs (Links vs Digital Store) */}
+        <div className="w-full mt-6 flex items-center justify-center">
+          <div className="p-1 rounded-2xl bg-black/20 backdrop-blur-md border border-white/10 flex items-center gap-1 w-full max-w-sm shadow-inner">
+            <button
+              type="button"
+              onClick={() => setActiveTab('links')}
+              className={`flex-1 min-h-[44px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'links'
+                  ? 'bg-white text-slate-900 shadow-md'
+                  : 'text-white/80 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>Links</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  activeTab === 'links' ? 'bg-slate-200 text-slate-800' : 'bg-white/20 text-white'
+                }`}
+              >
+                {displayedLinks.length}
               </span>
-            </div>
-          ) : (
-            displayedLinks.map((link) => {
-              const brand = getBrandConfig(link.type);
-              const displaySubtitle = link.subtitle || brand.defaultSubtitle;
-              const isHighlight = link.highlight;
+            </button>
 
-              return (
-                <div
-                  key={link.id}
-                  onClick={(e) => handleLinkClick(link, e)}
-                  role="button"
-                  tabIndex={0}
-                  className={`w-full group text-left cursor-pointer flex items-center p-3 sm:p-3.5 border relative overflow-hidden ${getRadiusClass()} ${getHoverClass()} ${
-                    isHighlight ? 'ring-2 ring-emerald-400 shadow-md animate-pulse' : ''
-                  }`}
-                  style={{
-                    backgroundColor: theme.buttonColor,
-                    color: theme.buttonTextColor,
-                    borderColor: isHighlight ? '#10B981' : theme.buttonBorderColor,
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
-                  }}
-                >
-                  {/* Highlight Ribbon / Badge */}
-                  {isHighlight && (
-                    <div className="absolute top-0 right-0 px-2.5 py-0.5 bg-emerald-500 text-[9px] font-black text-white uppercase tracking-wider rounded-bl-lg shadow-sm">
-                      Featured
+            <button
+              type="button"
+              onClick={() => setActiveTab('store')}
+              className={`flex-1 min-h-[44px] py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'store'
+                  ? 'bg-emerald-500 text-slate-950 shadow-md'
+                  : 'text-white/80 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Digital Store</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  activeTab === 'store' ? 'bg-slate-950 text-emerald-400' : 'bg-emerald-500/30 text-emerald-300'
+                }`}
+              >
+                {catalogItems.length}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: LINKS VIEW */}
+        {activeTab === 'links' && (
+          <div className="w-full mt-5 space-y-3 animate-in fade-in duration-200">
+            {/* Featured Digital Products Banner (Instant Access into Store) */}
+            {catalogItems.length > 0 && (
+              <div
+                onClick={() => setActiveTab('store')}
+                role="button"
+                tabIndex={0}
+                className={`w-full group text-left cursor-pointer p-4 border rounded-2xl relative overflow-hidden transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-lg ${getHoverClass()}`}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 78, 59, 0.35) 100%)',
+                  borderColor: '#10B981',
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+                      <ShoppingBag className="w-5 h-5" />
                     </div>
-                  )}
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                          Digital Store
+                        </span>
+                        <span className="text-[11px] font-bold text-emerald-300">
+                          {catalogItems.length} {catalogItems.length === 1 ? 'Product' : 'Products'}
+                        </span>
+                      </div>
+                      <div className="font-extrabold text-sm sm:text-base text-white mt-0.5">
+                        Explore Digital Products & Store
+                      </div>
+                      <div className="text-xs text-white/70">
+                        Download guides, templates, notes & order directly
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-emerald-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                </div>
 
-                  {/* Left Column: Authentic Brand Icon Box */}
+                {/* Quick Preview Thumbnails Strip */}
+                <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  {catalogItems.slice(0, 3).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.productType === 'digital_file') {
+                          setSelectedItemForDigital(item);
+                        } else {
+                          setSelectedItemForDetail(item);
+                        }
+                      }}
+                      className="flex items-center gap-2 bg-black/40 hover:bg-black/60 px-2.5 py-1.5 rounded-xl border border-white/10 shrink-0 transition cursor-pointer"
+                    >
+                      {item.images?.[0] || item.coverImage ? (
+                        <SafeImage
+                          src={item.images?.[0] || item.coverImage || ''}
+                          alt={item.name}
+                          className="w-6 h-6 rounded-md object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                      <span className="text-xs font-semibold text-white max-w-[110px] truncate">{item.name}</span>
+                      <span className="text-xs font-extrabold text-emerald-400">
+                        {item.isFree ? 'FREE' : `${currency}${item.salePrice || item.price}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom Links Stack */}
+            {loading ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                <div className="w-8 h-8 border-3 border-current border-t-transparent rounded-full animate-spin opacity-60" />
+                <span className="text-xs font-semibold tracking-wider uppercase opacity-60">
+                  Loading links...
+                </span>
+              </div>
+            ) : (
+              displayedLinks.map((link) => {
+                const brand = getBrandConfig(link.type);
+                const displaySubtitle = link.subtitle || brand.defaultSubtitle;
+                const isHighlight = link.highlight;
+
+                return (
                   <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0 mr-3.5 shadow-sm transition-transform duration-200 group-hover:scale-105"
+                    key={link.id}
+                    onClick={(e) => handleLinkClick(link, e)}
+                    role="button"
+                    tabIndex={0}
+                    className={`w-full group text-left cursor-pointer flex items-center p-3 sm:p-3.5 border relative overflow-hidden ${getRadiusClass()} ${getHoverClass()} ${
+                      isHighlight ? 'ring-2 ring-emerald-400 shadow-md animate-pulse' : ''
+                    }`}
                     style={{
-                      background:
-                        link.type === 'instagram'
-                          ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
-                          : brand.color,
+                      backgroundColor: theme.buttonColor,
+                      color: theme.buttonTextColor,
+                      borderColor: isHighlight ? '#10B981' : theme.buttonBorderColor,
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
                     }}
                   >
-                    <SocialBrandIcon
-                      type={link.type}
-                      size={22}
-                      className="w-5.5 h-5.5 text-white"
-                    />
-                  </div>
-
-                  {/* Middle Column: Title & Subtitle */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <div className="font-bold text-sm sm:text-base leading-snug truncate">
-                      {link.title}
-                    </div>
-                    {displaySubtitle && (
-                      <div
-                        className="text-xs leading-tight truncate mt-0.5"
-                        style={{ color: theme.buttonSubtitleColor }}
-                      >
-                        {displaySubtitle}
+                    {/* Highlight Ribbon / Badge */}
+                    {isHighlight && (
+                      <div className="absolute top-0 right-0 px-2.5 py-0.5 bg-emerald-500 text-[9px] font-black text-white uppercase tracking-wider rounded-bl-lg shadow-sm">
+                        Featured
                       </div>
                     )}
-                  </div>
 
-                  {/* Right Column: Clean Chevron Arrow */}
-                  <div className="text-slate-400 group-hover:text-slate-600 transition-colors flex-shrink-0 pl-1">
-                    <ChevronRight className="w-5 h-5" />
+                    {/* Left Column: Authentic Brand Icon Box */}
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center text-white flex-shrink-0 mr-3.5 shadow-sm transition-transform duration-200 group-hover:scale-105"
+                      style={{
+                        background:
+                          link.type === 'instagram'
+                            ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                            : brand.color,
+                      }}
+                    >
+                      <SocialBrandIcon
+                        type={link.type}
+                        size={22}
+                        className="w-5.5 h-5.5 text-white"
+                      />
+                    </div>
+
+                    {/* Middle Column: Title & Subtitle */}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="font-bold text-sm sm:text-base leading-snug truncate">
+                        {link.title}
+                      </div>
+                      {displaySubtitle && (
+                        <div
+                          className="text-xs leading-tight truncate mt-0.5"
+                          style={{ color: theme.buttonSubtitleColor }}
+                        >
+                          {displaySubtitle}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Clean Chevron Arrow */}
+                    <div className="text-slate-400 group-hover:text-slate-600 transition-colors flex-shrink-0 pl-1">
+                      <ChevronRight className="w-5 h-5" />
+                    </div>
                   </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: DIGITAL STORE & PRODUCTS VIEW */}
+        {activeTab === 'store' && (
+          <div className="w-full mt-5 space-y-4 text-left animate-in fade-in duration-200">
+            {/* Store Banner */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border border-emerald-500/30 text-white flex items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shrink-0">
+                  <ShoppingBag className="w-5 h-5" />
                 </div>
-              );
-            })
-          )}
-        </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-white">
+                    Digital Store & Products
+                  </h3>
+                  <p className="text-xs text-emerald-300">
+                    {catalogItems.length} {catalogItems.length === 1 ? 'item available' : 'items available'}
+                  </p>
+                </div>
+              </div>
+
+              <a
+                href={fullStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-950 text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-xs"
+              >
+                <span>Full Store</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search products, courses, eBooks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-black/20 backdrop-blur-md border border-white/15 text-xs text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Categories Chips (if more than 1 category) */}
+            {categories.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className={`min-h-[36px] px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                    selectedCategory === 'all'
+                      ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                      : 'bg-black/20 text-white/80 hover:text-white hover:bg-black/30 border border-white/10'
+                  }`}
+                >
+                  All Items
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`min-h-[36px] px-3 py-1 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+                      selectedCategory === cat.id
+                        ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                        : 'bg-black/20 text-white/80 hover:text-white hover:bg-black/30 border border-white/10'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Products List / Grid */}
+            {loadingCatalog ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                <div className="w-8 h-8 border-3 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-semibold text-white/70">
+                  Loading digital store...
+                </span>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="py-12 px-4 text-center rounded-2xl bg-black/20 border border-white/10 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 text-white/60 flex items-center justify-center mx-auto">
+                  <ShoppingBag className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-white">No products found</p>
+                  <p className="text-xs text-white/60">
+                    {searchQuery
+                      ? 'Try another search keyword or clear the filter.'
+                      : 'This creator has not added public items to this section yet.'}
+                  </p>
+                </div>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition"
+                  >
+                    Clear Filter
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredProducts.map((item) => {
+                  const isDigital = item.productType === 'digital_file';
+                  const isFree = item.isFree || item.price === 0;
+                  const price = item.salePrice || item.price;
+                  const hasDiscount = item.salePrice && item.salePrice < item.price;
+                  const cover = item.images?.[0] || item.coverImage;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="group bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-3.5 sm:p-4 shadow-md transition hover:border-emerald-500/40 text-left relative overflow-hidden"
+                    >
+                      <div className="flex gap-3.5">
+                        {/* Thumbnail */}
+                        <div
+                          onClick={() => setSelectedItemForDetail(item)}
+                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-slate-800 shrink-0 relative cursor-pointer group-hover:opacity-90 transition"
+                        >
+                          {cover ? (
+                            <SafeImage
+                              src={cover}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500">
+                              <ShoppingBag className="w-7 h-7" />
+                            </div>
+                          )}
+
+                          {isFree ? (
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-wider">
+                              FREE
+                            </span>
+                          ) : hasDiscount ? (
+                            <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-rose-500 text-white font-black text-[9px] uppercase tracking-wider">
+                              OFF
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {/* Info & Details */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                {isDigital ? (
+                                  <>
+                                    <Download className="w-2.5 h-2.5" />
+                                    <span>Digital Asset</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Tag className="w-2.5 h-2.5" />
+                                    <span>Product</span>
+                                  </>
+                                )}
+                              </span>
+                              {item.digitalFileType && (
+                                <span className="text-[10px] uppercase font-bold text-slate-400">
+                                  {item.digitalFileType}
+                                </span>
+                              )}
+                            </div>
+
+                            <h4
+                              onClick={() => setSelectedItemForDetail(item)}
+                              className="font-extrabold text-sm sm:text-base text-white hover:text-emerald-400 transition cursor-pointer leading-snug line-clamp-2"
+                            >
+                              {item.name}
+                            </h4>
+
+                            {item.shortDescription && (
+                              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
+                                {item.shortDescription}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Price & Action Button */}
+                          <div className="mt-2.5 flex items-center justify-between gap-2">
+                            <div className="flex items-baseline gap-1.5">
+                              {isFree ? (
+                                <span className="text-base font-black text-emerald-400">FREE</span>
+                              ) : (
+                                <>
+                                  <span className="text-base font-black text-white">
+                                    {currency}
+                                    {price}
+                                  </span>
+                                  {hasDiscount && (
+                                    <span className="text-xs text-slate-500 line-through">
+                                      {currency}
+                                      {item.price}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedItemForDetail(item)}
+                                className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition flex items-center justify-center cursor-pointer"
+                                title="Quick View"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isDigital) {
+                                    setSelectedItemForDigital(item);
+                                  } else {
+                                    setSelectedItemForDetail(item);
+                                  }
+                                }}
+                                className={`min-h-[44px] px-3.5 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md ${
+                                  isFree
+                                    ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black'
+                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                }`}
+                              >
+                                {isDigital ? <Download className="w-3.5 h-3.5" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+                                <span>{isFree ? 'Claim Free' : 'Buy Now'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Bottom Visit Full Storefront Link */}
+            <div className="pt-4 text-center">
+              <a
+                href={fullStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition flex items-center justify-center gap-2 border border-white/15"
+              >
+                <Store className="w-4 h-4 text-emerald-400" />
+                <span>Open Full Storefront with Cart & WhatsApp Checkout</span>
+                <ArrowUpRight className="w-4 h-4 text-slate-400" />
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Footer: Made with ❤️ by Storelly */}
         <div className="mt-12 flex flex-col items-center space-y-2">
@@ -701,6 +1164,30 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
             </a>
           </div>
         </div>
+      )}
+
+      {/* Item Detail Modal */}
+      {selectedItemForDetail && (
+        <ItemDetailModal
+          item={selectedItemForDetail}
+          business={business}
+          isOpen={!!selectedItemForDetail}
+          onClose={() => setSelectedItemForDetail(null)}
+          onBuyDigitalItem={(item) => {
+            setSelectedItemForDetail(null);
+            setSelectedItemForDigital(item);
+          }}
+        />
+      )}
+
+      {/* 1-Click Buy / Instant Claim Digital Checkout Modal */}
+      {selectedItemForDigital && (
+        <DigitalCheckoutModal
+          item={selectedItemForDigital}
+          business={business}
+          isOpen={!!selectedItemForDigital}
+          onClose={() => setSelectedItemForDigital(null)}
+        />
       )}
     </div>
   );

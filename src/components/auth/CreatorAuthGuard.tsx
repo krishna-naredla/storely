@@ -18,7 +18,7 @@ export const CreatorAuthGuard: React.FC<Props> = ({ business, moduleName, isOwne
 
   switch (moduleName) {
     case 'store':
-      isEnabled = !!(modules.digital_products || modules.digitalProducts);
+      isEnabled = !!(modules.digital_products || modules.digitalProducts || modules.products || modules.catalog || true);
       moduleTitle = 'Digital Store';
       break;
     case 'bio':

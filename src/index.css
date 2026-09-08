@@ -62,3 +62,46 @@
   animation-play-state: paused;
 }
 
+/* Simplified Print Stylesheet for Invoices & Receipts */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 12pt !important;
+  }
+
+  /* Hide background dashboard UI, sidebars, floating buttons, navigation bars, headers */
+  aside,
+  nav,
+  header,
+  .no-print,
+  button,
+  [role="dialog"] > div:first-child:not(.printable-receipt-card),
+  .fixed:not(.print-container) {
+    display: none !important;
+  }
+
+  /* Ensure modal and receipt wrapper prints crisply without dark backdrop */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .printable-order-modal {
+    max-width: 100% !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .printable-order-modal .print-hide {
+    display: none !important;
+  }
+}
+

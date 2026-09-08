@@ -287,14 +287,14 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
             <button
               type="button"
               onClick={() => setIsShareModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>Share</span>
             </button>
             <a
               href={`/portfolio/${business.slug || business.id}`}
-              className="px-4 py-2 rounded-xl text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs hover:opacity-95 cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-xl text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs hover:opacity-95 cursor-pointer"
               style={{ backgroundColor: themeConfig.primaryColor }}
             >
               <span>View Full Portfolio</span>
@@ -314,7 +314,7 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
                   ? { backgroundColor: themeConfig.primaryColor, color: '#ffffff', borderColor: themeConfig.primaryColor }
                   : undefined
               }
-              className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
+              className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
                 selectedCategory === 'all'
                   ? 'text-white shadow-xs'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -334,7 +334,7 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
                       ? { backgroundColor: themeConfig.primaryColor, color: '#ffffff', borderColor: themeConfig.primaryColor }
                       : undefined
                   }
-                  className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
+                  className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
                     selectedCategory === cat
                       ? 'text-white shadow-xs'
                       : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'

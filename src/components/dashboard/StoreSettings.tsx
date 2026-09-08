@@ -1,5 +1,5 @@
 import { useLanguage } from '../../context/LanguageContext';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Store,
   MapPin,
@@ -15,6 +15,8 @@ import {
   Bell,
   ShieldAlert,
   Trash2, Plus, Share2,
+  FileEdit,
+  RotateCcw,
 } from 'lucide-react';
 import { BusinessProfile, BusinessType } from '../../types';
 import { updateBusinessProfile, permanentlyDeleteStoreAccount } from '../../services/firebaseService';
@@ -27,11 +29,13 @@ import { SeoManager } from './SeoManager';
 interface StoreSettingsProps {
   business: BusinessProfile;
   onBusinessUpdated: (updated: BusinessProfile) => void;
+  onBusinessDeleted?: (businessId: string) => void;
 }
 
 export const StoreSettings: React.FC<StoreSettingsProps> = ({
   business,
   onBusinessUpdated,
+  onBusinessDeleted,
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'seo'>('profile');
   const [name, setName] = useState(business.name);
@@ -67,6 +71,125 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Draft persistence state
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+  const hasInitializedRef = useRef(false);
+  const DRAFT_KEY = `storelly_settings_draft_${business.id}`;
+
+  // Load uncommitted draft on initial mount
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(DRAFT_KEY);
+      if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        // Only restore if draft has contents and differs from saved business profile
+        if (draft && typeof draft === 'object') {
+          if (draft.name !== undefined) setName(draft.name);
+          if (draft.tagline !== undefined) setTagline(draft.tagline);
+          if (draft.type !== undefined) setType(draft.type);
+          if (draft.description !== undefined) setDescription(draft.description);
+          if (draft.logo !== undefined) setLogo(draft.logo);
+          if (draft.coverImage !== undefined) setCoverImage(draft.coverImage);
+          if (draft.phone !== undefined) setPhone(draft.phone);
+          if (draft.whatsapp !== undefined) setWhatsapp(draft.whatsapp);
+          if (draft.email !== undefined) setEmail(draft.email);
+          if (draft.address !== undefined) setAddress(draft.address);
+          if (draft.city !== undefined) setCity(draft.city);
+          if (draft.currencySymbol !== undefined) setCurrencySymbol(draft.currencySymbol);
+          if (draft.deliveryFee !== undefined) setDeliveryFee(draft.deliveryFee);
+          if (draft.minOrderValue !== undefined) setMinOrderValue(draft.minOrderValue);
+          if (draft.taxRate !== undefined) setTaxRate(draft.taxRate);
+          if (draft.enableCod !== undefined) setEnableCod(draft.enableCod);
+          if (draft.enableOnlinePayment !== undefined) setEnableOnlinePayment(draft.enableOnlinePayment);
+          if (draft.upiId !== undefined) setUpiId(draft.upiId);
+          if (draft.socialLinks !== undefined) setSocialLinks(draft.socialLinks);
+          if (draft.seoMetaTitle !== undefined) setSeoMetaTitle(draft.seoMetaTitle);
+          if (draft.seoMetaDescription !== undefined) setSeoMetaDescription(draft.seoMetaDescription);
+          if (draft.status !== undefined) setStatus(draft.status);
+          setIsDraftRestored(true);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read settings draft from localStorage:', e);
+    }
+    hasInitializedRef.current = true;
+  }, [business.id]);
+
+  // Auto-save draft on form changes
+  useEffect(() => {
+    if (!hasInitializedRef.current) return;
+    const timeoutId = setTimeout(() => {
+      try {
+        const draftPayload = {
+          name,
+          tagline,
+          type,
+          description,
+          logo,
+          coverImage,
+          phone,
+          whatsapp,
+          email,
+          address,
+          city,
+          currencySymbol,
+          deliveryFee,
+          minOrderValue,
+          taxRate,
+          enableCod,
+          enableOnlinePayment,
+          upiId,
+          socialLinks,
+          seoMetaTitle,
+          seoMetaDescription,
+          status,
+          updatedAt: Date.now(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draftPayload));
+      } catch (e) {
+        console.warn('Failed to save settings draft:', e);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    name, tagline, type, description, logo, coverImage, phone, whatsapp,
+    email, address, city, currencySymbol, deliveryFee, minOrderValue,
+    taxRate, enableCod, enableOnlinePayment, upiId, socialLinks,
+    seoMetaTitle, seoMetaDescription, status, DRAFT_KEY
+  ]);
+
+  const handleDiscardDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {
+      console.warn('Failed to remove draft:', e);
+    }
+    setName(business.name);
+    setTagline(business.tagline || '');
+    setType(business.type);
+    setDescription(business.description || '');
+    setLogo(business.logo || '');
+    setCoverImage(business.coverImage || '');
+    setPhone(business.phone);
+    setWhatsapp(business.whatsapp);
+    setEmail(business.email || '');
+    setAddress(business.address || '');
+    setCity(business.city || '');
+    setCurrencySymbol(business.currencySymbol || '₹');
+    setDeliveryFee(business.deliveryFee ?? 0);
+    setMinOrderValue(business.minOrderValue ?? 0);
+    setTaxRate(business.taxRate ?? 0);
+    setEnableCod(business.enableCod ?? true);
+    setEnableOnlinePayment(business.enableOnlinePayment ?? false);
+    setUpiId(business.upiId || '');
+    setSocialLinks(business.socialLinks || []);
+    setSeoMetaTitle(business.seoMetaTitle || '');
+    setSeoMetaDescription(business.seoMetaDescription || '');
+    setStatus(business.status || 'active');
+    setIsDraftRestored(false);
+  };
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeletingStore, setIsDeletingStore] = useState(false);
@@ -80,8 +203,12 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
       setIsDeletingStore(true);
       setError(null);
       await permanentlyDeleteStoreAccount(business);
-      alert('Store and all associated images permanently deleted. Storage space freed successfully.');
-      window.location.href = '/';
+      
+      if (onBusinessDeleted) {
+        onBusinessDeleted(business.id);
+      } else {
+        window.location.href = '/';
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to delete store');
       setIsDeletingStore(false);
@@ -149,6 +276,14 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
         ...payload,
       });
 
+      // Clear draft since changes have been persisted
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+        setIsDraftRestored(false);
+      } catch (e) {
+        console.warn('Failed to clean draft after save:', e);
+      }
+
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err: any) {
@@ -194,6 +329,26 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </button>
         </div>
       </div>
+
+      {isDraftRestored && (
+        <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <FileEdit className="w-4 h-4 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-bold">Unsaved draft recovered: </span>
+              <span>Loaded your edits from this browser session.</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Discard Draft</span>
+          </button>
+        </div>
+      )}
 
       {activeTab === 'seo' ? (
         <SeoManager business={business} />

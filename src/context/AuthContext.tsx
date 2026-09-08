@@ -43,7 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     try {
-      const businesses = await getUserBusinesses(currentUser.uid);
+      const allBiz = await getUserBusinesses(currentUser.uid);
+      const businesses = (allBiz || []).filter((b) => b.status !== 'deleted');
       setUserBusinesses(businesses);
       if (businesses.length > 0) {
         // Keep current selected if valid, otherwise pick first
@@ -67,7 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(user);
       if (user) {
         try {
-          const businesses = await getUserBusinesses(user.uid);
+          const allBiz = await getUserBusinesses(user.uid);
+          const businesses = (allBiz || []).filter((b) => b.status !== 'deleted');
           setUserBusinesses(businesses);
           if (businesses.length > 0) {
             setCurrentBusiness(businesses[0]);

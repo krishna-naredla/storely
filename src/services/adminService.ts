@@ -141,7 +141,9 @@ export async function verifyAdminInFirestore(email: string | null | undefined): 
 export async function adminGetAllBusinesses(): Promise<BusinessProfile[]> {
   try {
     const snap = await getDocs(collection(db, 'businesses'));
-    const list = snap.docs.map((d) => d.data() as BusinessProfile);
+    const list = snap.docs
+      .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
+      .filter((b) => b.status !== 'deleted');
     if (list.length > 0) {
       localStorage.setItem('storelly_admin_all_biz', JSON.stringify(list));
       return list;
@@ -152,13 +154,19 @@ export async function adminGetAllBusinesses(): Promise<BusinessProfile[]> {
   
   try {
     const cached = localStorage.getItem('storelly_admin_all_biz');
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      const parsed: BusinessProfile[] = JSON.parse(cached);
+      return parsed.filter((b) => b.status !== 'deleted');
+    }
   } catch {}
 
   // Fallback to cached local businesses
   try {
     const localRaw = localStorage.getItem('storelly_cached_businesses');
-    if (localRaw) return JSON.parse(localRaw);
+    if (localRaw) {
+      const parsed: BusinessProfile[] = JSON.parse(localRaw);
+      return parsed.filter((b) => b.status !== 'deleted');
+    }
   } catch {}
 
   return [];

@@ -328,6 +328,47 @@ app.get("/api/digital/download", async (req, res) => {
   }
 });
 
+// 4b. Permanent Cloudinary File / Image Cleanup Endpoint
+app.post("/api/digital/delete-file", async (req, res) => {
+  try {
+    const { publicId, resourceType = "image" } = req.body;
+    if (!publicId) {
+      return res.status(400).json({ success: false, error: "Missing publicId parameter" });
+    }
+
+    if (!CLOUDINARY_API_SECRET) {
+      console.log(`[Cloudinary Cleanup] API secret not set on server, dry-run delete for: ${publicId}`);
+      return res.json({ success: true, message: "Dry run delete completed" });
+    }
+
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+    const signature = crypto.createHash("sha1").update(paramsToSign).digest("hex");
+
+    const rType = resourceType === "auto" ? "image" : resourceType;
+    const destroyUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${rType}/destroy`;
+
+    const formData = new URLSearchParams();
+    formData.append("public_id", publicId);
+    formData.append("api_key", CLOUDINARY_API_KEY);
+    formData.append("timestamp", timestamp.toString());
+    formData.append("signature", signature);
+
+    const destroyRes = await fetch(destroyUrl, {
+      method: "POST",
+      body: formData,
+    });
+
+    const destroyData = await destroyRes.json();
+    console.log(`[Cloudinary Cleanup] Resource destroyed (${publicId}):`, destroyData);
+
+    return res.json({ success: true, result: destroyData });
+  } catch (err: any) {
+    console.warn("[Cloudinary Cleanup] Error deleting file:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 8. Event Ticket WhatsApp Delivery Builder
 app.post("/api/events/whatsapp-ticket", (req, res) => {
   try {

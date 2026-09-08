@@ -62,7 +62,6 @@ import {
 } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 import { PortfolioProjectPageView } from './PortfolioProjectPageView';
-import { PortfolioDetailModal } from './PortfolioDetailModal';
 import { PortfolioShareModal } from './PortfolioShareModal';
 import {
   PORTFOLIO_PRESETS,
@@ -108,7 +107,6 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [modalItem, setModalItem] = useState<PortfolioItem | null>(null);
   const [fullPageItem, setFullPageItem] = useState<PortfolioItem | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
@@ -188,26 +186,25 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     if (targetId) {
       const found = effectiveItems.find((i) => i.id === targetId);
       if (found) {
-        setModalItem(found);
+        setFullPageItem(found);
       }
     }
   }, [effectiveItems]);
 
   const handleOpenItem = (item: PortfolioItem) => {
-    setModalItem(item);
+    setFullPageItem(item);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('project', item.id);
+      window.history.pushState({}, '', url.toString());
+    }
   };
 
   const handleOpenFullPageItem = (item: PortfolioItem) => {
-    setModalItem(null);
     setFullPageItem(item);
-  };
-
-  const handleCloseModal = () => {
-    setModalItem(null);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.delete('item');
-      url.searchParams.delete('project');
+      url.searchParams.set('project', item.id);
       window.history.pushState({}, '', url.toString());
     }
   };
@@ -1560,15 +1557,6 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
           </p>
         </footer>
       </main>
-
-      {/* Interactive Detail Modal */}
-      {modalItem && (
-        <PortfolioDetailModal
-          item={modalItem}
-          business={business}
-          onClose={handleCloseModal}
-        />
-      )}
 
       {/* Share & QR Code Modal */}
       {isShareModalOpen && (

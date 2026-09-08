@@ -80,22 +80,7 @@ export function generateSlug(text: string): string {
  * Get dynamic, accurate storefront URL for any environment
  */
 export function getStorefrontUrl(businessOrSlug: any): string {
-  if (typeof businessOrSlug === 'object' && businessOrSlug !== null) {
-    const slug = businessOrSlug.slug;
-    
-    // If they have Bio Links enabled, check their routing preference
-    if (businessOrSlug.modules?.universal_links) {
-      const routingMode = businessOrSlug.bioRouting || 'standalone';
-      if (routingMode === 'standalone') {
-        return getBioLinkUrl(slug);
-      }
-    }
-    
-    // Default to storefront for everything else (retail, products, etc)
-    return getDigitalStoreUrl(slug);
-  }
-
-  const slug = typeof businessOrSlug === 'string' ? businessOrSlug : businessOrSlug?.slug || '';
+  const slug = typeof businessOrSlug === 'object' && businessOrSlug !== null ? businessOrSlug.slug : (businessOrSlug || '');
   return getDigitalStoreUrl(slug);
 }
 
@@ -116,6 +101,31 @@ export function getPortfolioUrl(slug: string): string {
 
 export function getDigitalStoreUrl(slug: string): string {
   return `${getBaseUrl()}/store/${encodeURIComponent(slug)}`;
+}
+
+export function getProductDeepUrl(businessOrSlug: any, itemId: string): string {
+  const storeUrl = getStorefrontUrl(businessOrSlug);
+  const separator = storeUrl.includes('?') ? '&' : '?';
+  return `${storeUrl}${separator}item=${encodeURIComponent(itemId)}`;
+}
+
+export function getCategoryDeepUrl(businessOrSlug: any, categoryIdOrSlug: string): string {
+  const storeUrl = getStorefrontUrl(businessOrSlug);
+  const separator = storeUrl.includes('?') ? '&' : '?';
+  return `${storeUrl}${separator}category=${encodeURIComponent(categoryIdOrSlug)}`;
+}
+
+export function getModuleDeepUrl(businessOrSlug: any, moduleType: 'catalog' | 'digital' | 'services' | 'portfolio' | 'events' | 'quotes' | 'reviews' | 'card' | 'biolink'): string {
+  const slug = typeof businessOrSlug === 'object' && businessOrSlug !== null ? businessOrSlug.slug : businessOrSlug;
+  if (moduleType === 'biolink') {
+    return getBioLinkUrl(slug);
+  }
+  if (moduleType === 'portfolio') {
+    return getPortfolioUrl(slug);
+  }
+  const storeUrl = getDigitalStoreUrl(slug);
+  const separator = storeUrl.includes('?') ? '&' : '?';
+  return `${storeUrl}${separator}view=${encodeURIComponent(moduleType)}`;
 }
 
 // Local Storage Business Cache Helpers
@@ -399,26 +409,41 @@ export async function getUserBusinesses(ownerId: string): Promise<BusinessProfil
       orderBy('createdAt', 'desc')
     );
     const snap = await getDocs(q);
-    list = snap.docs.map((d) => d.data() as BusinessProfile);
+    list = snap.docs
+      .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
+      .filter((b) => b.status !== 'deleted');
   } catch (err) {
     try {
       const qFallback = query(collection(db, 'businesses'), where('ownerId', '==', ownerId));
       const snap = await getDocs(qFallback);
-      list = snap.docs.map((d) => d.data() as BusinessProfile);
+      list = snap.docs
+        .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
+        .filter((b) => b.status !== 'deleted');
       list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     } catch (e) {
       console.warn('Error getting user businesses from Firestore:', e);
     }
   }
 
-  // Merge with local businesses
-  const localList = getLocalBusinesses().filter((b) => b.ownerId === ownerId || ownerId === 'guest_user');
+  // Merge with local businesses, strictly filtering out any deleted businesses
+  const localList = getLocalBusinesses().filter(
+    (b) => (b.ownerId === ownerId || ownerId === 'guest_user') && b.status !== 'deleted'
+  );
   const combinedMap = new Map<string, BusinessProfile>();
   localList.forEach((b) => combinedMap.set(b.id, b));
   list.forEach((b) => combinedMap.set(b.id, b));
 
-  const result = Array.from(combinedMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  result.forEach((b) => saveLocalBusiness(b));
+  const result = Array.from(combinedMap.values())
+    .filter((b) => b.status !== 'deleted')
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  // Sync back cleaned active businesses to local storage
+  try {
+    localStorage.setItem(LOCAL_BIZ_KEY, JSON.stringify(result));
+  } catch (e) {
+    console.warn('Sync cleaned local businesses cache warning:', e);
+  }
+
   return result;
 }
 
@@ -451,48 +476,98 @@ export async function updateBusiness(businessId: string, data: Partial<BusinessP
 export const updateBusinessProfile = updateBusiness;
 
 export async function deleteBusiness(businessId: string): Promise<void> {
-  // Purge ALL businesses from localStorage to be safe, or just this one? 
-  // "Also purge ALL businesses from localStorage on delete confirmation... at minimum ensure the deleting device's local cache is fully cleared"
-  localStorage.removeItem(LOCAL_BIZ_KEY);
+  // 1. Immediately clean up all local storage entries
+  removeLocalBusiness(businessId);
+  try {
+    const active = localStorage.getItem('storelly_active_biz');
+    if (active === businessId) {
+      localStorage.removeItem('storelly_active_biz');
+    }
+    localStorage.removeItem(`storelly_biolinks_${businessId}`);
+    localStorage.removeItem(`storelly_fcm_notifications_${businessId}`);
+    localStorage.removeItem(`storelly_razorpay_config_${businessId}`);
+    localStorage.removeItem(`storelly_offline_catalog_${businessId}`);
+  } catch (e) {
+    console.warn('LocalStorage cleanup warning:', e);
+  }
 
   try {
     const docRef = doc(db, 'businesses', businessId);
     
-    // Soft delete first
-    await setDoc(docRef, { status: 'deleted', slug: businessId + '-deleted' }, { merge: true });
+    // 2. Soft-delete tombstone with unique slug so it will never conflict or resurrect
+    try {
+      await setDoc(docRef, { 
+        status: 'deleted', 
+        slug: `deleted_${businessId}_${Date.now()}`,
+        deletedAt: Date.now() 
+      }, { merge: true });
+    } catch (softErr) {
+      console.warn('Soft-delete tombstone note:', softErr);
+    }
     
-    // Also delete main document (as explicitly requested by "in addition to the existing hard delete")
-    await deleteDoc(docRef);
+    // 3. Hard delete main document from Firestore
+    try {
+      await deleteDoc(docRef);
+    } catch (hardErr) {
+      console.warn('Hard delete document warning:', hardErr);
+    }
 
-    // Run cleanup as a background job
-    setTimeout(async () => {
-      const collectionsToClean = [
-        'catalogItems',
-        'biolinks',
-        'communityLinks',
-        'orders',
-        'bookings',
-        'customers',
-        'events',
-        'tickets',
-        'portfolio',
-        'testimonials',
-        'quote_requests'
-      ];
-      
+    // 4. Clean all Firestore subcollections
+    const subcollections = [
+      'catalog',
+      'categories',
+      'orders',
+      'bookings',
+      'customers',
+      'offers',
+      'portfolio',
+      'testimonials',
+      'events',
+      'tickets',
+      'quote_requests',
+      'digital_products',
+      'reviews',
+      'analyticsEvents',
+      'communityLinks'
+    ];
+
+    for (const sub of subcollections) {
       try {
-        for (const colName of collectionsToClean) {
-          const q = query(collection(db, colName), where('businessId', '==', businessId));
-          const snap = await getDocs(q);
-          const deletePromises = snap.docs.map(d => deleteDoc(doc(db, colName, d.id)));
-          await Promise.all(deletePromises);
-        }
-        console.log('Background cleanup completed for business:', businessId);
-      } catch (err) {
-        console.error('Background cleanup failed:', err);
+        const subSnap = await getDocs(collection(db, 'businesses', businessId, sub));
+        const deletePromises = subSnap.docs.map((d) => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      } catch (subErr) {
+        // Continue cleaning remaining subcollections
       }
-    }, 100);
+    }
 
+    // 5. Clean any top-level collections referencing this business
+    const rootCols = [
+      'catalogItems',
+      'biolinks',
+      'communityLinks',
+      'orders',
+      'bookings',
+      'customers',
+      'events',
+      'tickets',
+      'portfolio',
+      'testimonials',
+      'quote_requests'
+    ];
+
+    for (const colName of rootCols) {
+      try {
+        const q = query(collection(db, colName), where('businessId', '==', businessId));
+        const snap = await getDocs(q);
+        const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      } catch (rootErr) {
+        // ignore
+      }
+    }
+
+    console.log(`[Permanent Deletion] Successfully deleted business ${businessId} and associated records.`);
   } catch (err) {
     console.warn('Firestore deleteBusiness warning:', err);
   }
@@ -554,6 +629,20 @@ export async function deleteCategory(businessId: string, catId: string): Promise
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('Firestore deleteCategory warning:', err);
+  }
+}
+
+export async function reorderCategories(businessId: string, orderedCategoryIds: string[]): Promise<void> {
+  try {
+    const updatePromises = orderedCategoryIds.map((id, index) => {
+      const docRef = doc(db, 'businesses', businessId, 'categories', id);
+      return updateDoc(docRef, { sortOrder: index, updatedAt: Date.now() }).catch(async () => {
+        return setDoc(docRef, { sortOrder: index, updatedAt: Date.now() }, { merge: true });
+      });
+    });
+    await Promise.all(updatePromises);
+  } catch (err) {
+    console.warn('Firestore reorderCategories warning:', err);
   }
 }
 
@@ -1192,6 +1281,42 @@ export async function permanentlyDeleteStoreAccount(business: BusinessProfile): 
       await deleteDoc(doc(db, 'businesses', businessId, 'quote_requests', q.id));
     }
 
+    // 5f. Fetch and delete digital products & images/files
+    try {
+      const dpSnap = await getDocs(collection(db, 'businesses', businessId, 'digital_products'));
+      for (const d of dpSnap.docs) {
+        const dp = d.data() as any;
+        if (dp.coverImage) await deleteImageFromStorage(dp.coverImage);
+        if (dp.fileUrls && Array.isArray(dp.fileUrls)) {
+          for (const fUrl of dp.fileUrls) {
+            await deleteImageFromStorage(fUrl, 'raw');
+          }
+        }
+        await deleteDoc(d.ref);
+      }
+    } catch (dpErr) {
+      console.warn('Digital products cleanup note:', dpErr);
+    }
+
+    // 5g. Fetch and delete bookings
+    try {
+      const bookings = await getBookings(businessId);
+      for (const b of bookings) {
+        await deleteDoc(doc(db, 'businesses', businessId, 'bookings', b.id));
+      }
+    } catch (bkErr) {
+      console.warn('Bookings cleanup note:', bkErr);
+    }
+
+    // 5h. Fetch and delete customers
+    try {
+      const customers = await getCustomers(businessId);
+      for (const c of customers) {
+        await deleteDoc(doc(db, 'businesses', businessId, 'customers', c.id));
+      }
+    } catch (cErr) {
+      console.warn('Customers cleanup note:', cErr);
+    }
 
     // 6. Finally delete business doc & local storage
     await deleteBusiness(businessId);

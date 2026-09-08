@@ -4,6 +4,7 @@ import { Image as ImageIcon, Package, User } from 'lucide-react';
 interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackType?: 'avatar' | 'banner' | 'product' | 'none';
   containerClassName?: string;
+  showSkeleton?: boolean;
 }
 
 export const SafeImage: React.FC<SafeImageProps> = ({ 
@@ -12,17 +13,26 @@ export const SafeImage: React.FC<SafeImageProps> = ({
   fallbackType = 'product',
   containerClassName = '',
   className = '',
+  loading = 'lazy',
+  showSkeleton = true,
+  onLoad,
+  onError,
   ...props 
 }) => {
   const [error, setError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   
   if (!src || error) {
     if (fallbackType === 'none') return null;
     return (
-      <div className={`bg-slate-100 flex items-center justify-center text-slate-400 ${className} ${containerClassName}`}>
-        {fallbackType === 'avatar' && <User className="w-1/2 h-1/2 opacity-50" />}
-        {fallbackType === 'product' && <Package className="w-1/2 h-1/2 opacity-50" />}
-        {fallbackType === 'banner' && <ImageIcon className="w-1/4 h-1/4 opacity-50" />}
+      <div 
+        className={`bg-slate-100 flex items-center justify-center text-slate-400 select-none overflow-hidden ${className} ${containerClassName}`}
+        role="img"
+        aria-label={alt || 'Fallback placeholder'}
+      >
+        {fallbackType === 'avatar' && <User className="w-1/2 h-1/2 opacity-40 stroke-[1.5]" />}
+        {fallbackType === 'product' && <Package className="w-1/2 h-1/2 opacity-40 stroke-[1.5]" />}
+        {fallbackType === 'banner' && <ImageIcon className="w-1/4 h-1/4 opacity-40 stroke-[1.5]" />}
       </div>
     );
   }
@@ -30,10 +40,19 @@ export const SafeImage: React.FC<SafeImageProps> = ({
   return (
     <img
       src={src}
-      alt={alt}
-      className={className}
-      onError={() => setError(true)}
+      alt={alt || ''}
+      loading={loading}
+      decoding="async"
       referrerPolicy="no-referrer"
+      onLoad={(e) => {
+        setIsLoaded(true);
+        if (onLoad) onLoad(e);
+      }}
+      onError={(e) => {
+        setError(true);
+        if (onError) onError(e);
+      }}
+      className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 bg-slate-100'} ${className}`}
       {...props}
     />
   );
