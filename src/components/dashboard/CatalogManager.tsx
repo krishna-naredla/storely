@@ -1,6 +1,7 @@
 import { useLanguage } from '../../context/LanguageContext';
 import { SafeImage } from '../common/SafeImage';
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 import { PackageOpen } from "lucide-react";
 import { DashboardEmptyState } from '../common/DashboardEmptyState';
 import { DashboardSkeleton } from '../common/DashboardSkeleton';
@@ -57,6 +58,8 @@ import {
   MessageCircle,
   QrCode,
   Globe,
+  Percent,
+  ZoomIn,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -368,6 +371,14 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   // Bulk Selection State
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
+  const [priceAdjustmentType, setPriceAdjustmentType] = useState<'increase' | 'decrease'>('increase');
+  const [pricePercentageValue, setPricePercentageValue] = useState<string>('10');
+  const [priceRoundingOption, setPriceRoundingOption] = useState<'round' | 'exact'>('round');
+  const [bulkActionToast, setBulkActionToast] = useState<string | null>(null);
+
+  // High-Resolution Image Preview Modal State
+  const [previewingProductImage, setPreviewingProductImage] = useState<CatalogItem | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1347,6 +1358,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   const confirmBulkDelete = async () => {
     if (selectedItemIds.size === 0) return;
     setIsBulkProcessing(true);
+    const count = selectedItemIds.size;
     try {
       for (const id of selectedItemIds) {
         const itm = items.find(i => i.id === id);
@@ -1363,20 +1375,62 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       setItems(prev => prev.filter(i => !selectedItemIds.has(i.id)));
       setSelectedItemIds(new Set());
       setIsBulkDeleteOpen(false);
+      setBulkActionToast(`Successfully deleted ${count} items.`);
+      setTimeout(() => setBulkActionToast(null), 3000);
     } finally {
       setIsBulkProcessing(false);
     }
   };
 
-  const handleBulkToggleVisibility = async (isActive: boolean) => {
+  const handleBulkToggleVisibility = async (forceState?: boolean) => {
     if (selectedItemIds.size === 0) return;
     setIsBulkProcessing(true);
+    const count = selectedItemIds.size;
     try {
+      const updatedMap = new Map<string, boolean>();
       for (const id of selectedItemIds) {
-        await updateCatalogItem(business.id, id, { isActive });
+        const itm = items.find(i => i.id === id);
+        if (itm) {
+          const nextActive = forceState !== undefined ? forceState : !itm.isActive;
+          updatedMap.set(id, nextActive);
+          await updateCatalogItem(business.id, id, { isActive: nextActive });
+        }
       }
-      setItems(prev => prev.map(i => (selectedItemIds.has(i.id) ? { ...i, isActive } : i)));
+      setItems(prev => prev.map(i => (updatedMap.has(i.id) ? { ...i, isActive: updatedMap.get(i.id)! } : i)));
       setSelectedItemIds(new Set());
+      setBulkActionToast(`Updated visibility for ${count} items.`);
+      setTimeout(() => setBulkActionToast(null), 3000);
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleApplyBulkPricePercentage = async () => {
+    const pct = parseFloat(pricePercentageValue);
+    if (isNaN(pct) || pct <= 0 || selectedItemIds.size === 0) return;
+    setIsBulkProcessing(true);
+    const count = selectedItemIds.size;
+    try {
+      const multiplier = priceAdjustmentType === 'increase' ? (1 + pct / 100) : (1 - pct / 100);
+      const updatedMap = new Map<string, number>();
+
+      for (const id of selectedItemIds) {
+        const itm = items.find(i => i.id === id);
+        if (itm) {
+          let calculated = itm.price * multiplier;
+          const finalPrice = priceRoundingOption === 'round'
+            ? Math.max(0, Math.round(calculated))
+            : Math.max(0, Math.round(calculated * 100) / 100);
+          updatedMap.set(id, finalPrice);
+          await updateCatalogItem(business.id, id, { price: finalPrice });
+        }
+      }
+
+      setItems(prev => prev.map(i => (updatedMap.has(i.id) ? { ...i, price: updatedMap.get(i.id)! } : i)));
+      setSelectedItemIds(new Set());
+      setIsBulkPriceModalOpen(false);
+      setBulkActionToast(`Applied ${priceAdjustmentType === 'increase' ? '+' : '-'}${pct}% price adjustment to ${count} products.`);
+      setTimeout(() => setBulkActionToast(null), 3500);
     } finally {
       setIsBulkProcessing(false);
     }
@@ -1599,26 +1653,69 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       </div>
 
       {selectedItemIds.size > 0 && (
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between">
-          <span className="text-sm font-semibold text-indigo-800">{selectedItemIds.size} selected</span>
-          <div className="flex gap-2">
+        <div className="sticky top-20 z-20 bg-indigo-50/95 backdrop-blur-xs border border-indigo-200 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            <span className="text-xs sm:text-sm font-bold text-indigo-950">
+              {selectedItemIds.size} of {filteredItems.length} products selected
+            </span>
             <button
-              onClick={() => handleBulkToggleVisibility(true)}
-              className="px-3 py-1.5 bg-white border border-indigo-200 text-xs font-bold rounded-lg hover:bg-slate-50 transition"
+              type="button"
+              onClick={() => setSelectedItemIds(new Set())}
+              className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium cursor-pointer ml-1"
             >
-              Show
+              Clear
             </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Toggle Visibility Group */}
+            <div className="inline-flex rounded-xl shadow-2xs border border-indigo-200 bg-white overflow-hidden">
+              <button
+                type="button"
+                onClick={() => handleBulkToggleVisibility(true)}
+                disabled={isBulkProcessing}
+                className="px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Show all selected items"
+              >
+                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Show</span>
+              </button>
+              <div className="w-[1px] bg-indigo-100" />
+              <button
+                type="button"
+                onClick={() => handleBulkToggleVisibility(false)}
+                disabled={isBulkProcessing}
+                className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Hide all selected items"
+              >
+                <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                <span>Hide</span>
+              </button>
+            </div>
+
+            {/* Update Price Percentage */}
             <button
-              onClick={() => handleBulkToggleVisibility(false)}
-              className="px-3 py-1.5 bg-white border border-indigo-200 text-xs font-bold rounded-lg hover:bg-slate-50 transition"
+              type="button"
+              onClick={() => setIsBulkPriceModalOpen(true)}
+              disabled={isBulkProcessing}
+              className="px-3 py-1.5 bg-white hover:bg-indigo-100/70 active:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+              title="Adjust prices of selected products by a percentage"
             >
-              Hide
+              <Percent className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Update Price %</span>
             </button>
+
+            {/* Bulk Delete */}
             <button
+              type="button"
               onClick={handleBulkDelete}
-              className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-red-100 transition"
+              disabled={isBulkProcessing}
+              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 border border-red-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+              title="Permanently delete all selected products"
             >
-              <Trash2 className="w-3.5 h-3.5" /> Delete
+              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+              <span>Bulk Delete ({selectedItemIds.size})</span>
             </button>
           </div>
         </div>
@@ -1630,14 +1727,21 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
         </div>
       ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.map(item => {
+          {filteredItems.map((item, index) => {
             const isItemFree = item.isFree || item.price === 0;
             const categoryObj = categories.find(c => c.id === item.categoryId);
             return (
-              <div
+              <motion.div
                 key={item.id}
-                className={`bg-white rounded-3xl border border-slate-200 p-4 flex flex-col justify-between gap-3 relative transition hover:shadow-xs ${
-                  !item.isActive ? 'opacity-60 bg-slate-50' : 'border-slate-200'
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.4) }}
+                className={`bg-white rounded-3xl border p-4 flex flex-col justify-between gap-3 relative transition hover:shadow-xs ${
+                  !item.isActive
+                    ? 'opacity-65 bg-slate-50 border-slate-200'
+                    : selectedItemIds.has(item.id)
+                    ? 'border-indigo-400 bg-indigo-50/20 shadow-xs'
+                    : 'border-slate-200'
                 }`}
               >
                 <div>
@@ -1646,19 +1750,29 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                       type="checkbox"
                       checked={selectedItemIds.has(item.id)}
                       onChange={() => handleToggleSelectItem(item.id)}
-                      className="w-4 h-4 text-indigo-600 rounded"
+                      className="w-4 h-4 text-indigo-600 rounded cursor-pointer"
                     />
                   </div>
                   <div className="flex items-start justify-between pl-6">
                     <div className="flex gap-3 min-w-0">
-                      <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                      {/* High-Resolution Thumbnail with Hover Preview Trigger */}
+                      <div
+                        onClick={() => item.images?.[0] && setPreviewingProductImage(item)}
+                        className="group/img relative w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer transition hover:border-indigo-400 hover:shadow-xs"
+                        title={item.images?.[0] ? "Click to preview high-resolution image" : "No product image"}
+                      >
                         {item.images?.[0] ? (
-                          <SafeImage
-                            src={item.images[0]}
-                            alt={item.name}
-                            fallbackType="product"
-                            className="w-full h-full object-cover"
-                          />
+                          <>
+                            <SafeImage
+                              src={item.images[0]}
+                              alt={item.name}
+                              fallbackType="product"
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-slate-900/35 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn className="w-4 h-4 drop-shadow" />
+                            </div>
+                          </>
                         ) : (
                           <Package className="w-6 h-6 text-slate-300" />
                         )}
@@ -1757,7 +1871,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -2944,6 +3058,285 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
         isOpen={!!sharingProduct}
         onClose={() => setSharingProduct(null)}
       />
+
+      {/* Bulk Price Percentage Update Modal */}
+      {isBulkPriceModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <Percent className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Bulk Price Adjustment</h3>
+                  <p className="text-xs text-slate-500">
+                    Update prices for <span className="font-semibold text-indigo-600">{selectedItemIds.size}</span> selected products
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isBulkProcessing && setIsBulkPriceModalOpen(false)}
+                disabled={isBulkProcessing}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
+              {/* Type: Markup vs Discount */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Adjustment Direction</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPriceAdjustmentType('increase')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      priceAdjustmentType === 'increase'
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <ArrowUp className="w-4 h-4 text-emerald-600" />
+                    <span>Price Markup (+ Increase)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriceAdjustmentType('decrease')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      priceAdjustmentType === 'decrease'
+                        ? 'bg-amber-50 border-amber-300 text-amber-800 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <ArrowDown className="w-4 h-4 text-amber-600" />
+                    <span>Discount (- Decrease)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Percentage Input & Quick Preset Buttons */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                  Percentage Value (%)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="500"
+                      step="0.5"
+                      value={pricePercentageValue}
+                      onChange={e => setPricePercentageValue(e.target.value)}
+                      placeholder="e.g. 10"
+                      className="w-full pl-3 pr-8 py-2.5 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {['5', '10', '15', '20', '25'].map(val => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setPricePercentageValue(val)}
+                        className={`px-2.5 py-2 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                          pricePercentageValue === val
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {val}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Rounding Option */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Price Formatting</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="priceRounding"
+                      value="round"
+                      checked={priceRoundingOption === 'round'}
+                      onChange={() => setPriceRoundingOption('round')}
+                      className="w-4 h-4 text-indigo-600"
+                    />
+                    <span className="font-semibold">Round to whole integer (e.g. ₹499)</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="priceRounding"
+                      value="exact"
+                      checked={priceRoundingOption === 'exact'}
+                      onChange={() => setPriceRoundingOption('exact')}
+                      className="w-4 h-4 text-indigo-600"
+                    />
+                    <span className="font-semibold">Exact 2 decimals</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Live Preview on Selected Items */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span>Sample Price Preview</span>
+                  <span>{business.currencySymbol || '₹'}</span>
+                </div>
+                <div className="divide-y divide-slate-200/70 text-xs">
+                  {items
+                    .filter(i => selectedItemIds.has(i.id))
+                    .slice(0, 4)
+                    .map(item => {
+                      const pct = parseFloat(pricePercentageValue) || 0;
+                      const mul = priceAdjustmentType === 'increase' ? (1 + pct / 100) : (1 - pct / 100);
+                      const calc = item.price * mul;
+                      const next = priceRoundingOption === 'round'
+                        ? Math.max(0, Math.round(calc))
+                        : Math.max(0, Math.round(calc * 100) / 100);
+                      return (
+                        <div key={item.id} className="py-2 flex items-center justify-between">
+                          <span className="font-medium text-slate-800 truncate max-w-[200px]">{item.name}</span>
+                          <div className="flex items-center gap-2 font-mono">
+                            <span className="text-slate-400 line-through text-[11px]">
+                              {business.currencySymbol || '₹'}{item.price}
+                            </span>
+                            <span className="text-slate-400">→</span>
+                            <span className="font-bold text-indigo-700">
+                              {business.currencySymbol || '₹'}{next}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {selectedItemIds.size > 4 && (
+                    <div className="pt-2 text-[11px] text-slate-500 text-center font-medium">
+                      + {selectedItemIds.size - 4} more selected products will be updated
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-slate-100 flex items-center justify-end gap-2.5 bg-slate-50/50">
+              <button
+                type="button"
+                onClick={() => setIsBulkPriceModalOpen(false)}
+                disabled={isBulkProcessing}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyBulkPricePercentage}
+                disabled={isBulkProcessing || !parseFloat(pricePercentageValue)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm transition cursor-pointer disabled:opacity-50"
+              >
+                {isBulkProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Applying...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Apply to {selectedItemIds.size} Products</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* High-Resolution Image Preview Modal */}
+      {previewingProductImage && previewingProductImage.images?.[0] && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPreviewingProductImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="relative max-w-2xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+              <div className="min-w-0 pr-4">
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate">
+                  {previewingProductImage.name}
+                </h3>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs font-extrabold text-indigo-700 font-mono">
+                    {previewingProductImage.isFree || previewingProductImage.price === 0
+                      ? 'FREE'
+                      : `${business.currencySymbol || '₹'}${previewingProductImage.price}`}
+                  </span>
+                  {(() => {
+                    const cat = categories.find(c => c.id === previewingProductImage.categoryId);
+                    return cat ? (
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {cat.name}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a
+                  href={previewingProductImage.images[0]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                  title="Open original high-res image in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewingProductImage(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                  title="Close preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* High-Resolution Image Container */}
+            <div className="p-4 bg-slate-900/5 flex items-center justify-center max-h-[70vh] overflow-hidden">
+              <img
+                src={previewingProductImage.images[0]}
+                alt={previewingProductImage.name}
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-2xl shadow-xl transition"
+                loading="eager"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Action Toast Notification */}
+      {bulkActionToast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-slate-700/80 animate-in slide-in-from-bottom-3 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{bulkActionToast}</span>
+        </div>
+      )}
     </div>
   );
 };

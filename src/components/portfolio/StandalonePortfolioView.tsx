@@ -75,6 +75,7 @@ import {
   getBorderRadiusClass,
   getDefaultPortfolioBlocks,
 } from '../../utils/portfolioTheme';
+import { normalizeSocialLinksToObject } from '../../utils/profileHelper';
 import { PortfolioBlock, PortfolioTemplateId } from '../../types';
 
 interface StandalonePortfolioViewProps {
@@ -351,7 +352,11 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   const secondaryBtnLabel = settings.secondaryCtaText || preset.secondaryCtaText || 'Hire Me';
   const tertiaryBtnLabel = settings.tertiaryCtaText || preset.tertiaryCtaText || 'View Packages';
 
-  const social = settings.socialLinks || business.socials;
+  const baseBusinessSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
+  const social = {
+    ...baseBusinessSocials,
+    ...(settings.socialLinks || {}),
+  };
   const ProfessionIcon = PROFESSION_ICONS[professionKey] || Sparkles;
 
   // Fallback authentic reviews if none added in Firestore yet
@@ -455,18 +460,20 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
       {/* MODERN STICKY WEBSITE HEADER NAVIGATION */}
       {/* ===================================================== */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-white/90 dark:bg-slate-950/90 border-b border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
           {/* Brand Logo & Name */}
           <div
             onClick={() => scrollToSection('hero')}
-            className="flex items-center gap-2.5 cursor-pointer group shrink-0"
+            role="button"
+            tabIndex={0}
+            className="flex items-center gap-2.5 cursor-pointer group shrink-0 min-h-[44px] touch-manipulation"
           >
-            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0">
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0">
               {business.logo || business.profileImage ? (
                 <img
                   src={business.logo || business.profileImage}
                   alt={business.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover high-dpi-crisp"
                 />
               ) : (
                 <div
@@ -479,12 +486,12 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-black tracking-tight font-heading group-hover:text-indigo-600 transition-colors">
+                <span className="text-xs xs:text-sm font-black tracking-tight font-heading group-hover:text-indigo-600 transition-colors truncate max-w-[120px] xs:max-w-[160px] sm:max-w-none">
                   {business.name}
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Available for Work" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Available for Work" />
               </div>
-              <span className="text-[10px] font-semibold opacity-60 truncate max-w-[130px] sm:max-w-[200px]">
+              <span className="text-[10px] sm:text-[11px] font-semibold opacity-60 truncate max-w-[110px] xs:max-w-[150px] sm:max-w-[220px]">
                 {professionTitle}
               </span>
             </div>
@@ -510,7 +517,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   key={blk.id}
                   type="button"
                   onClick={() => scrollToSection(targetId)}
-                  className={`px-3 py-1.5 rounded-lg transition cursor-pointer hover:opacity-100 ${
+                  className={`px-3.5 py-2.5 min-h-[44px] rounded-lg transition cursor-pointer hover:opacity-100 touch-manipulation ${
                     isBlockActive
                       ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 font-black'
                       : 'hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -522,23 +529,24 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
             })}
           </nav>
 
-          {/* Quick Header Actions */}
+          {/* Quick Header Actions (WCAG compliant touch targets >= 44x44px) */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsShareModalOpen(true)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+              className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer touch-manipulation"
               title="Share Portfolio"
+              aria-label="Share Portfolio"
             >
-              <Share2 className="w-3.5 h-3.5" />
+              <Share2 className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={handlePrimaryCta}
-              className="px-3.5 py-1.5 rounded-xl text-white font-black text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer hover:opacity-90"
+              className="px-3.5 py-2.5 min-h-[44px] min-w-[44px] rounded-xl text-white font-black text-xs sm:text-sm shadow-xs transition flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 touch-manipulation"
               style={{ backgroundColor: '#25D366' }}
             >
-              <MessageCircle className="w-3.5 h-3.5 fill-current" />
+              <MessageCircle className="w-4 h-4 fill-current" />
               <span>WhatsApp</span>
             </button>
           </div>
@@ -548,7 +556,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
       {/* ===================================================== */}
       {/* MAIN CONTAINER (MODULAR ALL-IN-ONE WEBSITE FLOW) */}
       {/* ===================================================== */}
-      <main className={`max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 space-y-12 ${
+      <main className={`max-w-6xl mx-auto px-3.5 xs:px-4 sm:px-6 md:px-8 lg:px-10 pt-4 sm:pt-6 md:pt-8 pb-16 sm:pb-20 space-y-8 sm:space-y-12 md:space-y-16 bio-viewport-container ${
         templateId === 'minimalist_studio' ? 'max-w-4xl space-y-16' : ''
       }`}>
         {activeBlocks.map((block) => {
@@ -560,23 +568,23 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
               <section
                 key={block.id}
                 id="hero"
-                className={`p-6 sm:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()} ${
+                className={`p-4 xs:p-6 sm:p-8 md:p-10 border shadow-xs space-y-5 sm:space-y-6 portfolio-hero-container ${getCardRadiusClass()} ${getCardClass()} ${
                   templateId === 'bento_grid' ? 'rounded-3xl border-2' : ''
                 } ${templateId === 'dark_luxury' ? 'bg-slate-900/90 border-slate-800 shadow-2xl' : ''}`}
               >
                 {/* Top Profile Info Row */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 xs:gap-6 sm:gap-8 text-center sm:text-left">
                   {/* Circular Profile Avatar */}
-                  <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0">
+                  <div className="relative w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0">
                     {business.logo || business.profileImage ? (
                       <img
                         src={business.logo || business.profileImage}
                         alt={business.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover high-dpi-crisp"
                       />
                     ) : (
                       <div
-                        className="w-full h-full text-white flex items-center justify-center font-black text-3xl font-heading shadow-inner"
+                        className="w-full h-full text-white flex items-center justify-center font-black text-2xl xs:text-3xl font-heading shadow-inner"
                         style={{ backgroundColor: themeConfig.primaryColor }}
                       >
                         {business.name.charAt(0)}
@@ -584,15 +592,15 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     )}
                     {/* Online indicator */}
                     <div
-                      className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"
+                      className="absolute bottom-1 right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"
                       title="Available for Projects"
                     />
                   </div>
 
                   {/* Creator Text Info */}
-                  <div className="space-y-2.5 flex-1">
+                  <div className="space-y-2 xs:space-y-2.5 flex-1">
                     <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                      <h1 className="text-2xl sm:text-4xl font-black font-heading tracking-tight">
+                      <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-black font-heading tracking-tight leading-tight bio-title-fluid">
                         {business.name}
                       </h1>
                       {/* Verified Blue Tick */}
@@ -605,8 +613,8 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     </div>
 
                     {/* Profession & Location */}
-                    <div className="flex items-center justify-center sm:justify-start gap-2.5 text-xs font-bold opacity-90 flex-wrap">
-                      <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold opacity-90 flex-wrap">
+                      <span className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
                         {professionTitle}
                       </span>
                       {locationText && (
@@ -637,13 +645,13 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   </div>
                 </div>
 
-                {/* 3 High Impact Action Buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                {/* 3 High Impact Action Buttons (WCAG compliant touch targets >= 48px height) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-2">
                   {/* Button 1 (WhatsApp Direct) */}
                   <button
                     type="button"
                     onClick={handlePrimaryCta}
-                    className="py-3 px-4 rounded-xl text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                    className="py-3.5 px-4 min-h-[48px] rounded-xl text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
                     style={{
                       backgroundColor:
                         professionKey === 'youtuber' ? '#dc2626' : '#25D366',
@@ -661,7 +669,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   <button
                     type="button"
                     onClick={handleSecondaryCta}
-                    className="py-3 px-4 rounded-xl text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                    className="py-3.5 px-4 min-h-[48px] rounded-xl text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
                     style={{ backgroundColor: themeConfig.primaryColor }}
                   >
                     <Briefcase className="w-4 h-4" />
@@ -672,7 +680,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   <button
                     type="button"
                     onClick={handleTertiaryCta}
-                    className="py-3 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                    className="py-3.5 px-4 min-h-[48px] rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
                   >
                     <Layers className="w-4 h-4" />
                     <span>{tertiaryBtnLabel}</span>
@@ -707,7 +715,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     </p>
                   </div>
 
-                  {/* Category Filter Pills */}
+                  {/* Category Filter Pills (WCAG compliant touch targets >= 44x44px) */}
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 shrink-0">
                     <button
                       type="button"
@@ -717,7 +725,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                           ? { backgroundColor: themeConfig.primaryColor, color: '#ffffff' }
                           : undefined
                       }
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${
+                      className={`px-4 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold inline-flex items-center justify-center transition shrink-0 cursor-pointer touch-manipulation ${
                         selectedCategory === 'all'
                           ? 'shadow-md text-white'
                           : 'bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -741,7 +749,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               ? { backgroundColor: themeConfig.primaryColor, color: '#ffffff' }
                               : undefined
                           }
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${
+                          className={`px-4 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold inline-flex items-center justify-center transition shrink-0 cursor-pointer touch-manipulation ${
                             isCatActive
                               ? 'shadow-md text-white'
                               : 'bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -754,17 +762,18 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   </div>
                 </div>
 
-                {/* Grid Showcase of Projects */}
+                {/* Grid Showcase of Projects: Refactored with CSS Grid auto-fit and minmax */}
                 <div
-                  className={`grid gap-6 ${
-                    templateId === 'creative_masonry'
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                      : layoutMode === 'feed'
+                  className={`grid gap-4 sm:gap-6 ${
+                    layoutMode === 'feed'
                       ? 'grid-cols-1 max-w-2xl mx-auto'
-                      : filteredItems.length === 2
-                      ? 'grid-cols-1 md:grid-cols-2'
-                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                  }`}
+                      : 'grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]'
+                  } portfolio-grid-adaptive`}
+                  style={layoutMode !== 'feed' ? {
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+                    gap: 'clamp(1rem, 2vw, 1.5rem)',
+                  } : undefined}
                 >
                   {filteredItems.map((item) => (
                     <div
@@ -876,7 +885,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
           if (block.type === 'about') {
             return (
               <section key={block.id} id="about" className="space-y-6 scroll-mt-20">
-                <div className={`p-6 sm:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}>
+                <div className={`p-4 xs:p-6 sm:p-8 md:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}>
                   <div className="space-y-1">
                     <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
                       {block.title || 'About the Creator'}
@@ -890,23 +899,30 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     {aboutStory}
                   </p>
 
-                  {/* Key Milestones Performance Strip */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80">
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                  {/* Key Milestones Performance Strip (CSS Grid auto-fit / minmax) */}
+                  <div
+                    className="grid gap-2.5 xs:gap-3 sm:gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 [grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))]"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
+                      gap: 'clamp(0.625rem, 1.5vw, 1rem)',
+                    }}
+                  >
+                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
                       <div className="text-xl sm:text-2xl font-black font-heading">{experienceYears}</div>
                       <div className="text-xs font-bold opacity-70">Experience</div>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
                       <div className="text-xl sm:text-2xl font-black font-heading">
                         {effectiveItems.length > 0 ? `${effectiveItems.length}+` : '50+'}
                       </div>
                       <div className="text-xs font-bold opacity-70">Projects Shipped</div>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
                       <div className="text-xl sm:text-2xl font-black font-heading">99%</div>
                       <div className="text-xs font-bold opacity-70">Client Satisfaction</div>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
                       <div className="text-xl sm:text-2xl font-black font-heading">5.0 ★</div>
                       <div className="text-xs font-bold opacity-70">Average Rating</div>
                     </div>
@@ -922,7 +938,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
           if (block.type === 'skills') {
             return (
               <section key={block.id} id="skills" className="space-y-6 scroll-mt-20">
-                <div className={`p-6 sm:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}>
+                <div className={`p-4 xs:p-6 sm:p-8 md:p-10 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}>
                   <div className="space-y-1">
                     <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
                       {block.title || 'Technical & Creative Skills'}
@@ -994,11 +1010,19 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Refactored Services Grid with auto-fit and minmax */}
+                <div
+                  className="grid gap-4 sm:gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))] portfolio-grid-adaptive"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+                    gap: 'clamp(1rem, 2vw, 1.5rem)',
+                  }}
+                >
                   {servicesList.map((pkg) => (
                     <div
                       key={pkg.id}
-                      className={`p-6 sm:p-7 border shadow-xs flex flex-col justify-between space-y-6 relative ${getCardRadiusClass()} ${getCardClass()} ${
+                      className={`p-5 xs:p-6 sm:p-7 border shadow-xs flex flex-col justify-between space-y-6 relative ${getCardRadiusClass()} ${getCardClass()} ${
                         pkg.popular ? 'ring-2 ring-indigo-500 shadow-lg' : ''
                       }`}
                     >
@@ -1050,7 +1074,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                             `Hi ${business.name}, I am interested in booking your "${pkg.title}" package (${pkg.price}). Can we discuss scope and schedule?`
                           )
                         }
-                        className="w-full py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01]"
+                        className="w-full py-3.5 px-4 min-h-[48px] rounded-xl text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
                         style={{ backgroundColor: themeConfig.primaryColor }}
                       >
                         <MessageCircle className="w-4 h-4 fill-current" />
@@ -1078,11 +1102,19 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Refactored Testimonials Grid with auto-fit and minmax */}
+                <div
+                  className="grid gap-4 sm:gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))] portfolio-grid-adaptive"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+                    gap: 'clamp(1rem, 2vw, 1.5rem)',
+                  }}
+                >
                   {effectiveTestimonials.map((t) => (
                     <div
                       key={t.id}
-                      className={`p-6 sm:p-7 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
+                      className={`p-5 xs:p-6 sm:p-7 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
                     >
                       <div className="flex items-center gap-1 text-amber-400">
                         {[1, 2, 3, 4, 5].map((s) => (
@@ -1130,7 +1162,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
             return (
               <section key={block.id} id="mediakit" className="space-y-6 scroll-mt-20">
-                <div className={`p-6 sm:p-10 border shadow-xs space-y-8 ${getCardRadiusClass()} ${getCardClass()}`}>
+                <div className={`p-4 xs:p-6 sm:p-8 md:p-10 border shadow-xs space-y-8 ${getCardRadiusClass()} ${getCardClass()}`}>
                   <div className="space-y-1 text-center sm:text-left">
                     <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
                       {block.title || 'Audience & Partnerships'}
@@ -1143,13 +1175,20 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     </p>
                   </div>
 
-                  {/* Platform Stats Grid */}
+                  {/* Platform Stats Grid with auto-fit and minmax */}
                   {hasStats ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div
+                      className="grid gap-2.5 xs:gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))]"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
+                        gap: 'clamp(0.625rem, 1.5vw, 1rem)',
+                      }}
+                    >
                       {platformStats.map((stat) => (
                         <div
                           key={stat.id}
-                          className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1"
+                          className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1"
                         >
                           <div className="text-lg sm:text-2xl font-black font-heading text-indigo-600 dark:text-indigo-400">
                             {stat.count || stat.label || '0'}
@@ -1164,20 +1203,27 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+                    <div
+                      className="grid gap-2.5 xs:gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))]"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
+                        gap: 'clamp(0.625rem, 1.5vw, 1rem)',
+                      }}
+                    >
+                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
                         <div className="text-lg sm:text-2xl font-black font-heading text-pink-600">50K+</div>
                         <div className="text-xs font-bold opacity-80">Instagram</div>
                       </div>
-                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
                         <div className="text-lg sm:text-2xl font-black font-heading text-red-600">100K+</div>
                         <div className="text-xs font-bold opacity-80">YouTube</div>
                       </div>
-                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
                         <div className="text-lg sm:text-2xl font-black font-heading text-blue-600">25K+</div>
                         <div className="text-xs font-bold opacity-80">LinkedIn</div>
                       </div>
-                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
                         <div className="text-lg sm:text-2xl font-black font-heading text-emerald-600">4.8%</div>
                         <div className="text-xs font-bold opacity-80">Avg. Engagement</div>
                       </div>
@@ -1222,7 +1268,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Direct Info Card */}
                   <div
-                    className={`p-6 sm:p-8 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}
+                    className={`p-4 xs:p-6 sm:p-8 border shadow-xs space-y-6 ${getCardRadiusClass()} ${getCardClass()}`}
                   >
                     <div className="space-y-1">
                       <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
@@ -1269,11 +1315,11 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                       </div>
                     </div>
 
-                    {/* Social Profiles Grid */}
+                    {/* Social Profiles Grid with WCAG 44px touch targets */}
                     {social && Object.values(social).some(Boolean) && (
                       <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
                         <div className="text-xs font-bold opacity-60">Connect on Social</div>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2.5 flex-wrap">
                           {social.instagram && (
                             <a
                               href={
@@ -1283,7 +1329,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2.5 rounded-xl bg-pink-50 dark:bg-pink-950/30 text-pink-600 border border-pink-200 dark:border-pink-900 transition hover:scale-105"
+                              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-pink-50 dark:bg-pink-950/30 text-pink-600 border border-pink-200 dark:border-pink-900 transition hover:scale-105 touch-manipulation active:scale-95"
                               title="Instagram"
                             >
                               <Instagram className="w-4 h-4" />
@@ -1298,7 +1344,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-900 transition hover:scale-105"
+                              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-900 transition hover:scale-105 touch-manipulation active:scale-95"
                               title="YouTube"
                             >
                               <Youtube className="w-4 h-4" />
@@ -1313,7 +1359,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-500 border border-sky-200 dark:border-sky-900 transition hover:scale-105"
+                              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-500 border border-sky-200 dark:border-sky-900 transition hover:scale-105 touch-manipulation active:scale-95"
                               title="Twitter / X"
                             >
                               <Twitter className="w-4 h-4" />
@@ -1328,7 +1374,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 border border-blue-200 dark:border-blue-900 transition hover:scale-105"
+                              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 border border-blue-200 dark:border-blue-900 transition hover:scale-105 touch-manipulation active:scale-95"
                               title="LinkedIn"
                             >
                               <Linkedin className="w-4 h-4" />
@@ -1343,7 +1389,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105"
+                              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105 touch-manipulation active:scale-95"
                               title="GitHub"
                             >
                               <Github className="w-4 h-4" />
@@ -1358,7 +1404,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105"
+                              className="w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition hover:scale-105 touch-manipulation active:scale-95"
                               title="Website"
                             >
                               <Globe className="w-4 h-4" />
@@ -1371,7 +1417,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
                   {/* Inquiry Form */}
                   <div
-                    className={`p-6 sm:p-8 border shadow-xs space-y-5 ${getCardRadiusClass()} ${getCardClass()}`}
+                    className={`p-4 xs:p-6 sm:p-8 border shadow-xs space-y-5 ${getCardRadiusClass()} ${getCardClass()}`}
                   >
                     <div className="space-y-1">
                       <span className="text-xs font-bold opacity-60 uppercase tracking-wider">
@@ -1391,7 +1437,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                         </p>
                       </div>
                     ) : (
-                      <form onSubmit={handleSendContactMessage} className="space-y-3.5 text-xs">
+                      <form onSubmit={handleSendContactMessage} className="space-y-3.5 text-xs sm:text-sm">
                         <div>
                           <label className="block font-bold opacity-80 mb-1">Your Name</label>
                           <input
@@ -1400,7 +1446,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                             value={contactName}
                             onChange={(e) => setContactName(e.target.value)}
                             placeholder="e.g. John Doe"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-3.5 py-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
 
@@ -1413,7 +1459,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                             value={contactPhone}
                             onChange={(e) => setContactPhone(e.target.value)}
                             placeholder="+91 98765 43210"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-3.5 py-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
 
@@ -1433,10 +1479,10 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
                         <button
                           type="submit"
-                          className="w-full py-3 px-4 rounded-xl text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2 hover:opacity-95"
+                          className="w-full py-3.5 px-4 min-h-[48px] rounded-xl text-white font-bold text-xs sm:text-sm shadow-md transition cursor-pointer flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] touch-manipulation"
                           style={{ backgroundColor: themeConfig.primaryColor }}
                         >
-                          <Send className="w-3.5 h-3.5" />
+                          <Send className="w-4 h-4" />
                           <span>Send Message on WhatsApp</span>
                         </button>
                       </form>
@@ -1464,7 +1510,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
             return (
               <section key={block.id} className="space-y-4">
-                <div className={`p-6 sm:p-10 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}>
+                <div className={`p-4 xs:p-6 sm:p-10 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}>
                   <div className="space-y-1">
                     {highlightBadge && (
                       <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 mb-1">
@@ -1499,11 +1545,11 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                         href={ctaUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-xs transition hover:opacity-90"
+                        className="inline-flex items-center gap-2 px-5 py-3 min-h-[48px] rounded-xl text-white font-bold text-xs sm:text-sm shadow-xs transition hover:opacity-90 active:scale-[0.99] touch-manipulation"
                         style={{ backgroundColor: themeConfig.primaryColor }}
                       >
                         <span>{ctaText}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        <ArrowUpRight className="w-4 h-4" />
                       </a>
                     </div>
                   )}
@@ -1532,7 +1578,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
             <button
               type="button"
               onClick={handlePrimaryCta}
-              className="px-6 py-3 rounded-xl text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer flex items-center gap-2 hover:scale-[1.01]"
+              className="px-6 py-3.5 min-h-[48px] rounded-xl text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer flex items-center gap-2 hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
               style={{ backgroundColor: '#25D366' }}
             >
               <MessageCircle className="w-4 h-4 fill-current" />
@@ -1542,9 +1588,9 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
             <button
               type="button"
               onClick={() => setIsShareModalOpen(true)}
-              className="px-5 py-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-5 py-3.5 min-h-[48px] rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.99] touch-manipulation"
             >
-              <Share2 className="w-3.5 h-3.5" />
+              <Share2 className="w-4 h-4" />
               <span>Share Portfolio</span>
             </button>
           </div>

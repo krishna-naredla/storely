@@ -71,9 +71,13 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Draft persistence state
+  // Debounced auto-save & draft persistence state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [showAutoSavedToast, setShowAutoSavedToast] = useState(false);
   const [isDraftRestored, setIsDraftRestored] = useState(false);
   const hasInitializedRef = useRef(false);
+  const lastSavedPayloadRef = useRef<string>('');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const DRAFT_KEY = `storelly_settings_draft_${business.id}`;
 
   // Load uncommitted draft on initial mount
@@ -112,51 +116,123 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
     } catch (e) {
       console.warn('Could not read settings draft from localStorage:', e);
     }
+
+    // Capture initial baseline payload
+    const initialPayload = {
+      name: business.name,
+      tagline: business.tagline || '',
+      type: business.type,
+      description: business.description || '',
+      logo: business.logo || '',
+      coverImage: business.coverImage || '',
+      phone: business.phone,
+      whatsapp: business.whatsapp,
+      email: business.email || '',
+      address: business.address || '',
+      city: business.city || '',
+      currencySymbol: business.currencySymbol || '₹',
+      deliveryFee: business.deliveryFee ?? 0,
+      minOrderValue: business.minOrderValue ?? 0,
+      taxRate: business.taxRate ?? 0,
+      enableCod: business.enableCod ?? true,
+      enableOnlinePayment: business.enableOnlinePayment ?? false,
+      upiId: business.upiId || '',
+      socialLinks: business.socialLinks || [],
+      seoMetaTitle: business.seoMetaTitle || '',
+      seoMetaDescription: business.seoMetaDescription || '',
+      status: business.status || 'active',
+    };
+    lastSavedPayloadRef.current = JSON.stringify(initialPayload);
     hasInitializedRef.current = true;
   }, [business.id]);
 
-  // Auto-save draft on form changes
+  // Debounced auto-save to Firestore after 2-second delay of inactivity
   useEffect(() => {
     if (!hasInitializedRef.current) return;
-    const timeoutId = setTimeout(() => {
-      try {
-        const draftPayload = {
-          name,
-          tagline,
-          type,
-          description,
-          logo,
-          coverImage,
-          phone,
-          whatsapp,
-          email,
-          address,
-          city,
-          currencySymbol,
-          deliveryFee,
-          minOrderValue,
-          taxRate,
-          enableCod,
-          enableOnlinePayment,
-          upiId,
-          socialLinks,
-          seoMetaTitle,
-          seoMetaDescription,
-          status,
-          updatedAt: Date.now(),
-        };
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draftPayload));
-      } catch (e) {
-        console.warn('Failed to save settings draft:', e);
-      }
-    }, 400);
+    if (!name.trim() || !phone.trim()) return;
 
-    return () => clearTimeout(timeoutId);
+    const payload: Partial<BusinessProfile> = {
+      name: name.trim(),
+      tagline: tagline.trim() || undefined,
+      type,
+      description: description.trim() || undefined,
+      logo: logo || undefined,
+      coverImage: coverImage || undefined,
+      banner: coverImage || undefined,
+      phone: phone.trim(),
+      whatsapp: whatsapp.trim() || phone.trim(),
+      email: email.trim() || undefined,
+      address: address.trim() || undefined,
+      city: city.trim() || undefined,
+      currencySymbol: currencySymbol.trim() || '₹',
+      deliveryFee: Number(deliveryFee) || 0,
+      minOrderValue: Number(minOrderValue) || 0,
+      taxRate: Number(taxRate) || 0,
+      enableCod,
+      enableOnlinePayment,
+      upiId: upiId.trim() || undefined,
+      socialLinks: socialLinks.filter(l => l.url.trim() !== ''),
+      seoMetaTitle: seoMetaTitle.trim() || undefined,
+      seoMetaDescription: seoMetaDescription.trim() || undefined,
+      seoMetaImage: seoMetaImage.trim() || undefined,
+      status,
+      maintenanceMode: status === 'maintenance',
+      maintenanceMessage: maintenanceMessage.trim() || undefined,
+      maintenanceImage: maintenanceImage.trim() || undefined,
+    };
+
+    const payloadKey = JSON.stringify(payload);
+    // Only proceed if payload has changed compared to last saved state
+    if (payloadKey === lastSavedPayloadRef.current) return;
+
+    // Save draft locally immediately as safety net
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...payload, updatedAt: Date.now() }));
+    } catch (e) {
+      console.warn('Failed to save settings draft:', e);
+    }
+
+    // Debounce Firestore persistence with 2-second inactivity delay
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        setAutoSaveStatus('saving');
+        await updateBusinessProfile(business.id, payload);
+        lastSavedPayloadRef.current = payloadKey;
+        onBusinessUpdated({
+          ...business,
+          ...payload,
+        });
+        setAutoSaveStatus('saved');
+        setShowAutoSavedToast(true);
+        setTimeout(() => setShowAutoSavedToast(false), 3000);
+        setTimeout(() => setAutoSaveStatus('idle'), 3500);
+
+        // Clear local draft once persisted
+        try {
+          localStorage.removeItem(DRAFT_KEY);
+          setIsDraftRestored(false);
+        } catch (e) {}
+      } catch (err) {
+        console.error('Debounced auto-save error in StoreSettings:', err);
+        setAutoSaveStatus('idle');
+      }
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
   }, [
     name, tagline, type, description, logo, coverImage, phone, whatsapp,
     email, address, city, currencySymbol, deliveryFee, minOrderValue,
     taxRate, enableCod, enableOnlinePayment, upiId, socialLinks,
-    seoMetaTitle, seoMetaDescription, status, DRAFT_KEY
+    seoMetaTitle, seoMetaDescription, seoMetaImage, status,
+    maintenanceMessage, maintenanceImage, business, onBusinessUpdated, DRAFT_KEY
   ]);
 
   const handleDiscardDraft = () => {
@@ -955,8 +1031,28 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </div>
         )}
 
-        {/* Save CTA */}
-        <div className="flex justify-end">
+        {/* Save CTA & Auto-Save Status */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+            {autoSaveStatus === 'saving' && (
+              <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                <span>Auto-saving changes to Firestore...</span>
+              </span>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Auto-saved</span>
+              </span>
+            )}
+            {autoSaveStatus === 'idle' && (
+              <span className="text-slate-400 hidden sm:inline-block">
+                Auto-saves automatically after 2s of inactivity
+              </span>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={isSaving}
@@ -967,6 +1063,14 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           </button>
         </div>
       </form>
+      )}
+
+      {/* Floating Auto-Saved Toast */}
+      {showAutoSavedToast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700/80 animate-in slide-in-from-bottom-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Saved</span>
+        </div>
       )}
     </div>
   );

@@ -25,7 +25,10 @@ import {
   Briefcase,
   FolderArchive,
   ShoppingBag,
-  Link2
+  Link2,
+  QrCode,
+  Ticket,
+  Star
 } from 'lucide-react';
 import { BusinessProfile, CatalogItem } from '../../types';
 import {
@@ -40,6 +43,8 @@ import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { VerifiedBadge } from './VerifiedBadge';
 import { isCreatorProfile } from '../../utils/profileHelper';
 import { SafeImage } from './SafeImage';
+import { ModuleQrModal } from './ModuleQrModal';
+import { VendorTrustShareCard } from './VendorTrustShareCard';
 
 interface DigitalCardPreviewProps {
   business: BusinessProfile;
@@ -52,12 +57,19 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
   const [copiedSocialText, setCopiedSocialText] = useState(false);
   const [copiedModuleKey, setCopiedModuleKey] = useState<string | null>(null);
   const [activeSocialTab, setActiveSocialTab] = useState<'whatsapp' | 'twitter' | 'facebook' | 'imessage'>('whatsapp');
+  const [selectedModalQr, setSelectedModalQr] = useState<{
+    title: string;
+    subtitle?: string;
+    badge?: string;
+    url: string;
+  } | null>(null);
   
   // Product Deep Link Generator state
   const [products, setProducts] = useState<CatalogItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [copiedProductUrl, setCopiedProductUrl] = useState(false);
   const [copiedProductPitch, setCopiedProductPitch] = useState(false);
+  const [cardViewStyle, setCardViewStyle] = useState<'trust' | 'standard'>('trust');
 
   const cardRef = useRef<HTMLDivElement>(null);
   const qrSvgRef = useRef<SVGSVGElement>(null);
@@ -154,6 +166,24 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
       color: 'bg-rose-600 text-white',
       url: getModuleDeepUrl(business, 'quotes'),
       desc: 'Direct quote and estimation request form for custom client orders.'
+    },
+    {
+      key: 'events',
+      name: 'Events, Workshops & Tickets',
+      badge: 'Tickets & Webinars',
+      icon: Ticket,
+      color: 'bg-pink-600 text-white',
+      url: getModuleDeepUrl(business, 'events'),
+      desc: 'Masterclasses, webinars, live bootcamps, and workshop ticketing.'
+    },
+    {
+      key: 'reviews',
+      name: 'Client Reviews & Ratings',
+      badge: 'Testimonials',
+      icon: Star,
+      color: 'bg-amber-600 text-white',
+      url: getModuleDeepUrl(business, 'reviews'),
+      desc: 'Verified client reviews, 5-star ratings, and public testimonials.'
     }
   ];
 
@@ -331,20 +361,43 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Digital Card Frame */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-indigo-600" />
-              <span>Digital Visiting Card</span>
-            </h3>
-            <span className="text-xs text-slate-500">Live Customer View</span>
+          {/* Card View Switcher */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setCardViewStyle('trust')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                cardViewStyle === 'trust'
+                  ? 'bg-white text-emerald-800 shadow-2xs border border-slate-200/50'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <span>WhatsApp Rich Trust Card</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCardViewStyle('standard')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                cardViewStyle === 'standard'
+                  ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/50'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Visiting Card</span>
+            </button>
           </div>
 
-          <div
-            ref={cardRef}
-            className={`relative max-w-md mx-auto bg-white/95 backdrop-blur-md rounded-3xl shadow-xl shadow-slate-900/10 border overflow-hidden ${
-              isCreator ? 'border-indigo-500/30' : 'border-emerald-500/30'
-            }`}
-          >
+          {cardViewStyle === 'trust' ? (
+            <VendorTrustShareCard business={business} onOpenStore={onOpenStore} />
+          ) : (
+            <div
+              ref={cardRef}
+              className={`relative max-w-md mx-auto bg-white/95 backdrop-blur-md rounded-3xl shadow-xl shadow-slate-900/10 border overflow-hidden ${
+                isCreator ? 'border-indigo-500/30' : 'border-emerald-500/30'
+              }`}
+            >
             {/* Dynamic Background Image Layer */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img 
@@ -494,6 +547,7 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
               </button>
             </div>
           </div>
+          )}
         </div>
 
         {/* Right Column: Actions, QR Downloads, & Marketing Tools */}
@@ -920,23 +974,39 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedModalQr({
+                          title: mod.name,
+                          subtitle: mod.desc,
+                          badge: mod.badge,
+                          url: mod.url,
+                        })
+                      }
+                      className="py-1.5 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                      title="Generate and download QR code for this module"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span>QR Code</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleShareModuleWhatsApp(mod.name, mod.url)}
-                      className="flex-1 py-1.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer truncate"
                     >
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>WhatsApp Link</span>
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>WhatsApp</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => window.open(mod.url, '_blank')}
-                      className="py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                      className="py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shadow-xs"
                       title="Open link in new tab"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Test</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span>Live</span>
                     </button>
                   </div>
                 </div>
@@ -1138,6 +1208,21 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reusable QR Code Modal for all individual modules */}
+      {selectedModalQr && (
+        <ModuleQrModal
+          isOpen={!!selectedModalQr}
+          onClose={() => setSelectedModalQr(null)}
+          title={`${selectedModalQr.title} QR Code`}
+          subtitle={selectedModalQr.subtitle}
+          badge={selectedModalQr.badge}
+          url={selectedModalQr.url}
+          businessName={business.name}
+          logoUrl={business.logo || business.profileImage}
+          accentColor={isCreator ? 'indigo' : 'emerald'}
+        />
       )}
     </div>
   );

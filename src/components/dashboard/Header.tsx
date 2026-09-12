@@ -24,6 +24,7 @@ import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../context/LanguageContext';
 import { isCreatorProfile, getPrimaryPublicUrl, getProfileTypeLabel } from '../../utils/profileHelper';
 import { SafeImage } from '../common/SafeImage';
+import { useFirestoreSyncStatus } from '../../services/firestoreSyncService';
 
 interface HeaderProps {
   business: BusinessProfile | null;
@@ -47,7 +48,9 @@ export const Header: React.FC<HeaderProps> = ({
   userName,
 }) => {
   const { t } = useLanguage();
+  const syncStatus = useFirestoreSyncStatus();
   const [copied, setCopied] = useState(false);
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [copiedBizId, setCopiedBizId] = useState<string | null>(null);
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
@@ -64,20 +67,56 @@ export const Header: React.FC<HeaderProps> = ({
     return () => unsubscribe();
   }, [business]);
 
-  const handleCopy = (e?: React.MouseEvent) => {
+  const handleCopy = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!storeUrl) return;
-    navigator.clipboard.writeText(storeUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(storeUrl);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = storeUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      setShowCopiedToast(true);
+      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setShowCopiedToast(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy store URL:', err);
+    }
   };
 
-  const handleCopySpecificBiz = (e: React.MouseEvent, biz: BusinessProfile) => {
+  const handleCopySpecificBiz = async (e: React.MouseEvent, biz: BusinessProfile) => {
     e.stopPropagation();
     const url = isCreatorProfile(biz) ? getPrimaryPublicUrl(biz) : getStorefrontUrl(biz);
-    navigator.clipboard.writeText(url);
-    setCopiedBizId(biz.id);
-    setTimeout(() => setCopiedBizId(null), 2000);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedBizId(biz.id);
+      setShowCopiedToast(true);
+      setTimeout(() => setCopiedBizId(null), 2500);
+      setTimeout(() => setShowCopiedToast(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy specific biz URL:', err);
+    }
   };
 
   const handleOpenInNewTab = (e: React.MouseEvent) => {
@@ -88,13 +127,30 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between">
+      {/* Copied Toast Confirmation Banner */}
+      {showCopiedToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-slate-900/95 text-white text-xs font-bold rounded-2xl shadow-xl shadow-slate-900/25 border border-slate-700/80 backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-200"
+        >
+          <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <Check className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span>Copied!</span>
+            <span className="text-slate-300 font-normal hidden xs:inline">Public store link ready to share</span>
+          </div>
+        </div>
+      )}
+
       {/* Left side: Hamburger & Store Switcher */}
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onToggleSidebar}
           aria-label="Toggle navigation menu"
-          className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+          className="lg:hidden touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -104,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setBizDropdownOpen(!bizDropdownOpen)}
-            className={`min-h-[44px] flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-2xs cursor-pointer ${
+            className={`touch-target-accessible min-h-[44px] flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition shadow-2xs cursor-pointer ${
               isCreator
                 ? 'bg-indigo-50/80 hover:bg-indigo-100 border-indigo-200 text-indigo-950'
                 : 'bg-emerald-50/80 hover:bg-emerald-100 border-emerald-200 text-emerald-950'
@@ -161,7 +217,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onSelectBusiness(b);
                         setBizDropdownOpen(false);
                       }}
-                      className={`group w-full flex items-center justify-between p-2 min-h-[44px] text-xs rounded-xl transition cursor-pointer ${
+                      className={`group w-full flex items-center justify-between p-2 touch-target-accessible min-h-[44px] text-xs rounded-xl transition cursor-pointer ${
                         isSelected
                           ? bCreator
                             ? 'bg-indigo-50 text-indigo-900 font-bold border border-indigo-200/80'
@@ -199,9 +255,9 @@ export const Header: React.FC<HeaderProps> = ({
                           onClick={(e) => handleCopySpecificBiz(e, b)}
                           title="Copy Public URL"
                           aria-label="Copy Public URL"
-                          className="min-h-[36px] min-w-[36px] flex items-center justify-center p-1 rounded-md hover:bg-white text-slate-400 hover:text-slate-700 transition"
+                          className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 rounded-lg hover:bg-white text-slate-400 hover:text-slate-700 transition cursor-pointer"
                         >
-                          {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                         </button>
                         <button
                           type="button"
@@ -211,9 +267,9 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           title="Open Store in New Tab"
                           aria-label="Open Store in New Tab"
-                          className="min-h-[36px] min-w-[36px] flex items-center justify-center p-1 rounded-md hover:bg-white text-slate-400 hover:text-slate-700 transition"
+                          className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 rounded-lg hover:bg-white text-slate-400 hover:text-slate-700 transition cursor-pointer"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <ExternalLink className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -227,7 +283,7 @@ export const Header: React.FC<HeaderProps> = ({
                     setBizDropdownOpen(false);
                     onCreateNewBusiness();
                   }}
-                  className="w-full min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 rounded-xl transition cursor-pointer"
+                  className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 rounded-xl transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Create New Store or Creator Profile</span>
@@ -248,17 +304,19 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={(e) => handleCopy(e)}
               title="Copy store link"
-              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-md transition cursor-pointer ml-1"
+              aria-label="Copy store link"
+              className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
             >
-              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
             <button
               type="button"
               onClick={handleOpenInNewTab}
               title="Open storefront in new tab"
-              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-md transition cursor-pointer"
+              aria-label="Open storefront in new tab"
+              className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
@@ -266,19 +324,56 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right side quick actions */}
       <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Firestore Real-Time Sync Indicator */}
+        <div
+          role="status"
+          aria-live="polite"
+          title={
+            syncStatus === 'synced'
+              ? 'Firestore Online • Real-time cloud sync active'
+              : syncStatus === 'syncing'
+              ? 'Firestore Syncing • Saving changes to cloud...'
+              : 'Firestore Offline • Network disconnected'
+          }
+          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border text-xs font-semibold select-none bg-slate-50/90 border-slate-200/80 transition shadow-2xs"
+        >
+          <span className="relative flex h-2 w-2">
+            {syncStatus === 'syncing' && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            )}
+            {syncStatus === 'synced' && (
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
+            )}
+            <span
+              className={`relative inline-flex rounded-full h-2 w-2 ${
+                syncStatus === 'synced'
+                  ? 'bg-emerald-500 ring-2 ring-emerald-100'
+                  : syncStatus === 'syncing'
+                  ? 'bg-amber-500 ring-2 ring-amber-100'
+                  : 'bg-rose-500 ring-2 ring-rose-100'
+              }`}
+            />
+          </span>
+          <span className="text-[11px] hidden sm:inline-block">
+            {syncStatus === 'synced' && <span className="text-emerald-700 font-bold">Synced</span>}
+            {syncStatus === 'syncing' && <span className="text-amber-700 font-bold">Syncing</span>}
+            {syncStatus === 'offline' && <span className="text-rose-700 font-bold">Offline</span>}
+          </span>
+        </div>
+
         <LanguageSwitcher />
 
         {/* Notifications */}
         <button
           type="button"
           onClick={() => requestFcmNotificationPermission()}
-          className="relative min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-full transition cursor-pointer"
+          className="relative touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition cursor-pointer"
           title="Enable Real-Time Browser Push Notifications (FCM)"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
           {pendingOrdersCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[9px] font-bold text-white">
+            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[9px] font-bold text-white">
               {pendingOrdersCount > 9 ? '9+' : pendingOrdersCount}
             </span>
           )}
@@ -288,15 +383,30 @@ export const Header: React.FC<HeaderProps> = ({
 
         {business && (
           <>
-            {/* Quick Copy Button */}
+            {/* Copy Store URL Button (Accessible on desktop and mobile) */}
             <button
               type="button"
               onClick={(e) => handleCopy(e)}
-              className="hidden md:flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
-              title={isCreator ? "Copy live portfolio link" : "Copy public store link"}
+              aria-label="Copy Store URL"
+              title={isCreator ? "Copy live portfolio URL" : "Copy public store URL"}
+              className={`touch-target-accessible min-h-[44px] px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                copied
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400/20'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border-slate-200'
+              }`}
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-              <span>{copied ? t("header.copied") : t("header.copyLink")}</span>
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="text-emerald-700 font-bold">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="hidden sm:inline">Copy Store URL</span>
+                  <span className="sm:hidden">Copy URL</span>
+                </>
+              )}
             </button>
 
             {/* Share & QR Code Button */}
@@ -304,14 +414,15 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onOpenShareModal}
               title="View & Share Store QR Code & Digital Visiting Card"
-              className={`flex items-center gap-1.5 min-h-[44px] px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition shadow-2xs border cursor-pointer ${
+              aria-label="Share Store and QR Code"
+              className={`touch-target-accessible min-h-[44px] px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl transition shadow-2xs border flex items-center gap-1.5 cursor-pointer ${
                 isCreator
                   ? 'text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border-indigo-200'
                   : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
               }`}
             >
               <QrCode className={`w-3.5 h-3.5 ${isCreator ? 'text-indigo-600' : 'text-emerald-600'}`} />
-              <span className="hidden sm:inline">Share & QR</span>
+              <span className="hidden md:inline">Share & QR</span>
             </button>
 
             {/* Open / Visit Storefront Button with In-App & New-Tab */}
@@ -320,21 +431,21 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenStorefront}
                 title={isCreator ? "Preview creator portfolio" : "Preview live digital storefront in-app"}
-                className={`flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 text-xs font-bold text-white rounded-l-xl transition shadow-sm cursor-pointer ${
+                className={`touch-target-accessible min-h-[44px] px-3 py-1.5 text-xs font-bold text-white rounded-l-xl transition shadow-sm flex items-center gap-1.5 cursor-pointer ${
                   isCreator
                     ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
                     : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                 }`}
               >
                 <Store className="w-3.5 h-3.5" />
-                <span>{isCreator ? 'Live Profile' : t("header.visitStore")}</span>
+                <span className="hidden xs:inline">{isCreator ? 'Live Profile' : t("header.visitStore")}</span>
               </button>
               <button
                 type="button"
                 onClick={handleOpenInNewTab}
                 title="Open live storefront in new browser tab"
                 aria-label="Open live storefront in new tab"
-                className={`min-h-[44px] min-w-[40px] flex items-center justify-center px-2.5 py-1.5 text-white text-xs rounded-r-xl border-l border-white/20 transition cursor-pointer ${
+                className={`touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center px-2.5 py-1.5 text-white text-xs rounded-r-xl border-l border-white/20 transition cursor-pointer ${
                   isCreator
                     ? 'bg-indigo-700 hover:bg-indigo-800'
                     : 'bg-emerald-700 hover:bg-emerald-800'
@@ -348,7 +459,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* User Avatar */}
         <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-slate-200">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
+          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs">
             {userName ? userName.slice(0, 1).toUpperCase() : <User className="w-4 h-4 text-slate-500" />}
           </div>
         </div>

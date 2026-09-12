@@ -266,7 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClose();
               }}
               title={isCreator ? "Click to view live creator portfolio" : "Click to view live storefront"}
-              className="flex items-center gap-2.5 text-left group cursor-pointer"
+              className="touch-target-accessible min-h-[44px] flex items-center gap-2.5 text-left group cursor-pointer"
             >
               <div className={`w-9 h-9 rounded-xl bg-white border overflow-hidden flex items-center justify-center shadow-xs transition ${
                 isCreator ? 'border-slate-200 group-hover:border-indigo-500' : 'border-slate-200 group-hover:border-emerald-500'
@@ -305,7 +305,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={onClose}
               aria-label="Close menu"
-              className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+              className="lg:hidden touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -321,7 +321,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClose();
                 }}
                 title={isCreator ? "Click to view your live portfolio / public page" : "Click to open your live public storefront"}
-                className={`w-full text-left p-2.5 rounded-xl border flex items-center gap-2.5 transition group cursor-pointer shadow-2xs min-h-[48px] ${
+                className={`w-full text-left p-2.5 rounded-xl border flex items-center gap-2.5 transition group cursor-pointer shadow-2xs touch-target-accessible min-h-[48px] ${
                   isCreator
                     ? "bg-slate-50 hover:bg-indigo-50/80 active:bg-indigo-100/60 border-slate-200/80 hover:border-indigo-300"
                     : "bg-slate-50 hover:bg-emerald-50/80 active:bg-emerald-100/60 border-slate-200/80 hover:border-emerald-300"
@@ -381,16 +381,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   onClick={handleCopyLink}
                   title="Copy store link"
-                  className="flex-1 min-h-[38px] py-1 px-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="flex-1 touch-target-accessible min-h-[44px] py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
                 >
                   {copiedUrl ? (
                     <>
-                      <Check className="w-3 h-3 text-emerald-600" />
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
                       <span className="text-emerald-700 font-bold">Copied!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3 h-3 text-slate-500" />
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
                       <span>Copy Link</span>
                     </>
                   )}
@@ -403,9 +403,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClose();
                   }}
                   title="Open Store QR Code"
-                  className="min-h-[38px] py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="touch-target-accessible min-h-[44px] min-w-[44px] py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
                 >
-                  <QrCode className="w-3 h-3 text-slate-600" />
+                  <QrCode className="w-3.5 h-3.5 text-slate-600" />
                   <span>QR</span>
                 </button>
 
@@ -413,9 +413,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   onClick={handleOpenExternal}
                   title="Open live store in a new browser tab"
-                  className="min-h-[38px] py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="touch-target-accessible min-h-[44px] min-w-[44px] py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
                 >
-                  <ExternalLink className="w-3 h-3 text-slate-600" />
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
                   <span>New Tab</span>
                 </button>
               </div>
@@ -436,7 +436,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setActiveTab(item.id);
                       onClose();
                     }}
-                    className={`w-full min-h-[44px] flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
+                    className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
                       isActive
                         ? isCreator
                           ? "bg-indigo-50 text-indigo-700 font-bold shadow-xs"
@@ -477,7 +477,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onOpenMasterAdmin}
-              className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
               <span>Master Admin Portal</span>
@@ -487,7 +487,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onOpenStorefront}
-            className={`w-full min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer ${
+            className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer ${
               isCreator ? "hover:text-indigo-700" : "hover:text-emerald-700"
             }`}
           >
@@ -499,7 +499,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onLogout}
-            className="w-full min-h-[44px] flex items-center gap-2 py-2 px-3 text-slate-500 hover:text-red-600 hover:bg-red-50/50 rounded-xl text-xs font-medium transition cursor-pointer"
+            className="w-full touch-target-accessible min-h-[44px] flex items-center gap-2 py-2 px-3 text-slate-500 hover:text-red-600 hover:bg-red-50/50 rounded-xl text-xs font-medium transition cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>

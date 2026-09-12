@@ -17,6 +17,7 @@ import {
   runTransaction
 } from 'firebase/firestore';
 import { db, storage } from '../config/firebase';
+import { firestoreSyncManager } from './firestoreSyncService';
 import { deleteImageFromStorage } from './cloudinary';
 import {
   BusinessProfile,
@@ -126,6 +127,11 @@ export function getModuleDeepUrl(businessOrSlug: any, moduleType: 'catalog' | 'd
   const storeUrl = getDigitalStoreUrl(slug);
   const separator = storeUrl.includes('?') ? '&' : '?';
   return `${storeUrl}${separator}view=${encodeURIComponent(moduleType)}`;
+}
+
+export function getTrustCardUrl(businessOrSlug: any): string {
+  const slug = typeof businessOrSlug === 'object' && businessOrSlug !== null ? businessOrSlug.slug : (businessOrSlug || '');
+  return `${getBaseUrl()}/card/${encodeURIComponent(slug)}`;
 }
 
 // Local Storage Business Cache Helpers
@@ -448,6 +454,7 @@ export async function getUserBusinesses(ownerId: string): Promise<BusinessProfil
 }
 
 export async function updateBusiness(businessId: string, data: Partial<BusinessProfile>): Promise<void> {
+  const finishSync = firestoreSyncManager.startOperation();
   const updatedData = {
     ...data,
     updatedAt: Date.now(),
@@ -470,6 +477,8 @@ export async function updateBusiness(businessId: string, data: Partial<BusinessP
     await setDoc(docRef, sanitized, { merge: true });
   } catch (err) {
     console.warn('Firestore updateBusiness warning, preserved in local cache:', err);
+  } finally {
+    finishSync();
   }
 }
 
@@ -704,17 +713,21 @@ export async function createCatalogItem(
     updatedAt: now,
   };
 
+  const finishSync = firestoreSyncManager.startOperation();
   try {
     const sanitized = sanitizeForFirestore(item);
     const docRef = doc(db, 'businesses', businessId, 'catalog', itemId);
     await setDoc(docRef, sanitized);
   } catch (err) {
     console.warn('Firestore createCatalogItem warning:', err);
+  } finally {
+    finishSync();
   }
   return item;
 }
 
 export async function updateCatalogItem(businessId: string, itemId: string, data: Partial<CatalogItem>): Promise<void> {
+  const finishSync = firestoreSyncManager.startOperation();
   try {
     const sanitized = sanitizeForFirestore({
       ...data,
@@ -724,15 +737,20 @@ export async function updateCatalogItem(businessId: string, itemId: string, data
     await setDoc(docRef, sanitized, { merge: true });
   } catch (err) {
     console.warn('Firestore updateCatalogItem warning:', err);
+  } finally {
+    finishSync();
   }
 }
 
 export async function deleteCatalogItem(businessId: string, itemId: string): Promise<void> {
+  const finishSync = firestoreSyncManager.startOperation();
   try {
     const docRef = doc(db, 'businesses', businessId, 'catalog', itemId);
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('Firestore deleteCatalogItem warning:', err);
+  } finally {
+    finishSync();
   }
 }
 
@@ -1538,14 +1556,8 @@ export async function getPortfolioItems(
 ): Promise<PortfolioItem[]> {
   try {
     const portfolioRef = collection(db, 'businesses', businessId, 'portfolio');
-    let q = query(portfolioRef, orderBy('order', 'asc'));
-
-    if (activeOnly) {
-      q = query(portfolioRef, where('isActive', '==', true), orderBy('order', 'asc'));
-    }
-
-    const snap = await getDocs(q);
-    const items: PortfolioItem[] = [];
+    const snap = await getDocs(portfolioRef);
+    let items: PortfolioItem[] = [];
     snap.forEach((docSnap) => {
       items.push({
         id: docSnap.id,
@@ -1554,10 +1566,13 @@ export async function getPortfolioItems(
       } as PortfolioItem);
     });
 
-    // Client-side fallback sort if orderBy didn't apply
+    if (activeOnly) {
+      items = items.filter((i) => i.isActive !== false);
+    }
+
     return items.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  } catch (err) {
-    console.error('Error fetching portfolio items:', err.message || err, err);
+  } catch (err: any) {
+    console.error('Error fetching portfolio items:', err?.message || err);
     return [];
   }
 }
@@ -1658,14 +1673,8 @@ export async function getTestimonials(
 ): Promise<Testimonial[]> {
   try {
     const testimonialsRef = collection(db, 'businesses', businessId, 'testimonials');
-    let q = query(testimonialsRef, orderBy('order', 'asc'));
-
-    if (activeOnly) {
-      q = query(testimonialsRef, where('isActive', '==', true), orderBy('order', 'asc'));
-    }
-
-    const snap = await getDocs(q);
-    const testimonials: Testimonial[] = [];
+    const snap = await getDocs(testimonialsRef);
+    let testimonials: Testimonial[] = [];
     snap.forEach((docSnap) => {
       testimonials.push({
         id: docSnap.id,
@@ -1674,9 +1683,13 @@ export async function getTestimonials(
       } as Testimonial);
     });
 
+    if (activeOnly) {
+      testimonials = testimonials.filter((t) => t.isActive !== false);
+    }
+
     return testimonials.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  } catch (err) {
-    console.error('Error fetching testimonials:', err.message || err, err);
+  } catch (err: any) {
+    console.error('Error fetching testimonials:', err?.message || err);
     return [];
   }
 }

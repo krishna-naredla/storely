@@ -59,6 +59,7 @@ import { BioProfileView } from './components/biolink/BioProfileView';
 import { StorefrontView } from './components/storefront/StorefrontView';
 import { PortfolioShowcase } from './components/storefront/PortfolioShowcase';
 import { StandalonePortfolioView } from './components/portfolio/StandalonePortfolioView';
+import { StandaloneTrustCardView } from './components/common/StandaloneTrustCardView';
 import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
 import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
@@ -152,12 +153,32 @@ function parseStoreSlugFromUrl(): string | null {
     return decodeURIComponent(shortPortMatch[1]).trim();
   }
 
+  const cardMatch = pathname.match(/^\/card\/([^/?#]+)/i);
+  if (cardMatch && cardMatch[1]) {
+    return decodeURIComponent(cardMatch[1]).trim();
+  }
+
   const match = pathname.match(/^\/store\/([^/?#]+)/i);
   if (match && match[1]) {
     return decodeURIComponent(match[1]).trim();
   }
 
+  // Direct handle fallback: /[slug] (excluding system-reserved paths)
+  const rawHandleMatch = pathname.match(/^\/([a-zA-Z0-9_.-]+)$/);
+  if (rawHandleMatch && rawHandleMatch[1]) {
+    const candidate = rawHandleMatch[1].toLowerCase();
+    const reserved = ['login', 'register', 'dashboard', 'admin', 'api', 'assets', 'favicon.ico', 'portfolio', 'store', 'p', 'card'];
+    if (!reserved.includes(candidate)) {
+      return decodeURIComponent(rawHandleMatch[1]).trim();
+    }
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
+  const cardParam = urlParams.get('card');
+  if (cardParam && cardParam.trim()) {
+    return decodeURIComponent(cardParam).trim();
+  }
+
   const portfolioParam = urlParams.get('portfolio') || urlParams.get('p');
   if (portfolioParam && portfolioParam.trim()) {
     return decodeURIComponent(portfolioParam).trim();
@@ -259,17 +280,42 @@ function injectStoreMetadata(business: BusinessProfile) {
 
   const img = business.banner || business.logo || generateFallbackOgImage(business.name);
   const url = window.location.href;
+  const imageType = img.startsWith('data:image/svg')
+    ? 'image/svg+xml'
+    : img.endsWith('.png')
+    ? 'image/png'
+    : img.endsWith('.webp')
+    ? 'image/webp'
+    : 'image/jpeg';
 
-  updateMeta('og:title', isPortfolio ? `${business.name} Portfolio` : business.name);
+  // Primary OpenGraph Metadata (LinkedIn, WhatsApp, Facebook, iMessage)
+  updateMeta('og:site_name', 'Storelly');
+  updateMeta('og:title', isPortfolio ? `${business.name} | Creator Portfolio` : `${business.name} | Official Store`);
   updateMeta('og:description', desc);
   updateMeta('og:image', img);
+  if (img.startsWith('https://')) {
+    updateMeta('og:image:secure_url', img);
+  }
+  updateMeta('og:image:width', '1200');
+  updateMeta('og:image:height', '630');
+  updateMeta('og:image:type', imageType);
+  updateMeta('og:image:alt', `${business.name} — ${isPortfolio ? 'Portfolio & Showcase' : 'Storefront & Catalog'}`);
   updateMeta('og:url', url);
   updateMeta('og:type', isPortfolio ? 'profile' : 'website');
+  updateMeta('og:locale', 'en_US');
 
+  // LinkedIn & Twitter Card metadata
   updateMeta('twitter:card', 'summary_large_image', false);
+  updateMeta('twitter:site', '@Storelly', false);
   updateMeta('twitter:title', isPortfolio ? `${business.name} Portfolio` : business.name, false);
   updateMeta('twitter:description', desc, false);
   updateMeta('twitter:image', img, false);
+  updateMeta('twitter:image:alt', `${business.name} preview`, false);
+
+  // Author & Theme color for WhatsApp browser bar
+  const themeColor = business.portfolioSettings?.themeColor || (business as unknown as { primaryColor?: string })?.primaryColor || '#10b981';
+  updateMeta('author', business.name, false);
+  updateMeta('theme-color', themeColor, false);
 
   // Structured JSON-LD Schema for Google & Search Crawlers
   try {
@@ -710,11 +756,13 @@ function MainContent() {
 
   // Navigate cleanly into Public Storefront or Creator Portfolio
   const navigateToStorefront = (slug: string, explicitPath?: string) => {
-    let targetPath = `/store/${encodeURIComponent(slug)}`;
-    if (explicitPath) {
-      targetPath = explicitPath;
-    } else if (selectedBusiness && isCreatorProfile(selectedBusiness)) {
-      targetPath = getPrimaryPublicDisplayPath(selectedBusiness);
+    let targetPath = explicitPath;
+    if (!targetPath) {
+      if (selectedBusiness && isCreatorProfile(selectedBusiness)) {
+        targetPath = getPrimaryPublicDisplayPath(selectedBusiness);
+      } else {
+        targetPath = `/store/${encodeURIComponent(slug)}`;
+      }
     }
 
     window.history.pushState({}, '', targetPath);
@@ -877,10 +925,28 @@ function MainContent() {
     const targetBusiness = publicStoreSlug ? publicBusiness : selectedBusiness;
     if (targetBusiness && !publicStoreNotFound) {
       const isOwner = currentUser && selectedBusiness && selectedBusiness.id === targetBusiness.id;
+      const isCreator = isCreatorProfile(targetBusiness);
       
       // Check if it's a bio link, digital store, or portfolio
       const pathname = window.location.pathname;
       const urlParams = new URLSearchParams(window.location.search);
+
+      const isCardRoute =
+        pathname.startsWith('/card') ||
+        urlParams.get('view') === 'card' ||
+        urlParams.has('card');
+
+      if (isCardRoute) {
+        return (
+          <StandaloneTrustCardView
+            business={targetBusiness}
+            onBackToDashboard={isOwner ? navigateToDashboard : undefined}
+            onOpenStorefront={() => navigateToStorefront(targetBusiness.slug, '/store/' + targetBusiness.slug)}
+            isOwner={!!isOwner}
+          />
+        );
+      }
+
       const isBioStoreRoute =
         Boolean(pathname.match(/^\/@[^/?#]+\/(store|shop|products|catalog)/i)) ||
         (pathname.startsWith('/@') && (urlParams.get('view') === 'store' || urlParams.get('tab') === 'store'));
@@ -890,8 +956,46 @@ function MainContent() {
         pathname.startsWith('/p/') ||
         urlParams.has('portfolio') ||
         urlParams.has('p');
+      const isExplicitStore =
+        pathname.startsWith('/store') ||
+        urlParams.get('view') === 'store' ||
+        isBioStoreRoute;
       
-      if (isBioLink) {
+      // Route priority for creators when neither is explicitly requested in the path
+      let shouldRenderBio = isBioLink;
+      let shouldRenderPortfolio = isPortfolio;
+      let shouldRenderStore = isExplicitStore || !isCreator;
+
+      if (isCreator && !isBioLink && !isPortfolio && !isExplicitStore) {
+        const primaryPref = targetBusiness.primaryDestination;
+        const portfolioEnabled = Boolean(
+          targetBusiness.modules?.work_portfolio || targetBusiness.modules?.portfolio
+        );
+        const bioEnabled = Boolean(
+          targetBusiness.modules?.universal_links || targetBusiness.modules?.bio_links || targetBusiness.modules?.biolink
+        );
+        const digitalEnabled = Boolean(
+          targetBusiness.modules?.digital_products ||
+          targetBusiness.modules?.digitalProducts ||
+          targetBusiness.modules?.products
+        );
+
+        if (primaryPref === 'biolink' && bioEnabled) {
+          shouldRenderBio = true;
+        } else if (primaryPref === 'store' && digitalEnabled) {
+          shouldRenderStore = true;
+        } else if (portfolioEnabled) {
+          shouldRenderPortfolio = true;
+        } else if (bioEnabled) {
+          shouldRenderBio = true;
+        } else if (digitalEnabled) {
+          shouldRenderStore = true;
+        } else {
+          shouldRenderPortfolio = true;
+        }
+      }
+      
+      if (shouldRenderBio) {
         return (
           <CreatorAuthGuard business={targetBusiness} moduleName="bio" isOwner={!!isOwner}>
             <BioProfileView
@@ -903,7 +1007,7 @@ function MainContent() {
         );
       }
 
-      if (isPortfolio) {
+      if (shouldRenderPortfolio) {
         return (
           <CreatorAuthGuard business={targetBusiness} moduleName="portfolio" isOwner={!!isOwner}>
             <StandalonePortfolioView
@@ -1280,12 +1384,12 @@ function MainContent() {
 
       {/* Share / QR Modal */}
       {isShareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-white rounded-3xl p-4 sm:p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto my-auto">
             <button
               type="button"
               onClick={() => setIsShareModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm transition cursor-pointer"
             >
               ✕
             </button>

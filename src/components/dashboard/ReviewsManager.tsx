@@ -8,9 +8,11 @@ import {
   X,
   User,
   CornerDownRight,
+  QrCode,
 } from 'lucide-react';
 import { BusinessProfile, Review } from '../../types';
-import { getReviews, replyToReview } from '../../services/firebaseService';
+import { getReviews, replyToReview, getModuleDeepUrl } from '../../services/firebaseService';
+import { ModuleQrModal } from '../common/ModuleQrModal';
 
 interface ReviewsManagerProps {
   business: BusinessProfile;
@@ -22,6 +24,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
   const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -76,12 +79,24 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-1 text-amber-500">
-            <Star className="w-5 h-5 fill-amber-400" />
-            <span className="font-heading font-extrabold text-lg text-slate-900">{avgRating}</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsQrModalOpen(true)}
+            className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            title="Generate and download QR code to collect client reviews"
+          >
+            <QrCode className="w-4 h-4 text-amber-600" />
+            <span>Reviews QR</span>
+          </button>
+
+          <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-1 text-amber-500">
+              <Star className="w-5 h-5 fill-amber-400" />
+              <span className="font-heading font-extrabold text-lg text-slate-900">{avgRating}</span>
+            </div>
+            <span className="text-xs text-slate-400">({reviews.length} reviews)</span>
           </div>
-          <span className="text-xs text-slate-400">({reviews.length} reviews)</span>
         </div>
       </div>
 
@@ -202,6 +217,21 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
             Customers can leave ratings and comments directly on your public storefront.
           </p>
         </div>
+      )}
+
+      {/* Reviews QR Code Modal */}
+      {isQrModalOpen && (
+        <ModuleQrModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          title="Customer Reviews & Feedback QR"
+          subtitle={`Let clients scan and read verified testimonials or leave a 5-star review directly on ${business.name}.`}
+          badge="Reviews & Feedback"
+          url={getModuleDeepUrl(business, 'reviews')}
+          businessName={business.name}
+          logoUrl={business.logo || business.profileImage}
+          accentColor="amber"
+        />
       )}
     </div>
   );

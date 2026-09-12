@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BusinessProfile, BioLink } from '../../types';
 import {
   getBioLinks,
@@ -13,6 +13,7 @@ import {
 } from '../../services/firebaseService';
 import { DashboardEmptyState } from '../common/DashboardEmptyState';
 import { DashboardSkeleton } from '../common/DashboardSkeleton';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 import {
   Loader2,
   MoveUp,
@@ -82,6 +83,8 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showAutoSavedToast, setShowAutoSavedToast] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -94,6 +97,8 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
   const [subtitle, setSubtitle] = useState('');
   const [url, setUrl] = useState('');
   const [highlight, setHighlight] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState<BioLink | null>(null);
+  const [isDeletingLink, setIsDeletingLink] = useState(false);
 
   // Appearance & Theme State
   const rawTheme = business.bioTheme || {};
@@ -149,10 +154,7 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
   });
 
   // Bio Link URL
-  const routingMode = business.bioRouting || 'standalone';
-  const standaloneUrl = getBioLinkUrl(business.slug);
-  const storefrontUrl = getDigitalStoreUrl(business.slug);
-  const publicUrl = routingMode === 'storefront' ? storefrontUrl : standaloneUrl;
+  const publicUrl = getBioLinkUrl(business.slug);
 
   useEffect(() => {
     loadLinksAndStats();
@@ -217,7 +219,9 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
       !safeUrl.startsWith('http://') &&
       !safeUrl.startsWith('https://') &&
       !safeUrl.startsWith('mailto:') &&
-      !safeUrl.startsWith('tel:')
+      !safeUrl.startsWith('tel:') &&
+      !safeUrl.startsWith('#') &&
+      !safeUrl.startsWith('/')
     ) {
       safeUrl = 'https://' + safeUrl;
     }
@@ -257,10 +261,18 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
     }
   };
 
-  const deleteLinkItem = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this link?')) return;
-    await deleteBioLink(id);
-    await loadLinksAndStats();
+  const confirmDeleteLink = async () => {
+    if (!linkToDelete) return;
+    setIsDeletingLink(true);
+    try {
+      await deleteBioLink(linkToDelete.id);
+      await loadLinksAndStats();
+      setLinkToDelete(null);
+    } catch (err) {
+      console.error('Error deleting bio link:', err);
+    } finally {
+      setIsDeletingLink(false);
+    }
   };
 
   const toggleLinkItem = async (id: string, current: boolean) => {
@@ -351,6 +363,59 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
       setIsSaving(false);
     }
   };
+
+  // Debounced auto-save to Firestore after 2-second delay of inactivity
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        setSaveStatus('saving');
+        const updatedBiz: BusinessProfile = {
+          ...business,
+          bio: bioText,
+          tagline: theme.profession,
+          bioTheme: theme,
+          updatedAt: Date.now(),
+        };
+        await updateBusinessProfile(business.id, {
+          bio: bioText,
+          tagline: theme.profession,
+          bioTheme: theme,
+        });
+
+        try {
+          localStorage.setItem(`storelly_biz_${business.id}`, JSON.stringify(updatedBiz));
+          const all = JSON.parse(localStorage.getItem('storelly_businesses') || '[]');
+          const idx = all.findIndex((b: any) => b.id === business.id);
+          if (idx >= 0) {
+            all[idx] = updatedBiz;
+            localStorage.setItem('storelly_businesses', JSON.stringify(all));
+          }
+        } catch (e) {}
+
+        onBusinessUpdated?.(updatedBiz);
+        setHasUnsavedChanges(false);
+        setSaveStatus('saved');
+        setShowAutoSavedToast(true);
+        setTimeout(() => setShowAutoSavedToast(false), 3000);
+        setTimeout(() => setSaveStatus('idle'), 3500);
+      } catch (err) {
+        console.error('Debounced auto-save error in BioProfileManager:', err);
+        setSaveStatus('idle');
+      }
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [theme, bioText, hasUnsavedChanges, business, onBusinessUpdated]);
 
   const handleThemeChange = (key: string, value: any) => {
     const updatedTheme: any = { ...theme, [key]: value };
@@ -935,7 +1000,7 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                             </button>
 
                             <button
-                              onClick={() => deleteLinkItem(link.id)}
+                              onClick={() => setLinkToDelete(link)}
                               className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
                               title="Delete link"
                             >
@@ -2211,6 +2276,27 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
               Close
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Delete Bio Link Confirmation Modal */}
+      <ConfirmActionModal
+        isOpen={!!linkToDelete}
+        title="Delete Bio Link?"
+        message={`Are you sure you want to delete "${linkToDelete?.title}"? This link will immediately be removed from your public Bio Link page.`}
+        confirmText="Delete Link"
+        cancelText="Keep Link"
+        isDestructive={true}
+        isLoading={isDeletingLink}
+        onConfirm={confirmDeleteLink}
+        onCancel={() => setLinkToDelete(null)}
+      />
+
+      {/* Floating Auto-Saved Toast */}
+      {showAutoSavedToast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700/80 animate-in slide-in-from-bottom-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>Saved</span>
         </div>
       )}
     </div>

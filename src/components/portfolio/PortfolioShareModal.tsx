@@ -83,7 +83,8 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          aria-label="Close dialog"
+          className="absolute top-4 right-4 w-11 h-11 min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer touch-manipulation"
         >
           <X className="w-5 h-5" />
         </button>
@@ -109,7 +110,7 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
               <img
                 src={qrCodeUrl}
                 alt="Portfolio QR Code"
-                className="w-44 h-44 object-contain rounded-lg"
+                className="w-44 h-44 object-contain rounded-lg high-dpi-crisp"
               />
             ) : (
               <div className="w-44 h-44 flex items-center justify-center text-slate-300">
@@ -126,9 +127,9 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
           <button
             type="button"
             onClick={handleDownloadQr}
-            className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition cursor-pointer touch-manipulation"
           >
-            <Download className="w-3.5 h-3.5" /> Download QR Code (PNG)
+            <Download className="w-4 h-4" /> Download QR Code (PNG)
           </button>
         </div>
 
@@ -138,14 +139,14 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Short Portfolio URL
             </label>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
               <span className="text-xs font-mono font-medium text-slate-700 truncate flex-1 select-all">
                 {shortUrl}
               </span>
               <button
                 type="button"
                 onClick={() => handleCopy(shortUrl, true)}
-                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 transition cursor-pointer"
+                className="px-3.5 py-2 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer touch-manipulation active:scale-95"
               >
                 {copiedShort ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedShort ? 'Copied' : 'Copy'}</span>
@@ -157,14 +158,14 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Full Portfolio URL
             </label>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
               <span className="text-xs font-mono font-medium text-slate-700 truncate flex-1 select-all">
                 {portfolioUrl}
               </span>
               <button
                 type="button"
                 onClick={() => handleCopy(portfolioUrl, false)}
-                className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 transition cursor-pointer"
+                className="px-3.5 py-2 min-h-[44px] bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer touch-manipulation active:scale-95"
               >
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -174,11 +175,11 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
         </div>
 
         {/* Quick Action Grid */}
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={handleWhatsAppShare}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer touch-manipulation active:scale-95"
           >
             <MessageCircle className="w-4 h-4" /> Share on WhatsApp
           </button>
@@ -186,7 +187,7 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
             href={portfolioUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer touch-manipulation active:scale-95"
           >
             <ExternalLink className="w-4 h-4" /> Open Portfolio
           </a>

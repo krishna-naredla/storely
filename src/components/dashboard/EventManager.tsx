@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardEmptyState } from '../common/DashboardEmptyState';
 import { DashboardSkeleton } from '../common/DashboardSkeleton';
+import { ConfirmActionModal } from '../common/ConfirmActionModal';
 import {
   Plus,
   Calendar,
@@ -28,6 +29,7 @@ import {
   MessageSquare,
   RefreshCw,
   X,
+  QrCode,
 } from 'lucide-react';
 import { BusinessProfile, EventItem, EventFormat, EventStatus, MeetingPlatform } from '../../types';
 import {
@@ -41,6 +43,7 @@ import {
 import { uploadFileToStorage } from '../../services/firebaseService';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
+import { ModuleQrModal } from '../common/ModuleQrModal';
 
 interface EventManagerProps {
   business: BusinessProfile;
@@ -88,6 +91,20 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [copiedLinkEventId, setCopiedLinkEventId] = useState<string | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<EventItem | null>(null);
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedQrModal, setSelectedQrModal] = useState<{
+    title: string;
+    subtitle?: string;
+    badge?: string;
+    url: string;
+  } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMsg({ text, type });
+    setTimeout(() => setToastMsg(null), 3500);
+  };
 
   // Subscribe to Events
   useEffect(() => {
@@ -173,7 +190,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
       if (editingEvent) {
         // Safe check: capacity cannot be lower than sold tickets
         if (capacity < (editingEvent.ticketsSold || 0)) {
-          alert(`Capacity cannot be lower than the ${editingEvent.ticketsSold} tickets already sold.`);
+          showToast(`Capacity cannot be lower than the ${editingEvent.ticketsSold} tickets already sold.`, 'error');
           setFormSubmitting(false);
           return;
         }
@@ -220,9 +237,10 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
       }
 
       setIsFormOpen(false);
+      showToast('Event saved successfully!', 'success');
     } catch (err: any) {
       console.error('Failed to save event:', err);
-      alert(err.message || 'Error saving event');
+      showToast(err.message || 'Error saving event', 'error');
     } finally {
       setFormSubmitting(false);
     }
@@ -236,29 +254,31 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
       setCancellingEvent(null);
       setCancellationReason('');
       setCancelledResult(res);
+      showToast('Event cancelled successfully.', 'success');
     } catch (err: any) {
       console.error('Error cancelling event:', err);
-      alert(err.message || 'Failed to cancel event');
+      showToast(err.message || 'Failed to cancel event', 'error');
     } finally {
       setFormSubmitting(false);
     }
   };
 
-  const handleDeleteEvent = async (event: EventItem) => {
-    if (event.ticketsSold > 0) {
-      if (!confirm(`This event has ${event.ticketsSold} sold ticket(s). Deleting it will remove the record. It is recommended to Cancel the event instead. Are you sure you want to permanently delete?`)) {
-        return;
-      }
-    } else {
-      if (!confirm(`Are you sure you want to delete "${event.title}"?`)) {
-        return;
-      }
-    }
+  const handleDeleteEvent = (event: EventItem) => {
+    setEventToDelete(event);
+  };
 
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    setIsDeletingEvent(true);
     try {
-      await deleteEvent(business.id, event.id, event.coverImage);
-    } catch (err) {
+      await deleteEvent(business.id, eventToDelete.id, eventToDelete.coverImage);
+      setEventToDelete(null);
+      showToast('Event deleted successfully.', 'success');
+    } catch (err: any) {
       console.error('Failed to delete event:', err);
+      showToast(err.message || 'Failed to delete event', 'error');
+    } finally {
+      setIsDeletingEvent(false);
     }
   };
 
@@ -340,6 +360,23 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
               <span>Month Calendar</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSelectedQrModal({
+                title: 'Events & Workshops Hub',
+                subtitle: `Browse all upcoming masterclasses, workshops, and meetups by ${business.name}.`,
+                badge: 'Live Events',
+                url: `${window.location.origin}/${business.slug}?tab=events`,
+              })
+            }
+            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            title="View, download, and print QR code for Events Hub"
+          >
+            <QrCode className="w-4 h-4 text-pink-600" />
+            <span>Events QR</span>
+          </button>
 
           <button
             type="button"
@@ -603,6 +640,22 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                     >
                       <Users className="w-3.5 h-3.5" />
                       <span>Attendees ({event.ticketsSold})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedQrModal({
+                          title: event.title,
+                          subtitle: `${event.format === 'online' ? '🌐 Live Online Session' : `📍 ${event.venueCity || 'Physical Venue'}`} • ₹${event.price || 0}`,
+                          badge: `${event.format.toUpperCase()} EVENT`,
+                          url: `${window.location.origin}/${business.slug}?tab=events#event-${event.id}`,
+                        })
+                      }
+                      className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-pink-600 transition text-xs font-bold cursor-pointer"
+                      title="View, download, and print QR code for this event"
+                    >
+                      <QrCode className="w-4 h-4 text-pink-600" />
                     </button>
 
                     <button
@@ -1119,6 +1172,62 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
         isOpen={!!selectedEventForAttendees}
         onClose={() => setSelectedEventForAttendees(null)}
       />
+
+      {/* DELETE EVENT CONFIRMATION MODAL */}
+      <ConfirmActionModal
+        isOpen={!!eventToDelete}
+        title="Delete Event?"
+        message={
+          eventToDelete && eventToDelete.ticketsSold > 0
+            ? `This event has ${eventToDelete.ticketsSold} ticket(s) sold. Deleting it will permanently remove the record and attendees list. It is recommended to Cancel the event instead.`
+            : `Are you sure you want to permanently delete "${eventToDelete?.title}"?`
+        }
+        confirmText="Delete Event"
+        cancelText="Keep Event"
+        isDestructive={true}
+        isLoading={isDeletingEvent}
+        onConfirm={confirmDeleteEvent}
+        onCancel={() => setEventToDelete(null)}
+      />
+
+      {/* FLOATING TOAST NOTIFICATION */}
+      {toastMsg && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200"
+        >
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold ${
+              toastMsg.type === 'error'
+                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-slate-900 border-slate-800 text-white'
+            }`}
+          >
+            {toastMsg.type === 'error' ? (
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            ) : (
+              <Check className="w-5 h-5 text-emerald-400 shrink-0" />
+            )}
+            <span>{toastMsg.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Reusable QR Code Modal */}
+      {selectedQrModal && (
+        <ModuleQrModal
+          isOpen={!!selectedQrModal}
+          onClose={() => setSelectedQrModal(null)}
+          title={selectedQrModal.title}
+          subtitle={selectedQrModal.subtitle}
+          badge={selectedQrModal.badge}
+          url={selectedQrModal.url}
+          businessName={business.name}
+          logoUrl={business.logo || business.profileImage}
+          accentColor="pink"
+        />
+      )}
     </div>
   );
 };

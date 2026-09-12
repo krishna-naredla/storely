@@ -15,12 +15,14 @@ import {
   Star,
   Store,
   CheckCircle2,
+  QrCode,
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { updateBusinessProfile, getDigitalStoreUrl, getBioLinkUrl, getPortfolioUrl } from '../../services/firebaseService';
 import { DashboardTab } from './Sidebar';
 import { ConfirmActionModal } from '../common/ConfirmActionModal';
-import { isCreatorProfile } from '../../utils/profileHelper';
+import { ModuleQrModal } from '../common/ModuleQrModal';
+import { isCreatorProfile, getPrimaryPublicDisplayPath } from '../../utils/profileHelper';
 import { isModuleApplicableForBusiness } from '../../services/businessConfig';
 
 interface Props {
@@ -47,6 +49,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
   const [updating, setUpdating] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [moduleToDisable, setModuleToDisable] = useState<CreatorModuleItem | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedQrModule, setSelectedQrModule] = useState<CreatorModuleItem | null>(null);
 
   const applyModuleToggle = async (keys: string[], nextVal: boolean) => {
     const primaryKey = keys[0];
@@ -67,7 +71,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       onBusinessUpdated({ ...business, modules: updatedModules });
     } catch (err) {
       console.error('Failed to update creator module:', err);
-      alert('Failed to update module state. Please check your internet connection.');
+      setErrorMessage('Failed to update module state. Please check your internet connection.');
+      setTimeout(() => setErrorMessage(null), 4000);
     } finally {
       setUpdating(null);
     }
@@ -146,7 +151,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       icon: CalendarCheck,
       badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
       activeBg: 'bg-blue-50 text-blue-600',
-      url: getPortfolioUrl(handleSlug),
+      url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.booking_appointments,
     },
     {
@@ -159,7 +164,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       icon: FileText,
       badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
       activeBg: 'bg-amber-50 text-amber-600',
-      url: getPortfolioUrl(handleSlug),
+      url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.custom_quotes,
     },
     {
@@ -172,7 +177,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       icon: Ticket,
       badgeColor: 'bg-pink-50 text-pink-700 border-pink-200',
       activeBg: 'bg-pink-50 text-pink-600',
-      url: getPortfolioUrl(handleSlug),
+      url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.events_tickets || !!business.modules?.events_ticketing,
     },
     {
@@ -274,8 +279,21 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                const primaryMod = visibleModules.find((m) => m.enabled) || visibleModules[0];
+                if (primaryMod) setSelectedQrModule(primaryMod);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer border border-white/15"
+              title="Open module QR code generator"
+            >
+              <QrCode className="w-4 h-4 text-emerald-400" />
+              <span>Module QR Codes</span>
+            </button>
+
             <a
-              href={getPortfolioUrl(handleSlug)}
+              href={getPrimaryPublicDisplayPath(business)}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 transition shadow-md shadow-indigo-950/40"
@@ -286,6 +304,14 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
           </div>
         </div>
       </div>
+
+      {/* Error message banner if any */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       {/* Modules Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -325,27 +351,37 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
             <div className="space-y-2.5 pt-3 border-t border-slate-100">
               {mod.enabled ? (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
-                    {onNavigateTab && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {onNavigateTab ? (
                       <button
                         type="button"
                         onClick={() => onNavigateTab(mod.tabId)}
-                        className="py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition cursor-pointer"
+                        className="py-2 px-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl font-bold text-xs flex justify-center items-center gap-1 transition cursor-pointer"
+                        title={mod.tabLabel}
                       >
-                        <span>{mod.tabLabel}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span className="truncate">Manage</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                       </button>
+                    ) : (
+                      <div />
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedQrModule(mod)}
+                      className="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl font-bold text-xs flex justify-center items-center gap-1 transition cursor-pointer shadow-2xs"
+                      title="View, download, and print QR code for this module"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span>QR Code</span>
+                    </button>
                     <a
                       href={mod.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition ${
-                        !onNavigateTab ? 'col-span-2' : ''
-                      }`}
+                      className="py-2 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex justify-center items-center gap-1 transition truncate"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Open Live</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                      <span>Live</span>
                     </a>
                   </div>
 
@@ -363,9 +399,18 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                       ) : (
                         <>
                           <Copy className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Copy Live Link</span>
+                          <span>Copy Link</span>
                         </>
                       )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedQrModule(mod)}
+                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Show QR</span>
                     </button>
 
                     <button
@@ -415,6 +460,21 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
         onConfirm={confirmDisableModule}
         onCancel={() => setModuleToDisable(null)}
       />
+
+      {/* Dedicated Module QR Code Modal */}
+      {selectedQrModule && (
+        <ModuleQrModal
+          isOpen={!!selectedQrModule}
+          onClose={() => setSelectedQrModule(null)}
+          title={`${selectedQrModule.title} QR Code`}
+          subtitle={selectedQrModule.description}
+          badge={selectedQrModule.title}
+          url={selectedQrModule.url}
+          businessName={business.name}
+          logoUrl={business.logo || business.profileImage}
+          accentColor="indigo"
+        />
+      )}
     </div>
   );
 };

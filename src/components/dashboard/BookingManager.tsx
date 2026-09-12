@@ -16,9 +16,11 @@ import {
   Scissors,
   X,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 import { BusinessProfile, Booking, BookingStatus } from '../../types';
-import { getBookings, updateBookingStatus } from '../../services/firebaseService';
+import { getBookings, updateBookingStatus, getModuleDeepUrl } from '../../services/firebaseService';
+import { ModuleQrModal } from '../common/ModuleQrModal';
 
 interface BookingManagerProps {
   business: BusinessProfile;
@@ -31,6 +33,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -102,13 +105,25 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadData}
-          className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition"
-        >
-          Refresh Bookings
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsQrModalOpen(true)}
+            className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            title="Generate and download QR code for Bookings & Appointments page"
+          >
+            <QrCode className="w-4 h-4 text-amber-600" />
+            <span>Booking Page QR</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={loadData}
+            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition cursor-pointer"
+          >
+            Refresh Bookings
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -314,6 +329,21 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Booking Page QR Modal */}
+      {isQrModalOpen && (
+        <ModuleQrModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          title="Appointments & Services QR Code"
+          subtitle={`Allow clients and customers to directly book appointments and 1:1 sessions with ${business.name}.`}
+          badge="1:1 Bookings & Appointments"
+          url={getModuleDeepUrl(business, 'services')}
+          businessName={business.name}
+          logoUrl={business.logo || business.profileImage}
+          accentColor="amber"
+        />
       )}
     </div>
   );

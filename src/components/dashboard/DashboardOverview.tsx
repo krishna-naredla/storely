@@ -50,6 +50,7 @@ import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { DashboardTab } from './Sidebar';
 import { SafeImage } from '../common/SafeImage';
 import { isCreatorProfile, getPrimaryPublicUrl, getPublicDestinations } from '../../utils/profileHelper';
+import { VendorTrustShareModal } from '../common/VendorTrustShareModal';
 
 interface DashboardOverviewProps {
   business: BusinessProfile;
@@ -80,6 +81,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedUrlKey, setCopiedUrlKey] = useState<string | null>(null);
   const [cardQrUrl, setCardQrUrl] = useState<string>('');
+  const [isTrustCardModalOpen, setIsTrustCardModalOpen] = useState(false);
 
   const isCreator = isCreatorProfile(business);
   const publicDestinations = getPublicDestinations(business);
@@ -318,7 +320,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 title="Open live public store in a new browser tab"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Open Store ↗</span>
+                <span>Open {isCreator && activeDestination ? activeDestination.badgeLabel : 'Store'} ↗</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsTrustCardModalOpen(true)}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-linear-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white text-xs font-black shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                title="Open and share high-trust WhatsApp card (Sri Lakshmi style)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <span>WhatsApp Rich Card</span>
               </button>
 
               <button
@@ -333,9 +345,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
               <button
                 type="button"
-                onClick={handleWhatsAppShare}
+                onClick={() => setIsTrustCardModalOpen(true)}
                 className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                title="Share store link directly on WhatsApp"
+                title="Share rich store card directly on WhatsApp"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 <span>WhatsApp</span>
@@ -411,6 +423,84 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          CREATOR INDEPENDENT MODULE LINKS
+         ========================================================================= */}
+      {isCreator && publicDestinations.length > 0 && (
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-sm sm:text-base font-black text-slate-900 font-heading flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Your Independent Public Module URLs</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Each module has its own independent page and URL. Share whichever one you need with your clients or audience.
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full self-start sm:self-auto">
+              {publicDestinations.length} Public Module{publicDestinations.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            {publicDestinations.map((dest) => {
+              const isDestCopied = copiedUrlKey === dest.id;
+              return (
+                <div
+                  key={dest.id}
+                  className="rounded-2xl border border-slate-200/90 p-4 bg-slate-50/70 hover:bg-slate-50 transition flex flex-col justify-between space-y-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-900">{dest.title}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700">
+                        {dest.badgeLabel}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2">{dest.description}</p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-200/70">
+                    <div className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="text-[11px] font-mono text-slate-700 font-semibold truncate flex-1 select-all">
+                        {dest.displayPath}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(dest.url, dest.id)}
+                        className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isDestCopied
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white border border-slate-200 text-slate-800 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isDestCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{isDestCopied ? 'Copied' : 'Copy Link'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenExternal(dest.url)}
+                        className="min-h-[36px] px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                        title={`Open ${dest.title} in new tab`}
+                      >
+                        <span>Open</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           ANALYTICS METRIC CARDS
@@ -951,6 +1041,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
               <button
                 type="button"
+                onClick={() => setIsTrustCardModalOpen(true)}
+                className="w-full py-2.5 px-3 bg-linear-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer mb-2"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <span>WhatsApp Rich Card (Sri Lakshmi)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={onOpenShareModal}
                 className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
@@ -994,6 +1093,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
       </div>
+
+      {isTrustCardModalOpen && (
+        <VendorTrustShareModal
+          isOpen={isTrustCardModalOpen}
+          onClose={() => setIsTrustCardModalOpen(false)}
+          business={business}
+          onOpenStore={onOpenStorefront}
+        />
+      )}
     </div>
   );
 };

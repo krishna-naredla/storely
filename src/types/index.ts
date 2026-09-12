@@ -137,15 +137,18 @@ export interface BusinessProfile {
     branchName?: string;
   };
   paymentInstructions?: string;
-  socialLinks?: {
-    instagram?: string;
-    facebook?: string;
-    website?: string;
-    youtube?: string;
-    twitter?: string;
-    telegram?: string;
-    linkedin?: string;
-  };
+  primaryDestination?: 'portfolio' | 'biolink' | 'store';
+  socialLinks?:
+    | {
+        instagram?: string;
+        facebook?: string;
+        website?: string;
+        youtube?: string;
+        twitter?: string;
+        telegram?: string;
+        linkedin?: string;
+      }
+    | Array<{ platform: string; url: string }>;
   socials?: {
     instagram?: string;
     facebook?: string;
@@ -171,8 +174,28 @@ export interface BusinessProfile {
   bioRouting?: 'standalone' | 'storefront' | 'both';
   bioTheme?: any;
   portfolioSettings?: PortfolioSettings;
+  trustCardSettings?: StoreTrustCardSettings;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface StoreTrustCardSettings {
+  enabled?: boolean;
+  headline?: string;
+  subHeadline?: string;
+  badge1?: string;
+  badge2?: string;
+  trustPill1Text?: string;
+  trustPill2Text?: string;
+  trustPill3Text?: string;
+  trustPill4Text?: string;
+  taglineDivider?: string;
+  couponCode?: string;
+  couponDiscount?: string;
+  rating?: number;
+  reviewCount?: number;
+  happyCustomers?: string;
+  brandFooterText?: string;
 }
 
 export interface Category {

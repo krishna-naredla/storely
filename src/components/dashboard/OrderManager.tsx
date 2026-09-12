@@ -1,5 +1,6 @@
 import { useLanguage } from '../../context/LanguageContext';
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   ShoppingBag,
   Search,
@@ -218,85 +219,92 @@ export const OrderManager: React.FC<any> = ({ business }) => {
         </div>
       ) : filteredOrders.length > 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-          {filteredOrders.map((order) => (
-            <SwipeToDelete key={order.id} onDelete={() => deleteOrder(business.id, order.id)} deleteLabel="Remove">
-              <div
-                className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition bg-white"
-              >
-              {/* Order Info & Customer */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-heading font-extrabold text-sm text-slate-900">
-                    {order.orderNumber}
-                  </span>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
-                      order.status
-                    )}`}
-                  >
-                    {order.status}
-                  </span>
-                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                    {order.orderType === 'delivery'
-                      ? 'Home Delivery'
-                      : order.orderType === 'dine_in'
-                      ? `Dine-In ${order.tableNumber ? `(Table ${order.tableNumber})` : ''}`
-                      : 'Takeaway / Pickup'}
-                  </span>
-                </div>
-
-                <div className="text-xs text-slate-600 flex items-center gap-2 flex-wrap pt-0.5">
-                  <span className="font-bold text-slate-800">{order.customerName}</span>
-                  <span>•</span>
-                  <span>{order.customerPhone}</span>
-                  <span>•</span>
-                  <span className="text-slate-400">
-                    {new Date(order.createdAt).toLocaleString()}
-                  </span>
-                </div>
-
-                <div className="text-[11px] text-slate-500 line-clamp-1">
-                  Items: {order.items.map((i) => `${i.name} x${i.quantity}`).join(', ')}
-                </div>
-              </div>
-
-              {/* Total & Action Buttons */}
-              <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                <div className="text-left sm:text-right">
-                  <div className="font-extrabold text-base text-slate-900">
-                    {business.currencySymbol}{order.total}
+          {filteredOrders.map((order, index) => (
+            <motion.div
+              key={order.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.35) }}
+            >
+              <SwipeToDelete onDelete={() => deleteOrder(business.id, order.id)} deleteLabel="Remove">
+                <div
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition bg-white"
+                >
+                {/* Order Info & Customer */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-heading font-extrabold text-sm text-slate-900">
+                      {order.orderNumber}
+                    </span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
+                        order.status
+                      )}`}
+                    >
+                      {order.status}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                      {order.orderType === 'delivery'
+                        ? 'Home Delivery'
+                        : order.orderType === 'dine_in'
+                        ? `Dine-In ${order.tableNumber ? `(Table ${order.tableNumber})` : ''}`
+                        : 'Takeaway / Pickup'}
+                    </span>
                   </div>
-                  <div className="text-[10px] text-slate-400">
-                    {order.paymentMethod === 'cod'
-                      ? 'Cash On Delivery'
-                      : order.paymentMethod === 'upi_on_delivery'
-                      ? 'UPI On Delivery'
-                      : 'Paid Online'}
+
+                  <div className="text-xs text-slate-600 flex items-center gap-2 flex-wrap pt-0.5">
+                    <span className="font-bold text-slate-800">{order.customerName}</span>
+                    <span>•</span>
+                    <span>{order.customerPhone}</span>
+                    <span>•</span>
+                    <span className="text-slate-400">
+                      {new Date(order.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-slate-500 line-clamp-1">
+                    Items: {order.items.map((i) => `${i.name} x${i.quantity}`).join(', ')}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSendWhatsAppUpdate(order)}
-                    className="p-2 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-xl transition"
-                    title="Send WhatsApp Update"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
+                {/* Total & Action Buttons */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                  <div className="text-left sm:text-right">
+                    <div className="font-extrabold text-base text-slate-900">
+                      {business.currencySymbol}{order.total}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {order.paymentMethod === 'cod'
+                        ? 'Cash On Delivery'
+                        : order.paymentMethod === 'upi_on_delivery'
+                        ? 'UPI On Delivery'
+                        : 'Paid Online'}
+                    </div>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrder(order)}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center gap-1"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Details</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleSendWhatsAppUpdate(order)}
+                      className="p-2 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-xl transition cursor-pointer"
+                      title="Send WhatsApp Update"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(order)}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Details</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </SwipeToDelete>
+            </SwipeToDelete>
+          </motion.div>
         ))}
         </div>
       ) : (

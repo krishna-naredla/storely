@@ -1,5 +1,6 @@
 import React from 'react';
 import { BusinessProfile } from '../../types';
+import { isCreatorProfile } from '../../utils/profileHelper';
 
 interface Props {
   business: BusinessProfile;
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export const CreatorAuthGuard: React.FC<Props> = ({ business, moduleName, isOwner, children, onBackToDashboard }) => {
-  const isCreator = business.type === 'creator';
+  const isCreator = isCreatorProfile(business);
   const modules = business.modules || {};
 
   let isEnabled = false;
@@ -18,21 +19,25 @@ export const CreatorAuthGuard: React.FC<Props> = ({ business, moduleName, isOwne
 
   switch (moduleName) {
     case 'store':
-      isEnabled = !!(modules.digital_products || modules.digitalProducts || modules.products || modules.catalog || true);
+      isEnabled = !isCreator || !!(
+        modules.digital_products ||
+        modules.digitalProducts ||
+        modules.products ||
+        modules.catalog ||
+        modules.booking_appointments ||
+        modules.custom_quotes ||
+        modules.events_tickets
+      );
       moduleTitle = 'Digital Store';
       break;
     case 'bio':
-      isEnabled = !!modules.universal_links;
+      isEnabled = !!(modules.universal_links || modules.bio_links || modules.biolink);
       moduleTitle = 'Universal Bio Link';
       break;
     case 'portfolio':
       isEnabled = !!(modules.work_portfolio || modules.portfolio);
       moduleTitle = 'Professional Portfolio';
       break;
-  }
-
-  if (!isCreator && moduleName === 'store') {
-    isEnabled = true;
   }
 
   if (!isEnabled && !isOwner) {

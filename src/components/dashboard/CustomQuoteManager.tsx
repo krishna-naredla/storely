@@ -1,5 +1,6 @@
 import { DashboardEmptyState } from "../common/DashboardEmptyState";
 import { DashboardSkeleton } from "../common/DashboardSkeleton";
+import { ConfirmActionModal } from "../common/ConfirmActionModal";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText,
@@ -27,6 +28,7 @@ import {
   ChevronRight,
   RotateCcw,
   BellRing,
+  QrCode,
 } from 'lucide-react';
 import { BusinessProfile, CustomQuoteRequest, QuoteRequestStatus } from '../../types';
 import {
@@ -37,7 +39,9 @@ import {
   archiveCustomQuoteRequest,
   deleteCustomQuoteRequest,
   checkAndExpireOldQuotes,
+  getModuleDeepUrl,
 } from '../../services/firebaseService';
+import { ModuleQrModal } from '../common/ModuleQrModal';
 
 interface CustomQuoteManagerProps {
   business: BusinessProfile;
@@ -67,6 +71,13 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   const [selectedRequest, setSelectedRequest] = useState<CustomQuoteRequest | null>(null);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [selectedImageLightbox, setSelectedImageLightbox] = useState<string | null>(null);
+  const [quoteToDelete, setQuoteToDelete] = useState<CustomQuoteRequest | null>(null);
+  const [isDeletingQuote, setIsDeletingQuote] = useState(false);
+  const [quoteToMarkPaid, setQuoteToMarkPaid] = useState<CustomQuoteRequest | null>(null);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<CustomQuoteRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState('Not available currently');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Quote Form State
   const [quotePrice, setQuotePrice] = useState<number>(2500);
@@ -74,6 +85,7 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   const [quoteNotes, setQuoteNotes] = useState<string>('');
   const [submittingQuote, setSubmittingQuote] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // Live timer tick for accurate countdowns
   useEffect(() => {
@@ -241,14 +253,22 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   };
 
   // Mark Quote Request Accepted / Paid (Instant Confirmation)
-  const handleMarkPaid = async (req: CustomQuoteRequest) => {
-    if (!confirm(`Mark ${req.requestNumber} for ${req.customerName} as paid and accepted?`)) return;
+  const handleMarkPaid = (req: CustomQuoteRequest) => {
+    setQuoteToMarkPaid(req);
+  };
+
+  const confirmMarkPaid = async () => {
+    if (!quoteToMarkPaid) return;
+    setIsMarkingPaid(true);
     try {
-      await acceptQuotePayment(business.id, req.id, {
-        amountPaid: req.quotedPrice || 0,
+      await acceptQuotePayment(business.id, quoteToMarkPaid.id, {
+        amountPaid: quoteToMarkPaid.quotedPrice || 0,
       });
+      setQuoteToMarkPaid(null);
     } catch (err) {
       console.error('Failed to accept payment:', err);
+    } finally {
+      setIsMarkingPaid(false);
     }
   };
 
@@ -264,17 +284,24 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   };
 
   // Reject Request
-  const handleReject = async (req: CustomQuoteRequest) => {
-    const reason = prompt('Please enter a brief rejection reason (optional):');
-    if (reason === null) return;
+  const handleReject = (req: CustomQuoteRequest) => {
+    setRejectTarget(req);
+    setRejectReason('Not available currently');
+  };
 
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
+    setIsRejecting(true);
     try {
-      await updateCustomQuoteRequest(business.id, req.id, {
+      await updateCustomQuoteRequest(business.id, rejectTarget.id, {
         status: 'rejected',
-        rejectionReason: reason || 'Not available currently',
+        rejectionReason: rejectReason.trim() || 'Not available currently',
       });
+      setRejectTarget(null);
     } catch (err) {
       console.error('Failed to reject request:', err);
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -287,12 +314,20 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
     }
   };
 
-  const handleDelete = async (req: CustomQuoteRequest) => {
-    if (!confirm(`Permanently delete enquiry ${req.requestNumber}?`)) return;
+  const handleDelete = (req: CustomQuoteRequest) => {
+    setQuoteToDelete(req);
+  };
+
+  const confirmDelete = async () => {
+    if (!quoteToDelete) return;
+    setIsDeletingQuote(true);
     try {
-      await deleteCustomQuoteRequest(business.id, req.id);
+      await deleteCustomQuoteRequest(business.id, quoteToDelete.id);
+      setQuoteToDelete(null);
     } catch (err) {
       console.error('Failed to delete quote request:', err);
+    } finally {
+      setIsDeletingQuote(false);
     }
   };
 
@@ -358,6 +393,16 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={() => setIsQrModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 shadow-2xs"
+            title="View, download, and print QR code for Custom Quote Request Form"
+          >
+            <QrCode className="w-3.5 h-3.5 text-rose-600" />
+            <span>Quote Form QR</span>
+          </button>
+
           <button
             type="button"
             onClick={runQuoteExpiryCheck}
@@ -982,6 +1027,100 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
             />
           </div>
         </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <ConfirmActionModal
+        isOpen={!!quoteToDelete}
+        title="Delete Enquiry?"
+        message={`Permanently delete enquiry ${quoteToDelete?.requestNumber} for ${quoteToDelete?.customerName}? This action cannot be undone.`}
+        confirmText="Delete Enquiry"
+        cancelText="Cancel"
+        isDestructive={true}
+        isLoading={isDeletingQuote}
+        onConfirm={confirmDelete}
+        onCancel={() => setQuoteToDelete(null)}
+      />
+
+      {/* MARK PAID CONFIRMATION MODAL */}
+      <ConfirmActionModal
+        isOpen={!!quoteToMarkPaid}
+        title="Mark Quote as Paid?"
+        message={`Confirm payment of ₹${quoteToMarkPaid?.quotedPrice?.toLocaleString() || 0} for enquiry ${quoteToMarkPaid?.requestNumber}? This will mark the enquiry as Paid & In Progress.`}
+        confirmText="Mark as Paid"
+        cancelText="Cancel"
+        isDestructive={false}
+        isLoading={isMarkingPaid}
+        onConfirm={confirmMarkPaid}
+        onCancel={() => setQuoteToMarkPaid(null)}
+      />
+
+      {/* REJECT MODAL */}
+      {rejectTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200/90 p-6 overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-slate-900">
+                Reject Enquiry {rejectTarget.requestNumber}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRejectTarget(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600 mb-4">
+              Specify a rejection reason for customer <span className="font-semibold">{rejectTarget.customerName}</span>:
+            </p>
+            <input
+              type="text"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g., Currently fully booked, budget out of scope"
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 mb-5"
+            />
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setRejectTarget(null)}
+                disabled={isRejecting}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmReject}
+                disabled={isRejecting}
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition flex items-center gap-1.5"
+              >
+                {isRejecting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>Confirm Reject</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quote Form QR Code Modal */}
+      {isQrModalOpen && (
+        <ModuleQrModal
+          isOpen={isQrModalOpen}
+          onClose={() => setIsQrModalOpen(false)}
+          title="Custom Quote Requests QR Code"
+          subtitle={`Let clients scan and submit custom commission inquiries, project briefs, and budget estimates to ${business.name}.`}
+          badge="Custom Quote Form"
+          url={getModuleDeepUrl(business, 'quotes')}
+          businessName={business.name}
+          logoUrl={business.logo || business.profileImage}
+          accentColor="rose"
+        />
       )}
     </div>
   );

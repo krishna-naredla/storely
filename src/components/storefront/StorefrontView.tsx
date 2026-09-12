@@ -59,9 +59,7 @@ import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
 import { DigitalCheckoutModal } from './DigitalCheckoutModal';
 import { VerifiedBadge } from '../common/VerifiedBadge';
-import { PortfolioShowcase } from './PortfolioShowcase';
 import { EventsShowcase } from './EventsShowcase';
-import { BioLinksShowcase } from './BioLinksShowcase';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
 import { Briefcase, LayoutGrid } from 'lucide-react';
 
@@ -604,11 +602,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
         
-        {/* Bio Link Buttons */}
-        {(business.modules?.universal_links) && (
-           <BioLinksShowcase links={bioLinks} business={business} />
-        )}
-        
         {/* Active Promotional Offers Ribbon */}
         {offers.length > 0 && (
           <div className="space-y-2">
@@ -1012,18 +1005,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             </div>
           )}
         </div>
-
-        {/* Portfolio & Creative Showcase */}
-        {(business.modules?.work_portfolio || portfolioItems.length > 0) && (
-          <PortfolioShowcase
-            business={business}
-            items={portfolioItems}
-            testimonials={testimonials}
-            onBookConsultation={(item) => {
-              if (item) setSelectedItemForBooking(item);
-            }}
-          />
-        )}
 
         {/* Customer Reviews & Testimonials Section */}
         <section className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">

@@ -20,6 +20,16 @@
   h1, h2, h3, h4, .font-heading {
     font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  textarea,
+  select {
+    color: #0f172a;
+  }
+  .dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  .dark textarea,
+  .dark select {
+    color: #f8fafc;
+  }
 }
 
 /* Custom scrollbars and styling */
@@ -36,6 +46,90 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* =========================================================================
+   DYNAMIC MEDIA QUERY ADJUSTMENTS FOR BIO & PORTFOLIO VIEWS
+   Consistent scaling, readability, aspect ratios & pixel density handling
+   ========================================================================= */
+
+/* High Pixel Density / Retina Displays (@2x, @3x, OLED, Dynamic Island) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .high-dpi-crisp {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* Ultra-Tall Aspect Ratios (Modern 19.5:9, 20:9, 21:9 smartphones) */
+@media screen and (max-width: 480px) and (max-aspect-ratio: 9/19) {
+  .bio-viewport-container {
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+  }
+  .portfolio-hero-container {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+  }
+}
+
+/* Foldables Unfolded & Squarish Aspect Ratios (~1:1 to 4:3 on 600px-900px wide screens) */
+@media screen and (min-width: 540px) and (max-width: 960px) and (min-aspect-ratio: 3/4) {
+  .bio-grid-adaptive {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  }
+  .portfolio-grid-adaptive {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  }
+}
+
+/* Ultra-Compact / Legacy Mobile Viewports (<= 360px: iPhone SE, Galaxy Fold cover) */
+@media screen and (max-width: 360px) {
+  .bio-touch-compact {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  .bio-title-fluid {
+    font-size: 1.5rem !important;
+    line-height: 1.25 !important;
+  }
+  .bio-avatar-fluid {
+    width: 6.5rem !important;
+    height: 6.5rem !important;
+  }
+}
+
+/* Large Mobile Screens & Foldables (390px - 480px: iPhone Pro Max, Galaxy Ultra) */
+@media screen and (min-width: 390px) and (max-width: 539px) {
+  .bio-viewport-container {
+    padding-left: max(1.25rem, env(safe-area-inset-left));
+    padding-right: max(1.25rem, env(safe-area-inset-right));
+  }
+}
+
+/* Tablets (>= 768px): expanded breathing room */
+@media screen and (min-width: 768px) {
+  .bio-viewport-container {
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}
+
+/* WCAG Accessible Minimum Touch Targets (>= 44x44 CSS px) */
+.touch-target-accessible {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+.touch-target-comfortable {
+  min-height: 48px;
+  min-width: 48px;
+  touch-action: manipulation;
 }
 
 @keyframes pulse-subtle {

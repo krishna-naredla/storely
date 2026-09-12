@@ -319,6 +319,12 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
     initialSettings.ctaMode || 'whatsapp'
   );
 
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // Mark unsaved changes
   const markDirty = () => setHasUnsavedChanges(true);
 
@@ -469,7 +475,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error('Error saving portfolio changes:', err);
-      alert('Failed to save portfolio customizations. Please try again.');
+      showToast('Failed to save portfolio customizations. Please try again.', 'error');
     } finally {
       setIsSavingAll(false);
     }
@@ -570,7 +576,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       setItemToDelete(null);
     } catch (err) {
       console.error('Error deleting portfolio item:', err);
-      alert('Failed to delete item.');
+      showToast('Failed to delete item.', 'error');
     }
   };
 
@@ -654,7 +660,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
   const handleSaveTestimonial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testimonialClientName.trim() || !testimonialQuote.trim()) {
-      alert('Client Name and Quote are required.');
+      showToast('Client Name and Quote are required.', 'error');
       return;
     }
     setIsSavingTestimonial(true);
@@ -681,7 +687,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
       setIsTestimonialModalOpen(false);
     } catch (err) {
       console.error('Error saving testimonial:', err);
-      alert('Failed to save testimonial.');
+      showToast('Failed to save testimonial.', 'error');
     } finally {
       setIsSavingTestimonial(false);
     }
@@ -2523,6 +2529,30 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
           onConfirm={handleConfirmDeleteTool}
           onCancel={() => setToolToDelete(null)}
         />
+      )}
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-200"
+        >
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold ${
+              toastMessage.type === 'error'
+                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-slate-900 border-slate-800 text-white'
+            }`}
+          >
+            {toastMessage.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            ) : (
+              <Check className="w-5 h-5 text-emerald-400 shrink-0" />
+            )}
+            <span>{toastMessage.text}</span>
+          </div>
+        </div>
       )}
     </div>
   );
