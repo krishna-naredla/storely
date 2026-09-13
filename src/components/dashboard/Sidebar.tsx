@@ -131,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: !!modules?.booking_appointments },
         { id: "quotes", label: "Custom Quotes", icon: FileText, visible: !!modules?.custom_quotes },
         { id: "events", label: "Events & Ticketing", icon: Ticket, visible: !!modules?.events_tickets || !!modules?.events_ticketing },
-        { id: "reviews", label: "Client Testimonials", icon: Star, visible: !!modules?.reviews !== false },
+        { id: "reviews", label: "Client Testimonials", icon: Star, visible: true },
         { id: "analytics", label: "Analytics & Traffic", icon: BarChart3, visible: true },
         { id: "payments", label: "Payment Setup", icon: CreditCard, visible: true },
         { id: "notifications", label: "Notifications", icon: Bell, visible: true },

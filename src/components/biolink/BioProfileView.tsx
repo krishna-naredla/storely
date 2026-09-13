@@ -45,33 +45,13 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [themeValidated, setThemeValidated] = useState(false);
 
-  useEffect(() => {
-    if (business) {
-      setThemeValidated(true);
-    }
-  }, [business]);
+  const businessId = business?.id || '';
+  const businessName = business?.name || 'Creator';
+  const businessSlug = business?.slug || '';
+  const businessTagline = business?.tagline || '';
+  const rawTheme = business?.bioTheme || {};
 
-  if (!business || !themeValidated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
-        <div className="text-center space-y-4">
-          <p className="text-lg font-bold">Profile not found or unavailable.</p>
-          {onBackToDashboard && (
-            <button
-              onClick={onBackToDashboard}
-              className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl"
-            >
-              Back to Dashboard
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const rawTheme = business.bioTheme || {};
   const presetKey = rawTheme?.presetId || 'classic_green';
   const preset = (BIO_THEME_PRESETS && BIO_THEME_PRESETS[presetKey]) ? BIO_THEME_PRESETS[presetKey] : (BIO_THEME_PRESETS?.['classic_green'] || DEFAULT_BIO_THEME);
 
@@ -89,14 +69,15 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     avatarShape: rawTheme?.avatarShape || DEFAULT_BIO_THEME.avatarShape,
     avatarBorder: rawTheme?.avatarBorder !== false,
     showVerifiedBadge: rawTheme?.showVerifiedBadge !== false,
-    profession: rawTheme?.profession || business?.tagline || DEFAULT_BIO_THEME.profession,
+    profession: rawTheme?.profession || businessTagline || DEFAULT_BIO_THEME.profession,
     showSocialIconsBar: rawTheme?.showSocialIconsBar !== false,
   };
 
   useEffect(() => {
-    const title = `${business.name} — Official Bio Link | Storelly`;
+    if (!businessId) return;
+    const title = `${businessName} — Official Bio Link | Storelly`;
     document.title = title;
-    recordBioLinkView(business.id);
+    recordBioLinkView(businessId);
     loadData();
 
     // Generate QR Code for sharing
@@ -108,23 +89,42 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     })
       .then((url) => setQrDataUrl(url))
       .catch(() => {});
-  }, [business.id]);
+  }, [businessId]);
 
   const loadData = async () => {
+    if (!businessId) return;
     try {
-      const linksData = (await getBioLinks(business.id)) as BioLink[];
+      const linksData = (await getBioLinks(businessId)) as BioLink[];
       const activeLinks = (linksData || [])
         .filter((l) => l.enabled !== false)
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
       setLinks(activeLinks);
-      recordAnalyticsEvent(business.id, 'bio_views', { slug: business.slug }).catch(() => {});
+      recordAnalyticsEvent(businessId, 'bio_views', { slug: businessSlug }).catch(() => {});
     } catch (err) {
       console.error('Error loading biolinks:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  if (!business) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
+        <div className="text-center space-y-4">
+          <p className="text-lg font-bold">Profile not found or unavailable.</p>
+          {onBackToDashboard && (
+            <button
+              onClick={onBackToDashboard}
+              className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl"
+            >
+              Back to Dashboard
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const handleLinkClick = (link: BioLink, e: React.MouseEvent) => {
     recordBioLinkClick(business.id, link.id).catch(console.error);

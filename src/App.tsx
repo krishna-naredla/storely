@@ -906,15 +906,11 @@ function MainContent() {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div
-                    className={`w-full h-full flex items-center justify-center text-white font-black text-2xl font-heading shadow-inner ${
-                      isPortfolioPath
-                        ? 'bg-gradient-to-br from-indigo-600 to-purple-700'
-                        : 'bg-gradient-to-br from-emerald-600 to-teal-700'
-                    }`}
-                  >
-                    {(publicBusiness?.name || publicStoreSlug || 'S').slice(0, 1).toUpperCase()}
-                  </div>
+                  <img
+                    src={getAppLogo()}
+                    alt="Storelly Logo"
+                    className="w-full h-full object-cover"
+                  />
                 )}
               </div>
             </div>
@@ -1069,35 +1065,21 @@ function MainContent() {
   // ROUTE 2: AUTHENTICATION & LOADING GATES
   // ==========================================
   if (authLoading || (currentUser && isLoadingBusinesses)) {
-    const isCreator = selectedBusiness ? isCreatorProfile(selectedBusiness) : false;
-    const initial = (selectedBusiness?.name || 'S').slice(0, 1).toUpperCase();
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 flex flex-col items-center justify-center text-white space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-xl animate-pulse overflow-hidden p-1">
-          {selectedBusiness?.logo || selectedBusiness?.profileImage ? (
-            <img
-              src={selectedBusiness.logo || selectedBusiness.profileImage}
-              alt={selectedBusiness.name}
-              className="w-full h-full object-cover rounded-xl"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div
-              className={`w-full h-full rounded-xl flex items-center justify-center text-white font-black text-xl font-heading ${
-                isCreator ? 'bg-gradient-to-br from-indigo-600 to-purple-600' : 'bg-gradient-to-br from-emerald-600 to-teal-600'
-              }`}
-            >
-              {initial}
-            </div>
-          )}
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-slate-900 space-y-6">
+        <div className="w-28 h-28 rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm overflow-hidden bg-white p-2">
+          <img
+            src={getAppLogo()}
+            alt="Storelly Logo"
+            className="w-full h-full object-cover rounded-xl"
+          />
         </div>
         <div className="text-center space-y-1">
-          <h2 className="text-sm font-bold text-white">
-            {selectedBusiness?.name || 'Business Workspace'}
+          <h2 className="text-base font-bold text-slate-900 font-heading">
+            Storelly
           </h2>
-          <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-            <span>Loading workspace &amp; catalog...</span>
+          <p className="text-xs text-slate-500">
+            Loading your workspace...
           </p>
         </div>
       </div>
@@ -1137,7 +1119,7 @@ function MainContent() {
         <header className="bg-white border-b border-slate-200 py-4 px-6 sm:px-10 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-white">
-              <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
+              <img src={getAppLogo()} alt="Storelly Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <span className="font-extrabold text-lg tracking-tight text-slate-900">Storelly</span>

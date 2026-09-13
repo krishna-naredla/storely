@@ -1,5 +1,6 @@
 import React from 'react';
 import { Store, Facebook, Instagram, Twitter, Linkedin, Youtube, Mail, ShieldCheck, Apple, Play } from 'lucide-react';
+import { getAppLogo } from '../../utils/branding';
 
 interface LandingFooterProps {
   onOpenMasterAdmin?: () => void;
@@ -17,7 +18,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenMasterAdmin 
           <div className="col-span-2 space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-emerald-500/30 shadow-sm flex items-center justify-center bg-white">
-                <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
+                <img src={getAppLogo()} alt="Storelly Logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-xl font-extrabold text-white tracking-tight">Storelly</span>
             </div>
