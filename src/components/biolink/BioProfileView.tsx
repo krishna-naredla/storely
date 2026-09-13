@@ -30,6 +30,7 @@ import {
   BIO_THEME_PRESETS,
 } from './SocialBrandIcons';
 import { DEFAULT_BIO_THEME } from './constants';
+import { getBusinessLogo } from '../../utils/branding';
 
 interface Props {
   business: BusinessProfile;
@@ -404,9 +405,9 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               theme.avatarBorder ? 'bg-white/30 ring-4 sm:ring-6 ring-white/25 shadow-2xl' : 'bg-transparent'
             }`}
           >
-            {business.logo ? (
+            {getBusinessLogo(business) ? (
               <img
-                src={business.logo}
+                src={getBusinessLogo(business)!}
                 alt={business.name}
                 className={`w-full h-full object-cover shadow-inner bg-slate-900 high-dpi-crisp ${getAvatarRadiusClass()}`}
               />

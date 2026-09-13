@@ -4,7 +4,7 @@ import { normalizeBusinessData } from './utils/dataNormalization';
 import { ViewRouter } from './components/common/ViewRouter';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getAppLogo } from './utils/branding';
+import { getAppLogo, getBusinessLogo } from './utils/branding';
 import { useDynamicBranding } from './utils/dynamicBranding';
 import {
   Store,
@@ -898,10 +898,10 @@ function MainContent() {
                     : 'bg-white border border-emerald-200'
                 }`}
               >
-                {publicBusiness?.logo || publicBusiness?.profileImage ? (
+                {getBusinessLogo(publicBusiness) ? (
                   <img
-                    src={publicBusiness.logo || publicBusiness.profileImage}
-                    alt={publicBusiness.name}
+                    src={getBusinessLogo(publicBusiness)!}
+                    alt={publicBusiness?.name || 'Store'}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />

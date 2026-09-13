@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SafeImage } from '../common/SafeImage';
+import { getBusinessLogo } from '../../utils/branding';
 import {
   Store,
   Download,
@@ -542,9 +543,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             {/* Logo */}
             <div className="relative shrink-0 mx-auto sm:mx-0">
               <div className="w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-2xl sm:rounded-3xl shadow-xl border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
-                {business.logo || business.profileImage ? (
+                {getBusinessLogo(business) ? (
                   <SafeImage
-                    src={business.logo || business.profileImage}
+                    src={getBusinessLogo(business)!}
                     alt={business.name}
                     fallbackType="avatar"
                     loading="eager"
