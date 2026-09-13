@@ -101,8 +101,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Header */}
         <div className="mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-linear-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-extrabold text-lg mb-3 shadow-md shadow-emerald-600/20">
-            S
+          <div className="w-12 h-12 rounded-2xl overflow-hidden border border-slate-200 shadow-md flex items-center justify-center bg-white mb-3">
+            <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
             {mode === 'login'

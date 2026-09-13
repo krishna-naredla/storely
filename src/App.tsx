@@ -4,6 +4,7 @@ import { normalizeBusinessData } from './utils/dataNormalization';
 import { ViewRouter } from './components/common/ViewRouter';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getAppLogo } from './utils/branding';
 import { useDynamicBranding } from './utils/dynamicBranding';
 import {
   Store,
@@ -1135,8 +1136,8 @@ function MainContent() {
         {/* Top Header */}
         <header className="bg-white border-b border-slate-200 py-4 px-6 sm:px-10 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/20">
-              <Store className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-white">
+              <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <span className="font-extrabold text-lg tracking-tight text-slate-900">Storelly</span>

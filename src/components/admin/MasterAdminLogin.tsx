@@ -139,8 +139,8 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
         </div>
 
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-emerald-600/30 text-2xl font-black">
-            S
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-700 shadow-xl flex items-center justify-center bg-white mx-auto">
+            <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-2xl font-black text-white font-heading tracking-tight">
             Master Admin Control Center

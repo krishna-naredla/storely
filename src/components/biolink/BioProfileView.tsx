@@ -29,6 +29,7 @@ import {
   getBrandConfig,
   BIO_THEME_PRESETS,
 } from './SocialBrandIcons';
+import { DEFAULT_BIO_THEME } from './constants';
 
 interface Props {
   business: BusinessProfile;
@@ -36,33 +37,60 @@ interface Props {
   onOpenStorefront?: () => void;
 }
 
+
+
 export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard }) => {
   const [links, setLinks] = useState<BioLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [themeValidated, setThemeValidated] = useState(false);
+
+  useEffect(() => {
+    if (business) {
+      setThemeValidated(true);
+    }
+  }, [business]);
+
+  if (!business || !themeValidated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-4">
+        <div className="text-center space-y-4">
+          <p className="text-lg font-bold">Profile not found or unavailable.</p>
+          {onBackToDashboard && (
+            <button
+              onClick={onBackToDashboard}
+              className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl"
+            >
+              Back to Dashboard
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const rawTheme = business.bioTheme || {};
-  const presetKey = rawTheme.presetId || 'slate';
-  const preset = BIO_THEME_PRESETS[presetKey] || BIO_THEME_PRESETS['slate'];
+  const presetKey = rawTheme?.presetId || 'classic_green';
+  const preset = (BIO_THEME_PRESETS && BIO_THEME_PRESETS[presetKey]) ? BIO_THEME_PRESETS[presetKey] : (BIO_THEME_PRESETS?.['classic_green'] || DEFAULT_BIO_THEME);
 
   const theme = {
-    background: rawTheme.background || preset.backgroundGradient || preset.backgroundColor,
-    textColor: rawTheme.textColor || preset.textColor,
-    subtitleColor: rawTheme.subtitleColor || preset.subtitleColor,
-    buttonStyle: (rawTheme.buttonStyle as string) || preset.buttonStyle || 'rounded',
-    buttonColor: rawTheme.buttonColor || preset.buttonColor,
-    buttonTextColor: rawTheme.buttonTextColor || preset.buttonTextColor,
-    buttonSubtitleColor: rawTheme.buttonSubtitleColor || preset.buttonSubtitleColor,
-    buttonBorderColor: rawTheme.buttonBorderColor || preset.buttonBorderColor,
-    buttonHoverEffect: rawTheme.buttonHoverEffect || 'lift',
-    fontFamily: rawTheme.fontFamily || 'modern',
-    avatarShape: rawTheme.avatarShape || 'circle',
-    avatarBorder: rawTheme.avatarBorder !== false,
-    showVerifiedBadge: rawTheme.showVerifiedBadge !== false,
-    profession: rawTheme.profession || business.tagline || 'Entrepreneur | Content Creator',
-    showSocialIconsBar: rawTheme.showSocialIconsBar !== false,
+    background: rawTheme?.background || preset?.backgroundGradient || preset?.backgroundColor || DEFAULT_BIO_THEME.backgroundColor,
+    textColor: rawTheme?.textColor || preset?.textColor || DEFAULT_BIO_THEME.textColor,
+    subtitleColor: rawTheme?.subtitleColor || preset?.subtitleColor || DEFAULT_BIO_THEME.subtitleColor,
+    buttonStyle: (rawTheme?.buttonStyle as string) || preset?.buttonStyle || DEFAULT_BIO_THEME.buttonStyle,
+    buttonColor: rawTheme?.buttonColor || preset?.buttonColor || DEFAULT_BIO_THEME.buttonColor,
+    buttonTextColor: rawTheme?.buttonTextColor || preset?.buttonTextColor || DEFAULT_BIO_THEME.buttonTextColor,
+    buttonSubtitleColor: rawTheme?.buttonSubtitleColor || preset?.buttonSubtitleColor || DEFAULT_BIO_THEME.buttonSubtitleColor,
+    buttonBorderColor: rawTheme?.buttonBorderColor || preset?.buttonBorderColor || DEFAULT_BIO_THEME.buttonBorderColor,
+    buttonHoverEffect: rawTheme?.buttonHoverEffect || DEFAULT_BIO_THEME.buttonHoverEffect,
+    fontFamily: rawTheme?.fontFamily || DEFAULT_BIO_THEME.fontFamily,
+    avatarShape: rawTheme?.avatarShape || DEFAULT_BIO_THEME.avatarShape,
+    avatarBorder: rawTheme?.avatarBorder !== false,
+    showVerifiedBadge: rawTheme?.showVerifiedBadge !== false,
+    profession: rawTheme?.profession || business?.tagline || DEFAULT_BIO_THEME.profession,
+    showSocialIconsBar: rawTheme?.showSocialIconsBar !== false,
   };
 
   useEffect(() => {

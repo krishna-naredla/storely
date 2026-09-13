@@ -590,8 +590,8 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
           {/* Brand Header */}
           <div className="h-16 px-6 flex items-center justify-between border-b border-slate-100 bg-slate-900 text-white">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center font-black text-lg shadow-md">
-                S
+              <div className="w-8 h-8 rounded-xl overflow-hidden border border-slate-700 shadow-md flex items-center justify-center bg-white">
+                <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
               </div>
               <div>
                 <span className="font-heading font-black text-base tracking-tight flex items-center gap-1.5">

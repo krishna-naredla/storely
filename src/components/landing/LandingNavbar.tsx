@@ -29,8 +29,8 @@ export const LandingNavbar: React.FC<Props> = ({ onOpenAuth }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-          <div className="w-10 h-10 rounded-xl bg-[#ff6b00] flex items-center justify-center overflow-hidden border border-[#ff6b00]/30 shadow-sm">
-            <Store className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 shadow-xs flex items-center justify-center bg-white">
+            <img src="/main logo-1.jpg" alt="Storelly Logo" className="w-full h-full object-cover" />
           </div>
           <span className="text-xl font-extrabold text-slate-900 tracking-tight">Storelly</span>
         </div>
