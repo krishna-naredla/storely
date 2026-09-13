@@ -4,13 +4,26 @@ import { isCreatorProfile } from '../../utils/profileHelper';
 
 interface Props {
   business: BusinessProfile;
+  currentBusinessId?: string;
   moduleName: 'store' | 'bio' | 'portfolio';
   isOwner: boolean;
   children: React.ReactNode;
   onBackToDashboard?: () => void;
 }
 
-export const CreatorAuthGuard: React.FC<Props> = ({ business, moduleName, isOwner, children, onBackToDashboard }) => {
+export const CreatorAuthGuard: React.FC<Props> = ({ business, currentBusinessId, moduleName, isOwner, children, onBackToDashboard }) => {
+  if (currentBusinessId && business && business.id !== currentBusinessId) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+          <h1 className="text-2xl font-black text-white">Unauthorized Business Context</h1>
+          <p className="text-sm text-slate-400">
+            The requested business ID does not match your active session context.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const isCreator = isCreatorProfile(business);
   const modules = business.modules || {};
 

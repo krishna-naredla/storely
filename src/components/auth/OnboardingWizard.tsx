@@ -355,10 +355,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Visual Storefront Mockup Banner with Real Storelly6 Image */}
-                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-3.5 text-white space-y-3 shadow-inner relative overflow-hidden group/img">
-                  {/* Real Storelly6 Image Background / Banner */}
-                  <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-emerald-500/30">
+                {/* Raw Image Showcase without nested card box */}
+                <div className="w-full rounded-2xl overflow-hidden border border-emerald-500/30 shadow-md group/img">
+                  <div className="relative h-48 sm:h-56 w-full overflow-hidden">
                     <img
                       src="/storelly6.jpg.jpeg"
                       alt="Vendor Storefront Showcase"
@@ -367,25 +366,18 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         (e.currentTarget as HTMLImageElement).src = '/storelly6.jpg';
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent"></div>
-                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-emerald-950/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-emerald-400/40 text-[10px] font-bold text-emerald-300">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-emerald-950/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-400/40 text-[11px] font-bold text-emerald-300 shadow-sm">
                       <span>🛍️</span>
                       <span>Real Merchant Store</span>
                     </div>
-                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-wider shadow-xs">
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-wider shadow-md">
                       Live Catalog
                     </div>
-                    <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-bold text-white">
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs font-bold text-white">
                       <div className="truncate font-heading">Online Store &amp; WhatsApp Cart</div>
-                      <div className="text-[10px] font-mono text-emerald-300 shrink-0">store.domain/@store</div>
+                      <div className="text-[11px] font-mono text-emerald-300 shrink-0">store.domain/@store</div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-300">
-                    <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                      <Zap className="w-3 h-3 text-emerald-400" /> WhatsApp Direct Dispatch
-                    </span>
-                    <span className="font-mono text-white font-bold bg-white/10 px-2 py-0.5 rounded-md border border-white/10">UPI QR &amp; COD Active</span>
                   </div>
                 </div>
 
@@ -482,34 +474,26 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Visual Creator Hub Mockup Banner with Real CreatorLink Image */}
-                <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 p-3.5 text-white space-y-3 shadow-inner relative overflow-hidden group/img">
-                  {/* Real CreatorLink Image Background / Banner */}
-                  <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden border border-indigo-500/30">
+                {/* Raw Image Showcase without nested card box */}
+                <div className="w-full rounded-2xl overflow-hidden border border-indigo-500/30 shadow-md group/img">
+                  <div className="relative h-48 sm:h-56 w-full overflow-hidden">
                     <img
                       src="/cteatorlink.jpeg"
                       alt="Creator Link & Portfolio Showcase"
                       className="w-full h-full object-cover object-center group-hover/img:scale-105 transition duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent"></div>
-                    <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-indigo-950/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-indigo-400/40 text-[10px] font-bold text-indigo-300">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-indigo-950/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-indigo-400/40 text-[11px] font-bold text-indigo-300 shadow-sm">
                       <span>✨</span>
                       <span>Verified Creator Profile</span>
                     </div>
-                    <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-indigo-500 text-white font-black text-[9px] uppercase tracking-wider shadow-xs">
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-indigo-500 text-white font-black text-[10px] uppercase tracking-wider shadow-md">
                       Bio Links
                     </div>
-                    <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] font-bold text-white">
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs font-bold text-white">
                       <div className="truncate font-heading">Digital Portfolio &amp; Downloads</div>
-                      <div className="text-[10px] font-mono text-indigo-300 shrink-0">portfolio.domain/@handle</div>
+                      <div className="text-[11px] font-mono text-indigo-300 shrink-0">portfolio.domain/@handle</div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-300">
-                    <span className="flex items-center gap-1 text-indigo-300 font-bold">
-                      <LinkIcon className="w-3 h-3 text-indigo-400" /> Bio Links (@Instagram, @YouTube)
-                    </span>
-                    <span className="font-mono text-white font-bold bg-white/10 px-2 py-0.5 rounded-md border border-white/10">Bespoke Quotes &amp; Events</span>
                   </div>
                 </div>
 

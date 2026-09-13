@@ -1,4 +1,7 @@
 import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
+import { useInitializationGuard } from './hooks/useInitializationGuard';
+import { normalizeBusinessData } from './utils/dataNormalization';
+import { ViewRouter } from './components/common/ViewRouter';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDynamicBranding } from './utils/dynamicBranding';
@@ -457,6 +460,16 @@ function MainContent() {
   const [publicBusiness, setPublicBusiness] = useState<BusinessProfile | null>(null);
   const [isLoadingPublicStore, setIsLoadingPublicStore] = useState(false);
   const [publicStoreNotFound, setPublicStoreNotFound] = useState(false);
+
+  const initGuard = useInitializationGuard({
+    currentUser,
+    loadingUser: authLoading,
+    selectedBusiness,
+    isInitializingBusiness: isLoadingBusinesses,
+    publicBusiness,
+    isLoadingPublicStore,
+    isPublicRoute: Boolean(publicStoreSlug),
+  });
 
   // Dynamic White-Labeling & Favicon Sync
   const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -932,12 +945,11 @@ function MainContent() {
     }
 
     // 1B. Storefront Found & Active
-    const targetBusiness = publicStoreSlug ? publicBusiness : selectedBusiness;
+    const rawTargetBusiness = publicStoreSlug ? publicBusiness : selectedBusiness;
+    const targetBusiness = normalizeBusinessData(rawTargetBusiness);
     if (targetBusiness && !publicStoreNotFound) {
       const isOwner = currentUser && selectedBusiness && selectedBusiness.id === targetBusiness.id;
-      const isCreator = isCreatorProfile(targetBusiness);
       
-      // Check if it's a bio link, digital store, or portfolio
       const pathname = window.location.pathname;
       const urlParams = new URLSearchParams(window.location.search);
 
@@ -970,77 +982,21 @@ function MainContent() {
         pathname.startsWith('/store') ||
         urlParams.get('view') === 'store' ||
         isBioStoreRoute;
-      
-      // Route priority for creators when neither is explicitly requested in the path
-      let shouldRenderBio = isBioLink;
-      let shouldRenderPortfolio = isPortfolio;
-      let shouldRenderStore = isExplicitStore || !isCreator;
 
-      if (isCreator && !isBioLink && !isPortfolio && !isExplicitStore) {
-        const primaryPref = targetBusiness.primaryDestination;
-        const portfolioEnabled = Boolean(
-          targetBusiness.modules?.work_portfolio || targetBusiness.modules?.portfolio
-        );
-        const bioEnabled = Boolean(
-          targetBusiness.modules?.universal_links || targetBusiness.modules?.bio_links || targetBusiness.modules?.biolink
-        );
-        const digitalEnabled = Boolean(
-          targetBusiness.modules?.digital_products ||
-          targetBusiness.modules?.digitalProducts ||
-          targetBusiness.modules?.products
-        );
+      const viewModeType = isBioLink ? 'biolink' : isPortfolio ? 'portfolio' : isExplicitStore ? 'storefront' : 'dashboard';
 
-        if (primaryPref === 'biolink' && bioEnabled) {
-          shouldRenderBio = true;
-        } else if (primaryPref === 'store' && digitalEnabled) {
-          shouldRenderStore = true;
-        } else if (portfolioEnabled) {
-          shouldRenderPortfolio = true;
-        } else if (bioEnabled) {
-          shouldRenderBio = true;
-        } else if (digitalEnabled) {
-          shouldRenderStore = true;
-        } else {
-          shouldRenderPortfolio = true;
-        }
-      }
-      
-      if (shouldRenderBio) {
-        return (
-          <CreatorAuthGuard business={targetBusiness} moduleName="bio" isOwner={!!isOwner}>
-            <BioProfileView
-              business={targetBusiness}
-              onBackToDashboard={isOwner ? navigateToDashboard : undefined}
-              onOpenStorefront={() => navigateToStorefront(targetBusiness.slug, `/store/${targetBusiness.slug}`)}
-            />
-          </CreatorAuthGuard>
-        );
-      }
-
-      if (shouldRenderPortfolio) {
-        return (
-          <CreatorAuthGuard business={targetBusiness} moduleName="portfolio" isOwner={!!isOwner}>
-            <StandalonePortfolioView
-              business={targetBusiness}
-              onBackToDashboard={isOwner ? navigateToDashboard : undefined}
-              isOwner={!!isOwner}
-            />
-          </CreatorAuthGuard>
-        );
-      }
-
-      // Default to Storefront
       return (
-        <CreatorAuthGuard business={targetBusiness} moduleName="store" isOwner={!!isOwner}>
-          <StorefrontView
-            business={targetBusiness}
-            onBackToDashboard={isOwner ? navigateToDashboard : undefined}
-            onOpenDigitalCard={() => {
-              setSelectedBusiness(targetBusiness);
-              setIsShareModalOpen(true);
-            }}
-          />
-        </CreatorAuthGuard>
+        <ViewRouter
+          viewMode={viewModeType}
+          targetBusiness={targetBusiness}
+          isOwner={!!isOwner}
+          onBackToDashboard={navigateToDashboard}
+          onOpenStorefront={navigateToStorefront}
+          onOpenDigitalCard={() => {
+            setSelectedBusiness(targetBusiness);
+            setIsShareModalOpen(true);
+          }}
+        />
       );
     }
 
