@@ -167,7 +167,13 @@ function parseStoreSlugFromUrl(): string | null {
   const rawHandleMatch = pathname.match(/^\/([a-zA-Z0-9_.-]+)$/);
   if (rawHandleMatch && rawHandleMatch[1]) {
     const candidate = rawHandleMatch[1].toLowerCase();
-    const reserved = ['login', 'register', 'dashboard', 'admin', 'api', 'assets', 'favicon.ico', 'portfolio', 'store', 'p', 'card'];
+    const reserved = [
+      'login', 'register', 'dashboard', 'admin', 'api', 'assets', 'favicon.ico',
+      'portfolio', 'store', 'p', 'card', 'catalog', 'events', 'quotes',
+      'categories', 'orders', 'bookings', 'customers', 'reviews', 'offers',
+      'analytics', 'modules', 'payments', 'notifications', 'biolink', 'share',
+      'settings', 'profile', 'index.html', 'vite.svg'
+    ];
     if (!reserved.includes(candidate)) {
       return decodeURIComponent(rawHandleMatch[1]).trim();
     }
@@ -789,21 +795,25 @@ function MainContent() {
   if (isMasterAdminMode) {
     if (currentUser && isUserAuthorizedAdmin(currentUser.email)) {
       return (
-        <MasterAdminDashboard
-          adminEmail={currentUser.email!}
-          onLogout={async () => {
-            await logout();
-            setIsMasterAdminMode(false);
-          }}
-          onBackToApp={() => setIsMasterAdminMode(false)}
-        />
+        <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>}>
+          <MasterAdminDashboard
+            adminEmail={currentUser.email!}
+            onLogout={async () => {
+              await logout();
+              setIsMasterAdminMode(false);
+            }}
+            onBackToApp={() => setIsMasterAdminMode(false)}
+          />
+        </Suspense>
       );
     }
     return (
-      <MasterAdminLogin
-        onLoginSuccess={() => setIsMasterAdminMode(true)}
-        onBackToApp={() => setIsMasterAdminMode(false)}
-      />
+      <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>}>
+        <MasterAdminLogin
+          onLoginSuccess={() => setIsMasterAdminMode(true)}
+          onBackToApp={() => setIsMasterAdminMode(false)}
+        />
+      </Suspense>
     );
   }
 
