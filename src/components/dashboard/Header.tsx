@@ -25,6 +25,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { isCreatorProfile, getPrimaryPublicUrl, getProfileTypeLabel } from '../../utils/profileHelper';
 import { SafeImage } from '../common/SafeImage';
 import { useFirestoreSyncStatus } from '../../services/firestoreSyncService';
+import { getBusinessLogo } from '../../utils/branding';
 
 interface HeaderProps {
   business: BusinessProfile | null;
@@ -169,13 +170,13 @@ export const Header: React.FC<HeaderProps> = ({
             <div className={`w-7 h-7 rounded-lg overflow-hidden shrink-0 border shadow-2xs ${
               isCreator ? 'border-indigo-300/80 bg-indigo-100 text-indigo-700' : 'border-emerald-300/80 bg-emerald-100 text-emerald-700'
             } flex items-center justify-center font-black text-[10px]`}>
-              {business?.logo || business?.profileImage ? (
+              {getBusinessLogo(business) ? (
                 <SafeImage
-                  src={business.logo || business.profileImage}
+                  src={getBusinessLogo(business)!}
                   alt={business?.name || "Store"}
                   fallbackType="avatar"
                   loading="lazy"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain object-center"
                 />
               ) : (
                 <span>{(business?.name || (isCreator ? 'C' : 'M')).slice(0, 2).toUpperCase()}</span>
@@ -206,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {userBusinesses.map((b) => {
                   const bCreator = isCreatorProfile(b);
                   const isSelected = business?.id === b.id;
-                  const bImg = b.logo || b.profileImage;
+                  const bImg = getBusinessLogo(b);
                   const bUrl = bCreator ? getPrimaryPublicUrl(b) : getStorefrontUrl(b);
                   const isCopied = copiedBizId === b.id;
 
@@ -235,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({
                               alt={b.name}
                               fallbackType="avatar"
                               loading="lazy"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain object-center"
                             />
                           ) : (
                             <span>{b.name.slice(0, 2).toUpperCase()}</span>

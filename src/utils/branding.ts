@@ -1,21 +1,25 @@
 import { BusinessProfile } from '../types';
 
 export function getAppLogo(): string {
-  return '/main logo-1.jpg';
+  return '/main logo.jpg';
 }
 
 export function getBusinessLogo(business?: BusinessProfile | null): string | null {
   if (!business) return null;
   const b = business as any;
-  return (
+  const logo =
     b.logo ||
     b.profileImage ||
+    b.branding?.logoUrl ||
+    b.branding?.logo ||
     b.avatar ||
-    b.logoUrl ||
+    b.avatarUrl ||
     b.photoURL ||
-    b.coverImage ||
-    b.banner ||
-    null
-  );
+    b.logoUrl ||
+    null;
+  if (typeof logo === 'string' && logo.trim().length > 0) {
+    return logo.trim();
+  }
+  return null;
 }
 

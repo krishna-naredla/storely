@@ -516,18 +516,21 @@ export const StorePaymentsManager: React.FC<StorePaymentsManagerProps> = ({
               <div className="text-xs font-bold text-slate-300">Active Modes:</div>
               <div className="flex flex-wrap gap-1.5">
                 {enableOnlinePayment && (
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                    ✓ Online UPI
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                    <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <span>Online UPI</span>
                   </span>
                 )}
                 {enableCod && (
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                    ✓ Cash on Delivery
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                    <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <span>Cash on Delivery</span>
                   </span>
                 )}
                 {enableBankTransfer && (
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
-                    ✓ Bank Transfer
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                    <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                    <span>Bank Transfer</span>
                   </span>
                 )}
               </div>

@@ -248,7 +248,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
     const defaultMsg =
       preset?.whatsappMessage ||
-      `Hi ${business.name}, I checked your portfolio on Storelly and would love to enquire about working together!`;
+      `Hi ${business.name}, I checked your portfolio and would love to enquire about working together!`;
     const msg = settings.whatsappMessage || defaultMsg;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -272,7 +272,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   const handleDirectWhatsApp = (customMsg?: string) => {
     const phone = business.whatsapp || business.phone;
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
-    const defaultMsg = `Hi ${business.name}, I was checking your portfolio on Storelly and would love to get in touch!`;
+    const defaultMsg = `Hi ${business.name}, I was checking your portfolio and would love to get in touch!`;
     const msg = customMsg || settings.whatsappMessage || defaultMsg;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -281,7 +281,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     e.preventDefault();
     const phone = business.whatsapp || business.phone;
     const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
-    const formattedMsg = `*New Inquiry from Storelly Portfolio*\n*Name:* ${contactName || 'Visitor'}\n*Contact:* ${contactPhone || 'Not provided'}\n*Message:* ${contactMessage}`;
+    const formattedMsg = `*New Inquiry*\n*Name:* ${contactName || 'Visitor'}\n*Contact:* ${contactPhone || 'Not provided'}\n*Message:* ${contactMessage}`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(formattedMsg)}`, '_blank');
     setContactSent(true);
     setTimeout(() => {
@@ -474,7 +474,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                 <img
                   src={getBusinessLogo(business)!}
                   alt={business.name}
-                  className="w-full h-full object-cover high-dpi-crisp"
+                  className="w-full h-full object-contain object-center high-dpi-crisp p-0.5"
                 />
               ) : (
                 <div
@@ -581,7 +581,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                       <img
                         src={getBusinessLogo(business)!}
                         alt={business.name}
-                        className="w-full h-full object-cover high-dpi-crisp"
+                        className="w-full h-full object-contain object-center high-dpi-crisp p-1"
                       />
                     ) : (
                       <div
@@ -783,11 +783,12 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                       className={`group border overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl cursor-pointer flex flex-col justify-between ${getCardRadiusClass()} ${getCardClass()}`}
                     >
                       {/* Media Cover Image */}
-                      <div className="relative aspect-video sm:aspect-4/3 w-full bg-slate-950 overflow-hidden">
+                      <div className="relative aspect-video sm:aspect-4/3 w-full bg-slate-950 overflow-hidden flex items-center justify-center">
                         <SafeImage
                           src={item.coverImage}
                           alt={item.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          fallbackType="product"
+                          className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
                         />
 
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">

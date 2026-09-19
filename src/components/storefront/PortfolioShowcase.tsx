@@ -378,14 +378,14 @@ export const PortfolioShowcase: React.FC<PortfolioShowcaseProps> = ({
                 className={`group border overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer ${getCardRadiusClass()} ${getCardClass()}`}
               >
                 {/* Media Thumbnail */}
-                <div className="relative h-48 sm:h-52 bg-slate-100 overflow-hidden">
+                <div className="relative w-full aspect-[16/10] bg-slate-50 overflow-hidden flex items-center justify-center">
                   <SafeImage
                     src={item.coverImage}
                     alt={item.title}
                     fallbackType="product"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-slate-950/10 transition-colors" />
+                  <div className="absolute inset-0 bg-slate-950/10 group-hover:bg-slate-950/5 transition-colors" />
 
                   {/* Category Pill */}
                   <div className="absolute top-3 left-3">

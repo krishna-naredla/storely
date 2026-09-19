@@ -9,7 +9,8 @@ import { Link, CalendarCheck, LineChart, FileDown, Wand2 } from 'lucide-react';
 import { 
   Store, CheckCircle2, Star, FileText, Calendar, Link2, 
   MessageCircle, TrendingUp, ChevronDown, Check, Play, QrCode, 
-  ArrowRight, Smartphone, ShieldCheck, Zap, Instagram, Youtube, User, Plus, Search, HelpCircle, MapPin, Send
+  ArrowRight, Smartphone, ShieldCheck, Zap, Instagram, Youtube, User, Plus, Search, HelpCircle, MapPin, Send, Sparkles,
+  Menu, X
 } from 'lucide-react';
 import { PlatformPricingPlan, PlatformPricingCMS } from '../../types/admin';
 import { 
@@ -157,8 +158,12 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
           </div>
           
           <div className="lg:hidden flex items-center">
-             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}></path></svg>
+             <button
+               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+               className="p-2 text-slate-600 hover:text-slate-900 rounded-lg"
+               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+             >
+               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
              </button>
           </div>
         </div>
@@ -226,46 +231,27 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                 <ShieldCheck className="w-4 h-4 text-emerald-500" /> No app for your customers. No commission on your sales.
               </p>
 
-              {/* Vendor & Creator Character Pointers */}
-              <div className="pt-10 flex flex-row items-center justify-center lg:justify-start gap-12 relative">
-                <motion.div whileHover={{ y: -5 }} className="flex flex-col items-center gap-2 relative z-10">
-                  <div className="w-20 h-20 rounded-full bg-emerald-50 border-2 border-emerald-600/20 flex items-center justify-center overflow-hidden shadow-sm">
-                    {/* Flat 2D Vendor Avatar */}
-                    <svg viewBox="0 0 100 100" className="w-full h-full">
-                      <circle cx="50" cy="50" r="50" fill="#fff9ed" />
-                      <circle cx="50" cy="40" r="18" fill="#d4a373" />
-                      <path d="M25 100 Q 50 60 75 100" fill="#e76f51" />
-                      <circle cx="43" cy="38" r="2" fill="#264653" />
-                      <circle cx="57" cy="38" r="2" fill="#264653" />
-                      <path d="M45 45 Q50 48 55 45" fill="transparent" stroke="#264653" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
+              {/* Vendor & Creator Profile Types Indicator */}
+              <div className="pt-8 flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-emerald-200/90 shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                    <Store className="w-5 h-5" />
                   </div>
-                  <div className="text-sm font-bold text-slate-900">Local Vendor</div>
-                  <svg className="absolute hidden lg:block text-emerald-600 w-24 h-12 left-20 top-4 opacity-40" style={{ transform: 'rotate(-15deg)' }} viewBox="0 0 100 50">
-                    <path d="M0,40 Q50,0 95,20" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
-                    <polygon points="95,20 85,15 90,28" fill="currentColor" />
-                  </svg>
-                </motion.div>
+                  <div className="text-left">
+                    <div className="text-xs font-black text-slate-900">Local Merchant & Stores</div>
+                    <div className="text-[11px] text-slate-500 font-medium">Retail, dining & local services</div>
+                  </div>
+                </div>
 
-                <motion.div whileHover={{ y: -5 }} className="flex flex-col items-center gap-2 relative z-10">
-                  <div className="w-20 h-20 rounded-full bg-emerald-50 border-2 border-emerald-500/20 flex items-center justify-center overflow-hidden shadow-sm">
-                    {/* Flat 2D Creator Avatar */}
-                    <svg viewBox="0 0 100 100" className="w-full h-full">
-                      <circle cx="50" cy="50" r="50" fill="#f0f7ff" />
-                      <circle cx="50" cy="40" r="18" fill="#e9c46a" />
-                      <path d="M25 100 Q 50 60 75 100" fill="#2a9d8f" />
-                      <rect x="42" y="22" width="16" height="6" fill="#264653" rx="3" />
-                      <circle cx="43" cy="38" r="2" fill="#264653" />
-                      <circle cx="57" cy="38" r="2" fill="#264653" />
-                      <path d="M45 45 Q50 48 55 45" fill="transparent" stroke="#264653" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-indigo-200/90 shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
+                    <Sparkles className="w-5 h-5" />
                   </div>
-                  <div className="text-sm font-bold text-slate-900">Creator</div>
-                  <svg className="absolute hidden lg:block text-emerald-500 left-20 top-4 opacity-40" style={{ width: 'clamp(150px, 22vw, 350px)', overflow: 'visible' }} viewBox="0 0 200 50">
-                    <path d="M0,10 Q100,80 190,30" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4,4" />
-                    <polygon points="195,29 183,23 186,37" fill="currentColor" />
-                  </svg>
-                </motion.div>
+                  <div className="text-left">
+                    <div className="text-xs font-black text-slate-900">Creators & Professionals</div>
+                    <div className="text-[11px] text-slate-500 font-medium">Portfolios, bio links & digital sales</div>
+                  </div>
+                </div>
               </div>
             </motion.div>
 
@@ -273,10 +259,10 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
               initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
               className="lg:w-1/2 flex justify-center lg:justify-end relative mt-8 lg:mt-0"
             >
-               <div className="relative w-full max-w-[500px] lg:max-w-[800px] lg:w-[125%] xl:w-[140%] mx-auto lg:-mr-10 xl:-mr-20 z-20 flex flex-col gap-6">
+               <div className="relative w-full max-w-2xl mx-auto z-20 flex flex-col gap-6">
                   <div className="w-full flex items-center justify-center relative">
-                      <div className="w-full relative overflow-hidden transform hover:scale-105 transition-transform duration-700 rounded-2xl">
-                        <img src="/landingpage.jpeg" alt="Hero Storefront" className="w-full h-auto object-contain drop-shadow-2xl" style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
+                      <div className="w-full relative overflow-hidden transform hover:scale-[1.02] transition-transform duration-500 rounded-2xl shadow-2xl border border-slate-200/60 bg-white p-2">
+                        <img src="/landingpage.jpeg" alt="Hero Storefront" className="w-full h-auto object-contain rounded-xl" style={{ imageRendering: "high-quality" }} />
                       </div>
                   </div>
                   
@@ -307,19 +293,22 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                 <div className="flex flex-col lg:flex-row items-center gap-16">
                   
                   {/* Left: Image for Vendor */}
-                  <div className="lg:w-[60%] flex justify-center items-center relative max-w-full mx-auto">
-                     <div className="w-full max-w-full flex items-center justify-center relative">
+                  <div className="lg:w-[55%] flex justify-center items-center relative w-full mx-auto">
+                     <div className="w-full relative rounded-3xl overflow-hidden border border-emerald-200/80 bg-white p-2 sm:p-3 shadow-xl">
                         <img 
                           src="/storelly6.jpg" 
                           alt="Storelly for Vendors" 
-                          className="w-full max-w-[120%] lg:max-w-[130%] h-auto object-contain hover:scale-105 transition-transform duration-700 drop-shadow-xl"
-                          style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
+                          className="w-full h-auto object-contain rounded-2xl transition-transform duration-500 hover:scale-[1.02]"
+                          style={{ imageRendering: "high-quality" }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/storelly6.jpg.jpeg';
+                          }}
                         />
                      </div>
                   </div>
 
                   {/* Right: Content */}
-                  <div className="lg:w-[40%] space-y-8">
+                  <div className="lg:w-[45%] space-y-8">
                     <div>
                       <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight mb-4">
                         Take Your Local Business Online — Without the Complexity.
@@ -534,13 +523,13 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                   </div>
 
                   {/* Right: Image for Creator */}
-                  <div className="lg:w-[60%] flex justify-center items-center relative max-w-full mx-auto">
-                     <div className="w-full max-w-full flex items-center justify-center relative">
+                  <div className="lg:w-1/2 flex justify-center items-center relative w-full mx-auto">
+                     <div className="w-full relative rounded-3xl overflow-hidden border border-indigo-200/80 bg-white p-2 sm:p-3 shadow-xl">
                         <img 
                           src="/cteatorlink.jpeg" 
                           alt="Storelly for Creators" 
-                          className="w-full max-w-[120%] lg:max-w-[130%] h-auto object-contain hover:scale-105 transition-transform duration-700 drop-shadow-xl"
-                          style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
+                          className="w-full h-auto object-contain rounded-2xl transition-transform duration-500 hover:scale-[1.02]"
+                          style={{ imageRendering: "high-quality" }}
                         />
                      </div>
                   </div>
@@ -680,8 +669,8 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                 "I used to send product photos and prices one by one on WhatsApp. Now I just send my Storelly link. It saves me hours every day and looks so professional."
               </p>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-[#d4a373] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-                   <svg viewBox="0 0 100 100" className="w-full h-full mt-4"><circle cx="50" cy="40" r="25" fill="#fff9ed"/><path d="M10 100 Q50 50 90 100" fill="#e76f51"/></svg>
+                <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center border-2 border-white shadow-sm text-amber-800 font-bold text-xl">
+                  P
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900">Priya</h4>
@@ -699,8 +688,8 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                 "My students can find my notes, booking link and YouTube channel in one place. Storelly makes selling PDFs via UPI completely effortless."
               </p>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-[#e9c46a] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-                   <svg viewBox="0 0 100 100" className="w-full h-full mt-4"><circle cx="50" cy="40" r="25" fill="#fff9ed"/><path d="M10 100 Q50 50 90 100" fill="#2a9d8f"/></svg>
+                <div className="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center border-2 border-white shadow-sm text-teal-800 font-bold text-xl">
+                  R
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900">Rahul</h4>

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BusinessProfile } from '../types';
 import { isCreatorProfile } from './profileHelper';
+import { getBusinessLogo } from './branding';
 
 /**
  * Generate a dynamic SVG data URL favicon with the store/creator's initial and brand color
@@ -54,7 +55,7 @@ export function setDynamicBranding(
   }
 
   // 2. Update Favicon directly from business logo / profileImage or dynamically generated monogram
-  let faviconUrl = business?.logo || business?.profileImage;
+  let faviconUrl = getBusinessLogo(business);
 
   if (!faviconUrl && (business?.name || fallbackHandle)) {
     const name = business?.name || fallbackHandle || 'S';

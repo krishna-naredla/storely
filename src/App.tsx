@@ -1139,8 +1139,8 @@ function MainContent() {
         </header>
 
         {/* Full Page Content Container */}
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-8 max-w-4xl mx-auto w-full my-6">
-          <div className="w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 p-6 sm:p-10 space-y-6">
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 max-w-6xl mx-auto w-full my-6">
+          <div className="w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 p-5 sm:p-8 md:p-10 space-y-6">
             <div className="pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
@@ -1360,8 +1360,8 @@ function MainContent() {
 
       {/* Onboarding / Create New Store Modal */}
       {isOnboardingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-3xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-5xl lg:max-w-6xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl p-5 sm:p-8 md:p-10 shadow-2xl border border-slate-200 my-auto">
             <button
               type="button"
               onClick={() => setIsOnboardingOpen(false)}

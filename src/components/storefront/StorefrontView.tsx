@@ -538,21 +538,21 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         </div>
         
         {/* Profile Info Card */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 -mt-10 sm:-mt-16 pb-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 -mt-10 sm:-mt-14 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
             {/* Logo */}
             <div className="relative shrink-0 mx-auto sm:mx-0">
-              <div className="w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-2xl sm:rounded-3xl shadow-xl border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
+              <div className="w-20 h-20 sm:w-28 sm:h-28 bg-white rounded-2xl sm:rounded-3xl shadow-lg border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
                 {getBusinessLogo(business) ? (
                   <SafeImage
                     src={getBusinessLogo(business)!}
                     alt={business.name}
                     fallbackType="avatar"
                     loading="eager"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain object-center p-1"
                   />
                 ) : (
-                  <Store className="w-8 h-8 sm:w-14 sm:h-14 text-emerald-600/40" />
+                  <Store className="w-8 h-8 sm:w-12 sm:h-12 text-emerald-600/40" />
                 )}
               </div>
             </div>
@@ -1135,7 +1135,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               Order securely, chat on WhatsApp instantly, and enjoy fast home delivery or pickup services.
             </p>
           </div>
-          <img src="/storelly7.jpg.jpeg" alt="Store Showroom" className="w-40 h-24 object-cover rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:block" />
+          <div className="w-40 h-24 rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:flex items-center justify-center bg-black/20 overflow-hidden shrink-0">
+            <img src="/storelly7.jpg.jpeg" alt="Store Showroom" className="w-full h-full object-contain object-center" />
+          </div>
         </div>
       </main>
 

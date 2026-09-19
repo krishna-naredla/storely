@@ -44,6 +44,7 @@ import {
   Layers,
   Zap,
   Save,
+  Star,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {
@@ -166,6 +167,57 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
       .then((data) => setQrCodeUrl(data))
       .catch(() => {});
   }, [business.id, publicUrl]);
+
+  // Profile switching safety: reset theme & bio text whenever active profile changes
+  useEffect(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    const currentTheme = (business.bioTheme || {}) as any;
+    const currentPreset = currentTheme.themePreset || 'classic_green';
+    const defPreset = BIO_THEME_PRESETS[currentPreset] || BIO_THEME_PRESETS.classic_green;
+
+    setTheme({
+      themePreset: currentPreset,
+      backgroundColor: currentTheme.backgroundColor || defPreset.backgroundColor,
+      backgroundGradient:
+        currentTheme.backgroundColor && !currentTheme.backgroundGradient
+          ? undefined
+          : currentTheme.backgroundGradient || defPreset.backgroundGradient,
+      textColor: currentTheme.textColor || defPreset.textColor,
+      subtitleColor: currentTheme.subtitleColor || defPreset.subtitleColor,
+      buttonStyle:
+        (currentTheme.buttonStyle as any) ||
+        defPreset.buttonStyle ||
+        'rounded',
+      buttonColor: currentTheme.buttonColor || defPreset.buttonColor,
+      buttonTextColor: currentTheme.buttonTextColor || defPreset.buttonTextColor,
+      buttonSubtitleColor: currentTheme.buttonSubtitleColor || defPreset.buttonSubtitleColor,
+      buttonBorderColor: currentTheme.buttonBorderColor || defPreset.buttonBorderColor,
+      buttonHoverEffect: (currentTheme.buttonHoverEffect as any) || 'lift',
+      fontFamily: (currentTheme.fontFamily as any) || 'modern',
+      avatarShape: (currentTheme.avatarShape as any) || 'circle',
+      avatarBorder: currentTheme.avatarBorder !== false,
+      showVerifiedBadge: currentTheme.showVerifiedBadge !== false,
+      profession: currentTheme.profession || business.tagline || 'Entrepreneur | Content Creator',
+      showSocialIconsBar: currentTheme.showSocialIconsBar !== false,
+      socials: currentTheme.socials || {
+        whatsapp: business.whatsapp || '',
+        instagram: business.socialLinks?.instagram || '',
+        youtube: business.socialLinks?.youtube || '',
+        telegram: business.socialLinks?.telegram || '',
+        linkedin: business.socialLinks?.linkedin || '',
+        twitter: business.socialLinks?.twitter || '',
+        facebook: business.socialLinks?.facebook || '',
+        discord: '',
+        spotify: '',
+        github: '',
+      },
+    });
+    setBioText(business.bio || business.description || business.tagline || '');
+    setHasUnsavedChanges(false);
+    setSaveStatus('idle');
+  }, [business.id]);
 
   const loadLinksAndStats = async () => {
     setLoading(true);
@@ -332,17 +384,22 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
       const updatedBiz: BusinessProfile = {
         ...business,
         bio: bioText,
+        description: bioText,
         tagline: theme.profession,
         bioTheme: updatedTheme,
         updatedAt: Date.now(),
       };
       await updateBusinessProfile(business.id, {
         bio: bioText,
+        description: bioText,
         tagline: theme.profession,
         bioTheme: updatedTheme,
       });
       try {
         localStorage.setItem(`storelly_biz_${business.id}`, JSON.stringify(updatedBiz));
+        if (business.slug) {
+          localStorage.setItem(`storelly_biz_${business.slug.toLowerCase()}`, JSON.stringify(updatedBiz));
+        }
         const all = JSON.parse(localStorage.getItem('storelly_businesses') || '[]');
         const idx = all.findIndex((b: any) => b.id === business.id);
         if (idx >= 0) {
@@ -378,18 +435,23 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
         const updatedBiz: BusinessProfile = {
           ...business,
           bio: bioText,
+          description: bioText,
           tagline: theme.profession,
           bioTheme: theme,
           updatedAt: Date.now(),
         };
         await updateBusinessProfile(business.id, {
           bio: bioText,
+          description: bioText,
           tagline: theme.profession,
           bioTheme: theme,
         });
 
         try {
           localStorage.setItem(`storelly_biz_${business.id}`, JSON.stringify(updatedBiz));
+          if (business.slug) {
+            localStorage.setItem(`storelly_biz_${business.slug.toLowerCase()}`, JSON.stringify(updatedBiz));
+          }
           const all = JSON.parse(localStorage.getItem('storelly_businesses') || '[]');
           const idx = all.findIndex((b: any) => b.id === business.id);
           if (idx >= 0) {
@@ -820,7 +882,8 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                         />
                         <div>
                           <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <span>⭐ Feature This Link</span>
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                            <span>Feature This Link</span>
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-black">
                               High Priority
                             </span>
@@ -952,8 +1015,9 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                             <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
                               <span>{link.title}</span>
                               {link.highlight && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
-                                  ⭐ Featured
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase">
+                                  <Star className="w-2.5 h-2.5 fill-amber-600 text-amber-600" />
+                                  <span>Featured</span>
                                 </span>
                               )}
                             </div>

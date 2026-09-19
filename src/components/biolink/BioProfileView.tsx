@@ -3,6 +3,7 @@ import { SafeImage } from '../common/SafeImage';
 import { BusinessProfile, BioLink } from '../../types';
 import {
   getBioLinks,
+  getBioLinkUrl,
   getDigitalStoreUrl,
   getPortfolioUrl,
   recordBioLinkClick,
@@ -38,8 +39,6 @@ interface Props {
   onOpenStorefront?: () => void;
 }
 
-
-
 export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard }) => {
   const [links, setLinks] = useState<BioLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,23 +73,24 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     showSocialIconsBar: rawTheme?.showSocialIconsBar !== false,
   };
 
+  const canonicalBioUrl = getBioLinkUrl(businessSlug);
+
   useEffect(() => {
     if (!businessId) return;
-    const title = `${businessName} — Official Bio Link | Storelly`;
+    const title = `${businessName} — Official Links`;
     document.title = title;
     recordBioLinkView(businessId);
     loadData();
 
-    // Generate QR Code for sharing
-    const currentUrl = window.location.href;
-    QRCode.toDataURL(currentUrl, {
+    // Generate QR Code for sharing canonical public URL
+    QRCode.toDataURL(canonicalBioUrl, {
       width: 260,
       margin: 2,
       color: { dark: '#064E3B', light: '#FFFFFF' },
     })
       .then((url) => setQrDataUrl(url))
       .catch(() => {});
-  }, [businessId]);
+  }, [businessId, canonicalBioUrl]);
 
   const loadData = async () => {
     if (!businessId) return;
@@ -117,7 +117,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           {onBackToDashboard && (
             <button
               onClick={onBackToDashboard}
-              className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl"
+              className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl cursor-pointer"
             >
               Back to Dashboard
             </button>
@@ -209,9 +209,9 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
 
   const handleShare = async () => {
     const shareData = {
-      title: `${business.name} | Storelly Bio Link`,
+      title: `${business.name} — Official Links`,
       text: business.tagline || `Check out all links, services & updates for ${business.name}!`,
-      url: window.location.href,
+      url: canonicalBioUrl,
     };
 
     if (navigator.share) {
@@ -226,7 +226,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(canonicalBioUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -257,59 +257,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     return 'font-sans';
   };
 
-  const smartStarterLinks: BioLink[] = [
-    {
-      id: 'default_wa',
-      businessId: business.id,
-      type: 'whatsapp',
-      title: 'Chat on WhatsApp',
-      subtitle: 'Quickly connect with me directly',
-      url: `https://wa.me/${(business.whatsapp || '919876543210').replace(/[^0-9]/g, '')}`,
-      enabled: true,
-      order: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 'default_store',
-      businessId: business.id,
-      type: 'digital_store',
-      title: 'Explore My Digital Store & Catalog',
-      subtitle: 'Browse products, downloads & offers',
-      url: `/store/${business.slug}`,
-      enabled: true,
-      highlight: true,
-      order: 1,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 'default_portfolio',
-      businessId: business.id,
-      type: 'custom',
-      title: 'View Work Portfolio & Case Studies',
-      subtitle: 'Explore recent creative deliverables & projects',
-      url: `/portfolio/${business.slug}`,
-      enabled: true,
-      order: 2,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 'default_share',
-      businessId: business.id,
-      type: 'custom',
-      title: 'Share & Recommend Profile',
-      subtitle: 'Instant QR code & WhatsApp share',
-      url: '#share',
-      enabled: true,
-      order: 3,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-  ];
-
-  const displayedLinks = links.length > 0 ? links : smartStarterLinks;
+  const displayedLinks = links;
 
   const hasStoreModule = Boolean(
     business.modules?.digital_products ||
@@ -328,73 +276,136 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
       }}
     >
       {/* Decorative Cover / Top Banner if Available */}
-      {business.banner && (
+      {business.banner ? (
         <div className="w-full h-44 sm:h-56 md:h-64 relative overflow-hidden">
           <img
             src={business.banner}
             alt={business.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80" />
+
+          {/* Floating Top Bar (Dashboard Back, Module Links & Share) placed cleanly at top of banner */}
+          <div className="absolute top-0 left-0 right-0 w-full max-w-lg sm:max-w-xl md:max-w-3xl lg:max-w-4xl mx-auto px-3.5 xs:px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 z-20 flex items-center justify-between">
+            {onBackToDashboard ? (
+              <button
+                type="button"
+                onClick={onBackToDashboard}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-black/40 hover:bg-black/60 text-white border border-white/20 cursor-pointer shadow-xs active:scale-95 touch-manipulation"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Dashboard</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 opacity-80 text-xs sm:text-sm font-semibold tracking-wider uppercase text-white">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>Official Links</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              {hasStoreModule && (
+                <a
+                  href={`/store/${business.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open digital store"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-200 border border-emerald-400/40 shadow-xs cursor-pointer active:scale-95 touch-manipulation"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Store</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+
+              {hasPortfolioModule && (
+                <a
+                  href={`/portfolio/${business.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open work portfolio"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-indigo-500/30 hover:bg-indigo-500/40 text-indigo-200 border border-indigo-400/40 shadow-xs cursor-pointer active:scale-95 touch-manipulation"
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>Portfolio</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Share profile"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-black/40 hover:bg-black/60 text-white border border-white/20 shadow-xs hover:scale-105 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Floating Top Bar (Dashboard Back, Module Links & Share) when no banner */
+        <div className="w-full max-w-lg sm:max-w-xl md:max-w-3xl lg:max-w-4xl px-3.5 xs:px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 z-20 flex items-center justify-between">
+          {onBackToDashboard ? (
+            <button
+              type="button"
+              onClick={onBackToDashboard}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-black/20 hover:bg-black/40 border border-white/10 cursor-pointer shadow-xs active:scale-95 touch-manipulation"
+              style={{ color: theme.textColor }}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Dashboard</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 opacity-70 text-xs sm:text-sm font-semibold tracking-wider uppercase" style={{ color: theme.textColor }}>
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>Official Links</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {hasStoreModule && (
+              <a
+                href={`/store/${business.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open digital store"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 shadow-xs cursor-pointer active:scale-95 touch-manipulation"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Store</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+
+            {hasPortfolioModule && (
+              <a
+                href={`/portfolio/${business.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open work portfolio"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 shadow-xs cursor-pointer active:scale-95 touch-manipulation"
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>Portfolio</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={handleShare}
+              aria-label="Share profile"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-black/20 hover:bg-black/40 border border-white/10 shadow-xs hover:scale-105 active:scale-95 cursor-pointer touch-manipulation"
+              style={{ color: theme.textColor }}
+            >
+              <Share2 className="w-4 h-4" />
+              <span>Share</span>
+            </button>
+          </div>
         </div>
       )}
-
-      {/* Floating Top Bar (Dashboard Back, Module Links & Share) */}
-      <div className="w-full max-w-lg sm:max-w-xl md:max-w-3xl lg:max-w-4xl px-3.5 xs:px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 z-20 flex items-center justify-between">
-        {onBackToDashboard ? (
-          <button
-            onClick={onBackToDashboard}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 min-h-[44px] min-w-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-black/20 hover:bg-black/40 text-white border border-white/10 cursor-pointer shadow-xs active:scale-95 touch-manipulation"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Dashboard</span>
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 opacity-70 text-xs sm:text-sm font-semibold tracking-wider uppercase">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>Universal Bio Link</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          {hasStoreModule && (
-            <a
-              href={`/store/${business.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open digital store"
-              className="flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 min-h-[44px] min-w-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 shadow-xs cursor-pointer active:scale-95 touch-manipulation"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Store</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-
-          {hasPortfolioModule && (
-            <a
-              href={`/portfolio/${business.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open work portfolio"
-              className="flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 min-h-[44px] min-w-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 shadow-xs cursor-pointer active:scale-95 touch-manipulation"
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>Portfolio</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-
-          <button
-            onClick={handleShare}
-            aria-label="Share profile"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 sm:py-2.5 min-h-[44px] min-w-[44px] rounded-full text-xs sm:text-sm font-bold transition backdrop-blur-md bg-black/20 hover:bg-black/40 text-white border border-white/10 shadow-xs hover:scale-105 active:scale-95 cursor-pointer touch-manipulation"
-          >
-            <Share2 className="w-4 h-4" />
-            <span>Share</span>
-          </button>
-        </div>
-      </div>
 
       {/* Profile Header Container - Device Friendly & Fluid Scaling */}
       <div className="w-full max-w-lg sm:max-w-xl md:max-w-3xl lg:max-w-4xl px-3.5 xs:px-4 sm:px-6 md:px-8 lg:px-10 pt-2 sm:pt-4 pb-28 z-10 flex flex-col items-center text-center bio-viewport-container">
@@ -444,22 +455,22 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
         </h1>
 
         {/* Profession / Subtitle */}
-        {theme.profession && (
+        {(theme.profession || business.tagline) && (
           <p
             className="text-sm sm:text-base md:text-lg font-bold tracking-wide uppercase mt-1.5 sm:mt-2 opacity-90"
             style={{ color: theme.subtitleColor }}
           >
-            {theme.profession}
+            {theme.profession || business.tagline}
           </p>
         )}
 
         {/* Description / Bio */}
-        {business.description && (
+        {(business.bio || business.description) && (
           <p
             className="text-sm sm:text-base md:text-lg max-w-md sm:max-w-xl md:max-w-2xl mt-3 sm:mt-3.5 opacity-85 leading-relaxed font-normal"
             style={{ color: theme.textColor }}
           >
-            {business.description}
+            {business.bio || business.description}
           </p>
         )}
 
@@ -625,6 +636,15 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               <div className="w-9 h-9 border-3 border-current border-t-transparent rounded-full animate-spin opacity-60" />
               <span className="text-sm font-semibold opacity-70">Loading bio links...</span>
             </div>
+          ) : displayedLinks.length === 0 ? (
+            <div className="py-14 col-span-full flex flex-col items-center justify-center space-y-2 text-center p-6 rounded-2xl border border-white/10 bg-black/10 backdrop-blur-xs">
+              <p className="text-base font-bold opacity-80" style={{ color: theme.textColor }}>
+                No public links published yet
+              </p>
+              <p className="text-xs sm:text-sm opacity-60 max-w-sm" style={{ color: theme.subtitleColor }}>
+                Check back soon for upcoming digital products, portfolio showcases, and social connections.
+              </p>
+            </div>
           ) : (
             displayedLinks.map((link) => {
               const brand = getBrandConfig(link.type);
@@ -758,10 +778,11 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               <input
                 type="text"
                 readOnly
-                value={window.location.href}
+                value={canonicalBioUrl}
                 className="bg-transparent text-xs sm:text-sm font-mono font-bold flex-1 outline-hidden text-slate-900 px-2 select-all truncate"
               />
               <button
+                type="button"
                 onClick={handleCopy}
                 className={`px-4 py-2.5 min-h-[44px] rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer touch-manipulation ${
                   copied
@@ -777,7 +798,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
             {/* Direct WhatsApp Share Button */}
             <a
               href={`https://wa.me/?text=${encodeURIComponent(
-                `Check out ${business.name}'s official bio page: ${window.location.href}`
+                `Check out ${business.name}'s official bio page: ${canonicalBioUrl}`
               )}`}
               target="_blank"
               rel="noopener noreferrer"

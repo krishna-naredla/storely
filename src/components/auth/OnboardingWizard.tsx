@@ -27,6 +27,15 @@ import {
   Linkedin,
   ShieldCheck,
   Zap,
+  ShoppingCart,
+  UtensilsCrossed,
+  Calendar,
+  Hotel,
+  Car,
+  Tag,
+  CreditCard,
+  Download,
+  Star,
 } from 'lucide-react';
 import { BusinessProfile, BusinessType, BusinessModuleConfig, ProfileType } from '../../types';
 import { BUSINESS_TYPES, MODULE_DEFINITIONS } from '../../services/businessConfig';
@@ -303,253 +312,255 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
          ========================================================================= */}
       {step === 0 && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="text-center max-w-xl mx-auto space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              Step 1 of Setup
+              Setup Workspace • Choose Profile Type
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading">
               What type of profile are you creating?
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Select your profile type to get a tailored workspace with the exact tools you need.
+            <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+              Select your profile type to get a tailored workspace with the exact modules, tools, and checkout flow you need.
             </p>
           </div>
 
-          {/* Large Two-Card Decision Grid with Visual Mockups & Service Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+          {/* Large Two-Card Decision Grid with Aspect-Ratio-controlled visual containers */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch w-full pt-2">
             {/* VENDOR CARD */}
             <div
               onClick={() => setSelectedProfileType('vendor')}
-              className={`p-6 sm:p-7 rounded-3xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+              className={`p-6 sm:p-7 rounded-3xl border-2 transition-all duration-200 cursor-pointer grid grid-rows-[auto_auto_1fr_auto] gap-5 h-full relative bg-white group ${
                 selectedProfileType === 'vendor'
-                  ? 'border-emerald-600 bg-emerald-50/30 ring-4 ring-emerald-500/15 shadow-xl shadow-emerald-600/10'
-                  : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/70 shadow-xs'
+                  ? 'border-emerald-600 ring-4 ring-emerald-500/15 shadow-xl shadow-emerald-600/10'
+                  : 'border-slate-200 hover:border-emerald-300 hover:shadow-md'
               }`}
             >
               {selectedProfileType === 'vendor' && (
-                <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md animate-in zoom-in">
+                <div className="absolute top-4 right-4 z-20 w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md animate-in zoom-in">
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
               )}
 
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition ${
-                      selectedProfileType === 'vendor'
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                        : 'bg-emerald-50 text-emerald-700 group-hover:scale-105'
-                    }`}
-                  >
-                    <Store className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Commerce &amp; Local Business
-                    </span>
-                    <h3 className="text-xl font-black text-slate-900 mt-0.5 font-heading">
-                      Vendor / Merchant Store
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Raw Image Showcase without nested card box */}
-                <div className="w-full rounded-2xl overflow-hidden border border-emerald-500/30 shadow-md group/img">
-                  <div className="relative h-48 sm:h-56 w-full overflow-hidden">
-                    <img
-                      src="/storelly6.jpg.jpeg"
-                      alt="Vendor Storefront Showcase"
-                      className="w-full h-full object-cover object-center group-hover/img:scale-105 transition duration-500"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/storelly6.jpg';
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-emerald-950/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-400/40 text-[11px] font-bold text-emerald-300 shadow-sm">
-                      <span>🛍️</span>
-                      <span>Real Merchant Store</span>
-                    </div>
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-wider shadow-md">
-                      Live Catalog
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs font-bold text-white">
-                      <div className="truncate font-heading">Online Store &amp; WhatsApp Cart</div>
-                      <div className="text-[11px] font-mono text-emerald-300 shrink-0">store.domain/@store</div>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-600 font-medium">
-                  Designed for physical stores, local shops, restaurants, and retail merchants selling goods and accepting localized orders.
+              {/* 1. TOP: Business Identity & Category Hierarchy */}
+              <div>
+                <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                  Physical Commerce &amp; Retail Storefront
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight mt-2">
+                  Vendor / Merchant Store
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                  Designed for physical stores, local shops, restaurants, and retail merchants selling goods and accepting localized orders with instant WhatsApp checkout.
                 </p>
+              </div>
 
-                {/* Comprehensive Module Breakdown */}
-                <div className="space-y-2">
-                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                    <span>Included Vendor Services &amp; Modules:</span>
-                    <span className="text-emerald-700 text-[10px] font-semibold">8 Active Modules</span>
+              {/* 2. Aspect-Ratio-Controlled Image Container (HIGH FIDELITY, UNCLIPPED) */}
+              <div className="w-full aspect-[16/9] rounded-2xl bg-slate-50 border border-slate-200/90 overflow-hidden flex items-center justify-center relative p-2 shadow-2xs">
+                <img
+                  src="/storelly6.jpg"
+                  alt="Vendor Store Showcase"
+                  className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-[1.02]"
+                  style={{ imageRendering: 'high-quality' }}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/storelly6.jpg.jpeg';
+                  }}
+                />
+              </div>
+
+              {/* 3. Included Capabilities (Clean SaaS Matrix without redundant decorative icons) */}
+              <div className="space-y-3 pt-1">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Included Store Capabilities:</span>
+                  <span className="text-emerald-700 text-[10px] font-bold bg-emerald-100 px-2 py-0.5 rounded-md">
+                    8 Core Modules
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Product &amp; SKU Catalog</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">📦</span>
-                      <span className="truncate">Product &amp; SKU Catalog</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">🛒</span>
-                      <span className="truncate">Smart Cart Checkout</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">🍽️</span>
-                      <span className="truncate">Table Dining &amp; QR Order</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">📅</span>
-                      <span className="truncate">Service Appointments</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">🏨</span>
-                      <span className="truncate">Room &amp; Stay Booking</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">🚗</span>
-                      <span className="truncate">Vehicle / Rental Fleet</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">🏷️</span>
-                      <span className="truncate">Coupons &amp; Flash Offers</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-emerald-600">💳</span>
-                      <span className="truncate">Direct UPI &amp; Cash on Delivery</span>
-                    </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Smart Cart Checkout</span>
                   </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Table Dining &amp; QR Order</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Service Appointments</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Room &amp; Stay Booking</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Vehicle / Rental Fleet</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Coupons &amp; Flash Deals</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Direct UPI &amp; COD Support</span>
+                  </div>
+                </div>
+
+                {/* Highlight pill */}
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-xs font-bold text-emerald-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Includes Digital Storefront &amp; WhatsApp Checkout</span>
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-                <span className="flex items-center gap-1.5">
-                  <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                  Includes Digital Storefront &amp; WhatsApp Checkout
-                </span>
-                <span className="text-slate-400 group-hover:translate-x-1 transition">→</span>
+              {/* 4. BOTTOM: Primary CTA */}
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedProfileType('vendor');
+                    setStep(1);
+                  }}
+                  className={`w-full py-3.5 px-4 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer ${
+                    selectedProfileType === 'vendor'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25'
+                      : 'bg-slate-900 hover:bg-emerald-600 text-white shadow-sm'
+                  }`}
+                >
+                  <span>Select Vendor Store</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
             {/* CREATOR CARD */}
             <div
               onClick={() => setSelectedProfileType('creator')}
-              className={`p-6 sm:p-7 rounded-3xl border-2 transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden group ${
+              className={`p-6 sm:p-7 rounded-3xl border-2 transition-all duration-200 cursor-pointer grid grid-rows-[auto_auto_1fr_auto] gap-5 h-full relative bg-white group ${
                 selectedProfileType === 'creator'
-                  ? 'border-indigo-600 bg-indigo-50/30 ring-4 ring-indigo-500/15 shadow-xl shadow-indigo-600/10'
-                  : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/70 shadow-xs'
+                  ? 'border-indigo-600 ring-4 ring-indigo-500/15 shadow-xl shadow-indigo-600/10'
+                  : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'
               }`}
             >
               {selectedProfileType === 'creator' && (
-                <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md animate-in zoom-in">
+                <div className="absolute top-4 right-4 z-20 w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md animate-in zoom-in">
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
               )}
 
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition ${
-                      selectedProfileType === 'creator'
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                        : 'bg-indigo-50 text-indigo-700 group-hover:scale-105'
-                    }`}
-                  >
-                    <Sparkles className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                      Portfolio &amp; Digital Work
-                    </span>
-                    <h3 className="text-xl font-black text-slate-900 mt-0.5 font-heading">
-                      Creator / Professional Hub
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Raw Image Showcase without nested card box */}
-                <div className="w-full rounded-2xl overflow-hidden border border-indigo-500/30 shadow-md group/img">
-                  <div className="relative h-48 sm:h-56 w-full overflow-hidden">
-                    <img
-                      src="/cteatorlink.jpeg"
-                      alt="Creator Link & Portfolio Showcase"
-                      className="w-full h-full object-cover object-center group-hover/img:scale-105 transition duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-indigo-950/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-indigo-400/40 text-[11px] font-bold text-indigo-300 shadow-sm">
-                      <span>✨</span>
-                      <span>Verified Creator Profile</span>
-                    </div>
-                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-indigo-500 text-white font-black text-[10px] uppercase tracking-wider shadow-md">
-                      Bio Links
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs font-bold text-white">
-                      <div className="truncate font-heading">Digital Portfolio &amp; Downloads</div>
-                      <div className="text-[11px] font-mono text-indigo-300 shrink-0">portfolio.domain/@handle</div>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-600 font-medium">
-                  Designed for designers, developers, consultants, freelancers, and influencers who want to showcase case studies and sell digital assets.
+              {/* 1. TOP: Business Identity & Category Hierarchy */}
+              <div>
+                <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                  Portfolio &amp; Digital Products
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading tracking-tight mt-2">
+                  Creator &amp; Portfolio Studio
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                  Designed for designers, developers, consultants, freelancers, and influencers who want to showcase case studies, share bio links, and sell digital downloads.
                 </p>
+              </div>
 
-                {/* Comprehensive Module Breakdown */}
-                <div className="space-y-2">
-                  <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                    <span>Included Creator Services &amp; Modules:</span>
-                    <span className="text-indigo-700 text-[10px] font-semibold">7 Active Modules</span>
+              {/* 2. Aspect-Ratio-Controlled Image Container (HIGH FIDELITY, UNCLIPPED) */}
+              <div className="w-full aspect-[16/9] rounded-2xl bg-slate-50 border border-slate-200/90 overflow-hidden flex items-center justify-center relative p-2 shadow-2xs">
+                <img
+                  src="/cteatorlink.jpeg"
+                  alt="Creator Studio Showcase"
+                  className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-[1.02]"
+                  style={{ imageRendering: 'high-quality' }}
+                />
+              </div>
+
+              {/* 3. Included Capabilities (Clean SaaS Matrix without redundant decorative icons) */}
+              <div className="space-y-3 pt-1">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Included Creator Capabilities:</span>
+                  <span className="text-indigo-700 text-[10px] font-bold bg-indigo-100 px-2 py-0.5 rounded-md">
+                    8 Core Modules
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Portfolio Showcase Blocks</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">💼</span>
-                      <span className="truncate">Portfolio Showcase Blocks</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">🔗</span>
-                      <span className="truncate">Universal Bio Link Hub</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">📥</span>
-                      <span className="truncate">Digital Downloads &amp; Files</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">🗓️</span>
-                      <span className="truncate">1:1 Strategy Consultations</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">📝</span>
-                      <span className="truncate">Custom Client Quotes</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">🎟️</span>
-                      <span className="truncate">Event &amp; Workshop Tickets</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">🌟</span>
-                      <span className="truncate">Testimonials &amp; Reviews</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-800 flex items-center gap-1.5">
-                      <span className="text-indigo-600">⚡</span>
-                      <span className="truncate">Direct UPI / Bank Settlements</span>
-                    </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Universal Bio Link Hub</span>
                   </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Digital Downloads &amp; Files</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">1:1 Strategy Consultations</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Custom Client Quotes</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Event &amp; Workshop Tickets</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Testimonials &amp; Reviews</span>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-slate-50/90 border border-slate-200/80 text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Direct UPI / Bank Settlements</span>
+                  </div>
+                </div>
+
+                {/* Highlight pill */}
+                <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-indigo-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span>Includes Portfolio, Bio Link &amp; Digital Store</span>
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-700">
-                <span className="flex items-center gap-1.5">
-                  <Briefcase className="w-4 h-4 text-indigo-600" />
-                  Includes Portfolio, Bio Link &amp; Digital Store
-                </span>
-                <span className="text-slate-400 group-hover:translate-x-1 transition">→</span>
+              {/* 4. BOTTOM: Primary CTA */}
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedProfileType('creator');
+                    setStep(1);
+                  }}
+                  className={`w-full py-3.5 px-4 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer ${
+                    selectedProfileType === 'creator'
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/25'
+                      : 'bg-slate-900 hover:bg-indigo-600 text-white shadow-sm'
+                  }`}
+                >
+                  <span>Select Creator Hub</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -960,11 +971,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                               <span className="text-[9px] line-clamp-1 mt-0.5 opacity-70">{m.description}</span>
                             </div>
                             <span
-                              className={`w-4 h-4 ml-2 shrink-0 rounded-full flex items-center justify-center text-[10px] ${
+                              className={`w-4 h-4 ml-2 shrink-0 rounded-full flex items-center justify-center ${
                                 isEnabled ? 'bg-emerald-600 text-white' : 'bg-slate-200'
                               }`}
                             >
-                              {isEnabled ? '✓' : ''}
+                              {isEnabled && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                             </span>
                           </button>
                         );
@@ -1235,10 +1246,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span className="text-[10px] text-indigo-700 font-bold uppercase">/portfolio/{slug || 'username'}</span>
                       </div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                       creatorModules.work_portfolio || creatorModules.portfolio ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      {creatorModules.work_portfolio || creatorModules.portfolio ? '✓' : ''}
+                      {(creatorModules.work_portfolio || creatorModules.portfolio) && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">
@@ -1265,10 +1276,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span className="text-[10px] text-purple-700 font-bold uppercase">/@{slug || 'username'}</span>
                       </div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                       creatorModules.universal_links ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      {creatorModules.universal_links ? '✓' : ''}
+                      {creatorModules.universal_links && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">
@@ -1295,10 +1306,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span className="text-[10px] text-teal-700 font-bold uppercase">PDFs, Code &amp; Assets</span>
                       </div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                       creatorModules.digital_products ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      {creatorModules.digital_products ? '✓' : ''}
+                      {creatorModules.digital_products && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">
@@ -1325,10 +1336,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span className="text-[10px] text-blue-700 font-bold uppercase">Paid Calls &amp; Slots</span>
                       </div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                       creatorModules.booking_appointments ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      {creatorModules.booking_appointments ? '✓' : ''}
+                      {creatorModules.booking_appointments && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">
@@ -1355,10 +1366,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span className="text-[10px] text-amber-700 font-bold uppercase">Bespoke Invoicing</span>
                       </div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                       creatorModules.custom_quotes ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      {creatorModules.custom_quotes ? '✓' : ''}
+                      {creatorModules.custom_quotes && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">
@@ -1385,10 +1396,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <span className="text-[10px] text-pink-700 font-bold uppercase">Webinars &amp; Tickets</span>
                       </div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                       creatorModules.events_tickets ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      {creatorModules.events_tickets ? '✓' : ''}
+                      {creatorModules.events_tickets && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">

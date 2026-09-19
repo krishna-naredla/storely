@@ -34,6 +34,7 @@ import { BUSINESS_TYPES } from "../../services/businessConfig";
 import { subscribeToOrders, getStorefrontUrl } from "../../services/firebaseService";
 import { isCreatorProfile, getProfileTypeLabel } from "../../utils/profileHelper";
 import { SafeImage } from "../common/SafeImage";
+import { getBusinessLogo } from "../../utils/branding";
 
 export type DashboardTab =
   | "overview"
@@ -271,15 +272,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className={`w-9 h-9 rounded-xl bg-white border overflow-hidden flex items-center justify-center shadow-xs transition ${
                 isCreator ? 'border-slate-200 group-hover:border-indigo-500' : 'border-slate-200 group-hover:border-emerald-500'
               }`}>
-                {business?.logo || business?.profileImage ? (
+                {getBusinessLogo(business) ? (
                   <img
-                    src={business.logo || business.profileImage}
-                    alt={business.name}
+                    src={getBusinessLogo(business)!}
+                    alt={business?.name || "Logo"}
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.display = 'none';
                     }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition"
+                    className="w-full h-full object-contain object-center group-hover:scale-105 transition"
                   />
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center font-black text-xs text-white ${
@@ -330,13 +331,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className={`w-9 h-9 rounded-lg bg-white border overflow-hidden shrink-0 transition ${
                   isCreator ? "border-slate-200 group-hover:border-indigo-400" : "border-slate-200 group-hover:border-emerald-400"
                 }`}>
-                  {business.logo || business.profileImage ? (
+                  {getBusinessLogo(business) ? (
                     <SafeImage
-                      src={business.logo || business.profileImage}
+                      src={getBusinessLogo(business)!}
                       alt={business.name}
                       fallbackType="avatar"
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                      className="w-full h-full object-contain object-center group-hover:scale-110 transition duration-300"
                     />
                   ) : (
                     <div className={`w-full h-full flex items-center justify-center font-black text-xs text-white ${

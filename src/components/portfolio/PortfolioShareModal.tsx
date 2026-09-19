@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { BusinessProfile } from '../../types';
+import { getPortfolioUrl } from '../../services/firebaseService';
 
 interface PortfolioShareModalProps {
   business: BusinessProfile;
@@ -28,10 +29,9 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [copiedShort, setCopiedShort] = useState(false);
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://storelly.com';
   const effectiveSlug = business.slug || business.id;
-  const portfolioUrl = `${origin}/portfolio/${effectiveSlug}`;
-  const shortUrl = `${origin}/p/${effectiveSlug}`;
+  const portfolioUrl = getPortfolioUrl(effectiveSlug);
+  const shortUrl = portfolioUrl;
 
   useEffect(() => {
     if (isOpen && effectiveSlug) {
@@ -72,7 +72,7 @@ export const PortfolioShareModal: React.FC<PortfolioShareModalProps> = ({
   };
 
   const handleWhatsAppShare = () => {
-    const text = `Check out my official work portfolio on Storelly: ${shortUrl}`;
+    const text = `Check out my official work portfolio: ${portfolioUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 

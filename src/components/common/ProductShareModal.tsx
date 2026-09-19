@@ -136,7 +136,7 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
                   src={item.images[0]}
                   alt={item.name}
                   fallbackType="product"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain object-center"
                 />
               ) : (
                 <ShoppingBag className="w-7 h-7 text-slate-300" />

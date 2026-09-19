@@ -526,7 +526,7 @@ export const VendorTrustShareCard: React.FC<VendorTrustShareCardProps> = ({
                     src={business.logo || business.profileImage}
                     alt={business.name}
                     crossOrigin="anonymous"
-                    className="w-full h-full object-cover rounded-xl"
+                    className="w-full h-full object-contain object-center rounded-xl"
                   />
                 ) : (
                   <div className="w-full h-full rounded-xl bg-linear-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white font-black text-xl shadow-inner">

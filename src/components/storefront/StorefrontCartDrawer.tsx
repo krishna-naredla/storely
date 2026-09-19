@@ -17,6 +17,11 @@ import {
   UtensilsCrossed,
   CheckCircle2,
   Clock,
+  CreditCard,
+  Banknote,
+  Smartphone,
+  Building2,
+  Zap,
 } from 'lucide-react';
 import { BusinessProfile, Offer, Order } from '../../types';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
@@ -341,12 +346,14 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
 
                 <div className="space-y-2 pt-1 text-[11px] text-slate-600">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </span>
                     <span className="font-semibold text-slate-900">1. Order Placed & Sent to Merchant</span>
                   </div>
                   <div className={`flex items-center gap-2 ${placedOrder.status !== 'pending' ? 'text-slate-900' : 'text-slate-400'}`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${placedOrder.status !== 'pending' ? 'bg-emerald-600 text-white' : 'bg-amber-200 text-amber-800 animate-pulse'}`}>
-                      {placedOrder.status !== 'pending' ? '✓' : '⌛'}
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center ${placedOrder.status !== 'pending' ? 'bg-emerald-600 text-white' : 'bg-amber-200 text-amber-800 animate-pulse'}`}>
+                      {placedOrder.status !== 'pending' ? <Check className="w-3 h-3 stroke-[3]" /> : <Clock className="w-3 h-3" />}
                     </span>
                     <span>2. Vendor Acceptance & Confirmation</span>
                   </div>
@@ -454,12 +461,12 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                             key={item.id}
                             className="p-2.5 flex items-start gap-3 first:pt-2 last:pb-2"
                           >
-                            <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0">
+                            <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
                               {item.catalogItem.images?.[0] ? (
                                 <img
                                   src={item.catalogItem.images[0]}
                                   alt={item.catalogItem.name}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-contain object-center"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-xs">
@@ -732,18 +739,19 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                               : 'bg-white border-slate-200 text-slate-600'
                           }`}
                         >
-                          <span className="flex items-center gap-1.5">
-                            <span>⚡ Pay Online via UPI (GPay, PhonePe, Paytm)</span>
+                          <span className="flex items-center gap-2">
+                            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span>Pay Online via UPI (GPay, PhonePe, Paytm)</span>
                             <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full font-bold">Instant</span>
                           </span>
                           <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                               paymentMethod === 'online'
                                 ? 'bg-emerald-600 border-emerald-600 text-white'
                                 : 'border-slate-300'
                             }`}
                           >
-                            {paymentMethod === 'online' && '✓'}
+                            {paymentMethod === 'online' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                           </div>
                         </label>
                       )}
@@ -757,15 +765,18 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                               : 'bg-white border-slate-200 text-slate-600'
                           }`}
                         >
-                          <span>💵 Cash on Delivery / Handover</span>
+                          <span className="flex items-center gap-2">
+                            <Banknote className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span>Cash on Delivery / Handover</span>
+                          </span>
                           <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                               paymentMethod === 'cod'
                                 ? 'bg-emerald-600 border-emerald-600 text-white'
                                 : 'border-slate-300'
                             }`}
                           >
-                            {paymentMethod === 'cod' && '✓'}
+                            {paymentMethod === 'cod' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                           </div>
                         </label>
                       )}
@@ -778,15 +789,18 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                             : 'bg-white border-slate-200 text-slate-600'
                         }`}
                       >
-                        <span>📱 UPI / QR on Delivery</span>
+                        <span className="flex items-center gap-2">
+                          <Smartphone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span>UPI / QR on Delivery</span>
+                        </span>
                         <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                             paymentMethod === 'upi_on_delivery'
                               ? 'bg-emerald-600 border-emerald-600 text-white'
                               : 'border-slate-300'
                           }`}
                         >
-                          {paymentMethod === 'upi_on_delivery' && '✓'}
+                          {paymentMethod === 'upi_on_delivery' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                         </div>
                       </label>
 
@@ -799,15 +813,18 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                               : 'bg-white border-slate-200 text-slate-600'
                           }`}
                         >
-                          <span>🏛️ Direct Bank Transfer</span>
+                          <span className="flex items-center gap-2">
+                            <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span>Direct Bank Transfer</span>
+                          </span>
                           <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] ${
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                               paymentMethod === 'bank_transfer'
                                 ? 'bg-emerald-600 border-emerald-600 text-white'
                                 : 'border-slate-300'
                             }`}
                           >
-                            {paymentMethod === 'bank_transfer' && '✓'}
+                            {paymentMethod === 'bank_transfer' && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                           </div>
                         </label>
                       )}

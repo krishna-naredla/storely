@@ -101,9 +101,9 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
         {/* Scrollable Content */}
         <div className="overflow-y-auto flex-1">
           {/* Main Image Banner / Carousel */}
-          <div className="relative h-64 sm:h-72 bg-slate-100">
+          <div className="relative aspect-[16/10] w-full bg-slate-50 flex items-center justify-center overflow-hidden">
             {images.length > 0 ? (
-              <SafeImage src={images[selectedImageIndex] || images[0]} alt={item.name} fallbackType="product" className="w-full h-full object-cover" />
+              <SafeImage src={images[selectedImageIndex] || images[0]} alt={item.name} fallbackType="product" className="w-full h-full object-contain object-center" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
                 <ShoppingBag className="w-16 h-16 stroke-1" />
@@ -252,9 +252,10 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                   {item.amenities.map((am, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60 text-xs font-medium"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60 text-xs font-medium"
                     >
-                      ✓ {am}
+                      <Check className="w-3 h-3 text-blue-600 stroke-[2.5]" />
+                      <span>{am}</span>
                     </span>
                   ))}
                 </div>
@@ -328,13 +329,13 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-4 h-4 rounded-md border flex items-center justify-center text-xs ${
+                            className={`w-4 h-4 rounded-md border flex items-center justify-center ${
                               isChecked
                                 ? 'bg-emerald-600 border-emerald-600 text-white'
                                 : 'border-slate-300 bg-white'
                             }`}
                           >
-                            {isChecked && '✓'}
+                            {isChecked && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                           </div>
                           <span className="text-xs">{addon.name}</span>
                         </div>

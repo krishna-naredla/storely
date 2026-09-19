@@ -21,6 +21,11 @@ export const SafeImage: React.FC<SafeImageProps> = ({
 }) => {
   const [error, setError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  React.useEffect(() => {
+    setError(false);
+    setIsLoaded(false);
+  }, [src]);
   
   if (!src || error) {
     if (fallbackType === 'none') return null;
@@ -37,6 +42,10 @@ export const SafeImage: React.FC<SafeImageProps> = ({
     );
   }
 
+  const defaultObjectFit = (!className.includes('object-') && (fallbackType === 'product' || fallbackType === 'avatar'))
+    ? 'object-contain object-center'
+    : '';
+
   return (
     <img
       src={src}
@@ -52,7 +61,7 @@ export const SafeImage: React.FC<SafeImageProps> = ({
         setError(true);
         if (onError) onError(e);
       }}
-      className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 bg-slate-100'} ${className}`}
+      className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0 bg-slate-100'} ${defaultObjectFit} ${className}`}
       {...props}
     />
   );

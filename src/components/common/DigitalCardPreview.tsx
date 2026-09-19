@@ -457,7 +457,7 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = isCreator ? "/cteatorlink.jpeg" : "/storelly6.jpg";
                     }}
-                    className="w-full h-full object-cover rounded-xl"
+                    className="w-full h-full object-contain object-center rounded-xl"
                   />
                 </div>
 
@@ -798,11 +798,11 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
         {activeSocialTab === 'twitter' && (
           <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl border border-slate-800 max-w-lg mx-auto text-white space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden shrink-0 border border-slate-700">
+              <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden shrink-0 border border-slate-700 flex items-center justify-center">
                 <img
                   src={business.logo || business.profileImage || (isCreator ? '/cteatorlink.jpeg' : '/storelly6.jpg.jpeg')}
                   alt={business.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain object-center"
                 />
               </div>
               <div>
@@ -841,11 +841,11 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
         {activeSocialTab === 'facebook' && (
           <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 max-w-lg mx-auto space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0">
+              <div className="w-10 h-10 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
                 <img
                   src={business.logo || business.profileImage || (isCreator ? '/cteatorlink.jpeg' : '/storelly6.jpg.jpeg')}
                   alt={business.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain object-center"
                 />
               </div>
               <div>

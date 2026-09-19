@@ -1742,7 +1742,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                               src={item.images[0]}
                               alt={item.name}
                               fallbackType="product"
-                              className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-105"
+                              className="w-full h-full object-contain object-center transition-transform duration-200 group-hover/img:scale-105"
                             />
                             <div className="absolute inset-0 bg-slate-900/35 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
                               <ZoomIn className="w-4 h-4 drop-shadow" />
