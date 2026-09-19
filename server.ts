@@ -77,25 +77,25 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: Date.now() });
 });
 
-// 1. Cloudinary Signature Route (Unchanged functionality)
-app.post("/api/cloudinary/sign", (req, res) => {
+// 1. Cloudinary Signature Routes
+const handleCloudinarySigning = (req: express.Request, res: express.Response) => {
   try {
     if (!CLOUDINARY_API_SECRET) {
-      console.warn(
-        "Missing CLOUDINARY_API_SECRET on server. Uploads may fail.",
-      );
+      console.warn("Missing CLOUDINARY_API_SECRET on server. Uploads may fail.");
       return res.status(500).json({ error: "Server missing API secret" });
     }
-    const { folder, public_id } = req.body;
-    const timestamp = Math.round(new Date().getTime() / 1000);
-    let paramsToSign = `timestamp=${timestamp}`;
-    if (folder) paramsToSign = `folder=${folder}&${paramsToSign}`;
-    if (public_id)
-      paramsToSign = `public_id=${public_id}&${paramsToSign}`;
+    const params = req.body?.paramsToSign || req.body || {};
+    const timestamp = params.timestamp || Math.round(new Date().getTime() / 1000);
+    
+    // Sort and serialize parameters as required by Cloudinary signing specification
+    const sortedKeys = Object.keys(params).filter(k => k !== 'timestamp' && k !== 'file').sort();
+    let toSign = sortedKeys.map(k => `${k}=${params[k]}`).join('&');
+    if (toSign) toSign += '&';
+    toSign += `timestamp=${timestamp}`;
 
     const signature = crypto
       .createHash("sha1")
-      .update(paramsToSign + CLOUDINARY_API_SECRET)
+      .update(toSign + CLOUDINARY_API_SECRET)
       .digest("hex");
 
     res.json({
@@ -107,7 +107,10 @@ app.post("/api/cloudinary/sign", (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+app.post("/api/cloudinary/sign", handleCloudinarySigning);
+app.post("/api/digital/sign-upload", handleCloudinarySigning);
 
 // 2. Free Digital Download Route (Direct Download via Signed URL)
 app.post("/api/digital/free", (req, res) => {
@@ -229,7 +232,10 @@ app.post("/api/digital/verify-payment", async (req, res) => {
     } = req.body;
 
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (keySecret && razorpay_signature && razorpay_signature !== "mock_sig") {
+    if (keySecret) {
+      if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
+        return res.status(400).json({ success: false, error: "Missing required payment verification details." });
+      }
       const generatedSignature = crypto
         .createHmac("sha256", keySecret)
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -241,6 +247,8 @@ app.post("/api/digital/verify-payment", async (req, res) => {
           .status(400)
           .json({ success: false, error: "Invalid payment signature verification failed." });
       }
+    } else if (Number(amount) > 0) {
+      console.warn("[PAYMENT NOTICE] RAZORPAY_KEY_SECRET is not configured on server.");
     }
 
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
@@ -259,6 +267,47 @@ app.post("/api/digital/verify-payment", async (req, res) => {
       downloadUrl,
       token,
       expiresAt,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3b-2. Verify Platform Subscription Upgrade Payment
+app.post("/api/subscription/verify-payment", async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      amount,
+    } = req.body;
+
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (keySecret) {
+      if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
+        return res.status(400).json({ success: false, error: "Missing required subscription payment verification parameters." });
+      }
+      const generatedSignature = crypto
+        .createHmac("sha256", keySecret)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest("hex");
+
+      if (generatedSignature !== razorpay_signature) {
+        console.error("[PAYMENT ERROR] Invalid subscription payment signature mismatch.");
+        return res
+          .status(400)
+          .json({ success: false, error: "Invalid payment signature verification failed." });
+      }
+    } else if (Number(amount) > 0) {
+      console.warn("[PAYMENT NOTICE] RAZORPAY_KEY_SECRET is not configured on server.");
+    }
+
+    res.json({
+      success: true,
+      verified: true,
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -294,7 +343,7 @@ app.post("/api/digital/resend-link", async (req, res) => {
   }
 });
 
-// 4. Secure File Serving Endpoint
+// 4. Secure File Serving Endpoint (Restricted to Authorized Cloudinary / Storage Origins)
 app.get("/api/digital/download", async (req, res) => {
   try {
     const token = req.query.token as string;
@@ -306,8 +355,21 @@ app.get("/api/digital/download", async (req, res) => {
     if (result.expired) return res.status(410).send("Download link has expired. Links are valid for 10 minutes.");
     
     const { fileUrl, fileName } = result.payload!;
+    if (!fileUrl) return res.status(400).send("Missing file target URL.");
+
+    // Validate origin against allowed storage providers to eliminate arbitrary SSRF proxying
+    try {
+      const parsedUrl = new URL(fileUrl);
+      const isCloudinary = parsedUrl.hostname.endsWith(".cloudinary.com") || parsedUrl.hostname === "res.cloudinary.com";
+      const isFirebase = parsedUrl.hostname.includes("firebasestorage.googleapis.com") || parsedUrl.hostname.includes("storage.googleapis.com");
+      if (!isCloudinary && !isFirebase) {
+        return res.status(403).send("Forbidden: Remote file origin is not authorized for delivery.");
+      }
+    } catch {
+      return res.status(400).send("Malformed target URL in secure token.");
+    }
     
-    // We fetch the file directly from Cloudinary using arraybuffer to hide the original URL
+    // We fetch the file directly from storage using arraybuffer to hide the original URL
     const response = await fetch(fileUrl);
     if (!response.ok) throw new Error("Failed to retrieve file from storage bucket");
     

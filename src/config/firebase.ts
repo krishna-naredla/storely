@@ -16,12 +16,12 @@ import {
 import appletConfig from '../../firebase-applet-config.json';
 
 export const firebaseConfig = {
-  apiKey: appletConfig.apiKey || "AIzaSyAFZMmRDnVF6_vuYf1syx-NkZ6Wyq-bDRk",
-  authDomain: appletConfig.authDomain || "storelly-ece40.firebaseapp.com",
-  projectId: appletConfig.projectId || "storelly-ece40",
-  storageBucket: appletConfig.storageBucket || "storelly-ece40.firebasestorage.app",
-  messagingSenderId: appletConfig.messagingSenderId || "213462240043",
-  appId: appletConfig.appId || "1:213462240043:web:330159d4cc80bd1355536e",
+  apiKey: appletConfig.apiKey,
+  authDomain: appletConfig.authDomain,
+  projectId: appletConfig.projectId,
+  storageBucket: appletConfig.storageBucket,
+  messagingSenderId: appletConfig.messagingSenderId,
+  appId: appletConfig.appId,
   measurementId: appletConfig.measurementId || "",
 };
 

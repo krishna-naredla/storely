@@ -770,7 +770,10 @@ function MainContent() {
   const handleCreateBusiness = async (
     data: Omit<BusinessProfile, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>
   ): Promise<BusinessProfile> => {
-    const ownerId = currentUser ? currentUser.uid : 'guest_user';
+    if (!currentUser) {
+      throw new Error('You must be signed in to create a business or creator profile.');
+    }
+    const ownerId = currentUser.uid;
     return await createBusiness(ownerId, data);
   };
 

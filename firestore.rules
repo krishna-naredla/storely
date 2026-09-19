@@ -4,80 +4,200 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+    
     function isUser(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email != null && (
+          request.auth.token.email == 'localride369@gmail.com' ||
+          request.auth.token.email == 'maninaredla218@gmail.com' ||
+          request.auth.token.email == 'admin@storelly.com' ||
+          request.auth.token.email == 'superadmin@storelly.com'
+        )) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)))
+      );
+    }
+    
     function isBusinessOwner(businessId) {
       return isAuthenticated() && (
         (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
         (exists(/databases/$(database)/documents/businesses/$(businessId)) &&
-         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid)
+         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid) ||
+        isAdmin()
       );
     }
     
     // Top-level biolinks
     match /biolinks/{linkId} {
-      allow read: if true; // Public can see bio links
+      allow read: if true;
       allow write: if isAuthenticated() && (
+        isAdmin() ||
         (resource == null && request.resource.data.businessId != null && 
           get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid) ||
-        (resource != null && 
+        (resource != null && 'businessId' in resource.data &&
           get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid)
       );
     }
 
+    // Top-level user profiles
     match /users/{userId} {
-      allow read, write: if isUser(userId);
+      allow read, write: if isUser(userId) || isAdmin();
     }
 
+    // Admin collection
+    match /admins/{adminEmail} {
+      allow read: if isAuthenticated() && (isAdmin() || request.auth.token.email == adminEmail);
+      allow write: if isAdmin();
+    }
+
+    // Businesses & tenant data
     match /businesses/{businessId} {
       allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
+        isAdmin() ||
         (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
-        (request.resource != null && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid) ||
-        (resource == null)
+        (request.resource != null && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid)
       );
       allow delete: if isAuthenticated() && (
-        resource == null ||
-        !('ownerId' in resource.data) ||
-        resource.data.ownerId == request.auth.uid ||
-        resource.data.ownerId == 'guest_user'
+        isAdmin() ||
+        (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid)
       );
 
-      match /{allSubcollections=**} {
-        allow read, write: if true;
+      // Publicly viewable catalog & showcase items
+      match /catalogue/{itemId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
+      match /digital_products/{productId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
+      match /services/{serviceId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
+      match /portfolio/{workId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
+      match /events/{eventId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      // Customer transactional data: orders, bookings, tickets, quotes
+      match /orders/{orderId} {
+        allow create: if true;
+        allow read: if true;
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      match /bookings/{bookingId} {
+        allow create: if true;
+        allow read: if true;
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      match /event_tickets/{ticketId} {
+        allow create: if true;
+        allow read: if true;
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      match /quotes/{quoteId} {
+        allow create: if true;
+        allow read: if true;
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      // Private tenant data: only owner and admin can access
+      match /customers/{customerId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      match /notifications/{notificationId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      match /expenses/{expenseId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      match /analytics/{docId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      match /settings/{docId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      match /payouts/{payoutId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      // Default fallback for any other subcollections
+      match /{allOtherSubcollections=**} {
+        allow read, write: if isBusinessOwner(businessId);
       }
     }
 
+    // Platform settings, plans, and public content
     match /system_settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
+
     match /platform_pricing_plans/{planId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
+
     match /platform_settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
+
     match /platform_clients/{clientId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
+
+    match /platform_announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Payment transactions & logs
     match /payment_transactions/{transactionId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
+
     match /admin_audit_logs/{logId} {
-      allow read, write: if true;
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
     }
+
     match /platform_support_tickets/{ticketId} {
-      allow read, write: if true;
-    }
-    match /platform_announcements/{announcementId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || isAuthenticated();
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
   }
 }

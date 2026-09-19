@@ -43,25 +43,16 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
         onLoginSuccess();
       } catch (signInErr: any) {
         const code = signInErr.code || '';
-        // If user doesn't exist or invalid credential for authorized admin, bootstrap the account automatically
-        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
-          try {
-            await createUserWithEmailAndPassword(auth, email.trim(), password);
-            onLoginSuccess();
-            return;
-          } catch (createErr: any) {
-            if (createErr.code === 'auth/email-already-in-use') {
-              setError('Incorrect password. For instant access without passwords, click "Continue with Google" below!');
-            } else {
-              setError(`Authentication failed: ${signInErr.message || 'Invalid credentials'}`);
-            }
-          }
+        if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+          setError('Incorrect credentials. Please verify your password or use Google Sign-In.');
+        } else if (code === 'auth/user-not-found') {
+          setError('Admin account not found. Please contact the Super Admin or use Google Sign-In.');
         } else if (code === 'auth/invalid-email') {
           setError('Invalid email address format.');
         } else if (code === 'auth/too-many-requests') {
           setError('Too many failed login attempts. Please try again later.');
         } else {
-          setError(signInErr.message || 'Authentication failed. Please verify your password or use Google Sign-In.');
+          setError(signInErr.message || 'Authentication failed. Please verify your credentials.');
         }
       }
     } catch (err: any) {

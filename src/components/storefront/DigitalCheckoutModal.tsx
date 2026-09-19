@@ -262,13 +262,17 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
       const RazorpayClass = (window as any).Razorpay;
 
       const completeOrderVerification = async (paymentDetails: any) => {
+        if (!paymentDetails?.razorpay_payment_id) {
+          throw new Error('Payment completion details missing from gateway.');
+        }
+
         const { res: verifyRes, data: verifyData } = await safeJsonFetch('/api/digital/verify-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             razorpay_order_id: paymentDetails.razorpay_order_id || orderData.id,
-            razorpay_payment_id: paymentDetails.razorpay_payment_id || `pay_${Date.now()}`,
-            razorpay_signature: paymentDetails.razorpay_signature || 'mock_sig',
+            razorpay_payment_id: paymentDetails.razorpay_payment_id,
+            razorpay_signature: paymentDetails.razorpay_signature || '',
             itemId: item.id,
             fileUrl: item.digitalFileUrl || item.images?.[0] || '',
             fileName: item.fileName || item.name,
@@ -315,9 +319,14 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
         triggerConfetti();
       };
 
+      const activeKey = orderData.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID;
+      if (!activeKey && price > 0) {
+        throw new Error('Online payment is not yet activated for this store. Please contact the seller directly.');
+      }
+
       if (RazorpayClass) {
         const options = {
-          key: orderData.keyId || 'rzp_test_dummy',
+          key: activeKey,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: business.name,
@@ -350,16 +359,8 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
 
         const rzp = new RazorpayClass(options);
         rzp.open();
-      } else if (price === 0 || isFree) {
-        // Fallback for free items if Razorpay script is blocked
-        await completeOrderVerification({
-          razorpay_order_id: orderData.id,
-          razorpay_payment_id: `pay_direct_${Date.now()}`,
-          razorpay_signature: 'test_verified',
-        });
-        setIsLoading(false);
       } else {
-        throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
+        throw new Error('Razorpay SDK failed to load. Please check your internet connection or disable ad-blockers.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Payment initiation failed');

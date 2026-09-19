@@ -433,7 +433,7 @@ export async function getUserBusinesses(ownerId: string): Promise<BusinessProfil
 
   // Merge with local businesses, strictly filtering out any deleted businesses
   const localList = getLocalBusinesses().filter(
-    (b) => (b.ownerId === ownerId || ownerId === 'guest_user') && b.status !== 'deleted'
+    (b) => b.ownerId === ownerId && b.status !== 'deleted'
   );
   const combinedMap = new Map<string, BusinessProfile>();
   localList.forEach((b) => combinedMap.set(b.id, b));
