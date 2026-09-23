@@ -89,5 +89,5 @@ googleProvider.setCustomParameters({
 });
 
 export const APP_BASE_URL = typeof window !== 'undefined'
-  ? ((window as any).APP_BASE_URL || window.location.origin)
-  : "https://storelly-ece40.web.app";
+  ? (window.location.origin || (window as any).APP_BASE_URL)
+  : "http://localhost:3000";

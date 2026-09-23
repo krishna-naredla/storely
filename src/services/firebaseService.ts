@@ -77,7 +77,10 @@ export function generateSlug(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-export const CANONICAL_APP_DOMAIN = 'https://storelly-ece40.web.app';
+export const CANONICAL_APP_DOMAIN =
+  (typeof window !== 'undefined' && window.location?.origin) ||
+  (typeof process !== 'undefined' && process.env?.APP_BASE_URL) ||
+  'http://localhost:3000';
 
 /**
  * Get dynamic, accurate storefront URL for any environment
@@ -89,26 +92,18 @@ export function getStorefrontUrl(businessOrSlug: any): string {
 
 /**
  * Resolves the canonical base URL for public links and QR code generation.
- * Strips dev, local, preview, and typo domains to strictly guarantee canonical production URLs.
+ * Uses window.location.origin dynamically so links work in local development, Cloud Run previews, and custom domains.
  */
 export function getBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    const origin = window.location.origin.trim().toLowerCase();
-    const isDevOrPreview =
-      origin.includes('localhost') ||
-      origin.includes('127.0.0.1') ||
-      origin.includes('0.0.0.0') ||
-      origin.includes('.run.app') ||
-      origin.includes('.vercel.app') ||
-      origin.includes('.webcontainer') ||
-      origin.includes('.preview.') ||
-      origin.includes('storely'); // Prevent legacy typo
-
-    if (!isDevOrPreview && (origin.startsWith('https://') || origin.startsWith('http://'))) {
-      return window.location.origin;
+    const origin = window.location.origin.trim();
+    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
+      return origin;
     }
   }
-  return CANONICAL_APP_DOMAIN;
+  return typeof process !== 'undefined' && process.env?.APP_BASE_URL
+    ? process.env.APP_BASE_URL
+    : 'http://localhost:3000';
 }
 
 export function getBioLinkUrl(slug: string): string {
