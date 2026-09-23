@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getBusinessLogo } from '../../utils/branding';
+import { getBusinessLogo, getAppLogo } from '../../utils/branding';
 import {
   Briefcase,
   Star,
@@ -157,28 +157,22 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     loadData();
   }, [business.id]);
 
-  // Guaranteed showcase items: If creator has not added custom items yet, load rich starter projects
-  const effectiveItems: PortfolioItem[] =
-    items.length > 0
-      ? items
-      : getStarterPortfolioItems(professionKey, business.name, business.id);
-
   // Categories resolution
-  const categoriesFromItems = Array.from(new Set(effectiveItems.map((i) => i.category))).filter(Boolean);
+  const categoriesFromItems = Array.from(new Set(items.map((i) => i.category))).filter(Boolean);
   const customCategories = settings.customCategories || [];
   const presetCategories = preset?.categories || [];
   const allAvailableCategories = Array.from(
     new Set([...presetCategories, ...customCategories, ...categoriesFromItems])
   ).filter((c) => c && c.toLowerCase() !== 'all');
 
-  const filteredItems = effectiveItems.filter((item) => {
+  const filteredItems = items.filter((item) => {
     if (selectedCategory === 'all') return true;
     return item.category.toLowerCase() === selectedCategory.toLowerCase();
   });
 
   // Deep-link initial item selection from URL (?item=id or /project/id)
   useEffect(() => {
-    if (effectiveItems.length === 0) return;
+    if (items.length === 0) return;
     const urlParams = new URLSearchParams(window.location.search);
     const itemParam = urlParams.get('item') || urlParams.get('project');
     const pathname = window.location.pathname;
@@ -186,12 +180,12 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     const targetId = itemParam || (projectMatch ? projectMatch[1] : null);
 
     if (targetId) {
-      const found = effectiveItems.find((i) => i.id === targetId);
+      const found = items.find((i) => i.id === targetId);
       if (found) {
         setFullPageItem(found);
       }
     }
-  }, [effectiveItems]);
+  }, [items]);
 
   const handleOpenItem = (item: PortfolioItem) => {
     setFullPageItem(item);
@@ -360,37 +354,6 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   };
   const ProfessionIcon = PROFESSION_ICONS[professionKey] || Sparkles;
 
-  // Fallback authentic reviews if none added in Firestore yet
-  const effectiveTestimonials: Testimonial[] =
-    testimonials.length > 0
-      ? testimonials
-      : [
-          {
-            id: 'sample_t1',
-            businessId: business.id,
-            clientName: 'Rohit Sharma',
-            clientRole: 'Founder & CEO, TechScale',
-            quote:
-              'Outstanding work quality and delivered ahead of schedule. The execution helped our team launch seamlessly with 100% confidence.',
-            rating: 5,
-            order: 1,
-            isActive: true,
-            createdAt: Date.now() - 30 * 86400000,
-          },
-          {
-            id: 'sample_t2',
-            businessId: business.id,
-            clientName: 'Anjali Verma',
-            clientRole: 'Brand Marketing Lead, Apex Studio',
-            quote:
-              'A true creative professional! Communicated clearly through every phase and delivered extraordinary results that exceeded expectations.',
-            rating: 5,
-            order: 2,
-            isActive: true,
-            createdAt: Date.now() - 60 * 86400000,
-          },
-        ];
-
   // Platform Stats and Brand Collabs
   const platformStats: PlatformStat[] = settings.platformStats || [];
   const brandCollabs: BrandCollab[] = settings.brandCollabs || [];
@@ -411,11 +374,25 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
       <PortfolioProjectPageView
         item={fullPageItem}
         business={business}
-        allItems={effectiveItems}
+        allItems={items}
         onBack={handleBackFromFullPage}
         onSelectOtherItem={handleOpenFullPageItem}
         isOwner={isOwner}
       />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+          <img
+            src={getAppLogo()}
+            alt="Storelly"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
     );
   }
 
@@ -732,11 +709,11 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                           : 'bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
-                      All ({effectiveItems.length})
+                      All ({items.length})
                     </button>
 
                     {allAvailableCategories.map((cat) => {
-                      const count = effectiveItems.filter(
+                      const count = items.filter(
                         (i) => i.category.toLowerCase() === cat.toLowerCase()
                       ).length;
                       const isCatActive = selectedCategory.toLowerCase() === cat.toLowerCase();
@@ -916,7 +893,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     </div>
                     <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
                       <div className="text-xl sm:text-2xl font-black font-heading">
-                        {effectiveItems.length > 0 ? `${effectiveItems.length}+` : '50+'}
+                        {items.length > 0 ? `${items.length}+` : '0'}
                       </div>
                       <div className="text-xs font-bold opacity-70">Projects Shipped</div>
                     </div>
@@ -1113,43 +1090,49 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     gap: 'clamp(1rem, 2vw, 1.5rem)',
                   }}
                 >
-                  {effectiveTestimonials.map((t) => (
-                    <div
-                      key={t.id}
-                      className={`p-5 xs:p-6 sm:p-7 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
-                    >
-                      <div className="flex items-center gap-1 text-amber-400">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star
-                            key={s}
-                            className={`w-4 h-4 ${s <= (t.rating || 5) ? 'fill-current' : 'opacity-30'}`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-xs sm:text-sm italic opacity-85 leading-relaxed">
-                        "{t.quote}"
-                      </p>
-                      <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        {t.clientPhoto ? (
-                          <img
-                            src={t.clientPhoto}
-                            alt={t.clientName}
-                            className="w-10 h-10 rounded-full object-cover shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 font-black flex items-center justify-center text-xs shrink-0">
-                            {t.clientName.charAt(0)}
-                          </div>
-                        )}
-                        <div>
-                          <div className="text-xs font-bold">{t.clientName}</div>
-                          {t.clientRole && (
-                            <div className="text-[11px] opacity-60">{t.clientRole}</div>
+                  {testimonials.length > 0 ? (
+                    testimonials.map((t) => (
+                      <div
+                        key={t.id}
+                        className={`p-5 xs:p-6 sm:p-7 border shadow-xs space-y-4 ${getCardRadiusClass()} ${getCardClass()}`}
+                      >
+                        <div className="flex items-center gap-1 text-amber-400">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-4 h-4 ${s <= (t.rating || 5) ? 'fill-current' : 'opacity-30'}`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs sm:text-sm italic opacity-85 leading-relaxed">
+                          "{t.quote}"
+                        </p>
+                        <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                          {t.clientPhoto ? (
+                            <img
+                              src={t.clientPhoto}
+                              alt={t.clientName}
+                              className="w-10 h-10 rounded-full object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 font-black flex items-center justify-center text-xs shrink-0">
+                              {t.clientName.charAt(0)}
+                            </div>
                           )}
+                          <div>
+                            <div className="text-xs font-bold">{t.clientName}</div>
+                            {t.clientRole && (
+                              <div className="text-[11px] opacity-60">{t.clientRole}</div>
+                            )}
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-10 opacity-50 italic text-xs">
+                      No client testimonials added yet.
                     </div>
-                  ))}
+                  )}
                 </div>
               </section>
             );
@@ -1205,30 +1188,8 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                       ))}
                     </div>
                   ) : (
-                    <div
-                      className="grid gap-2.5 xs:gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))]"
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
-                        gap: 'clamp(0.625rem, 1.5vw, 1rem)',
-                      }}
-                    >
-                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
-                        <div className="text-lg sm:text-2xl font-black font-heading text-pink-600">50K+</div>
-                        <div className="text-xs font-bold opacity-80">Instagram</div>
-                      </div>
-                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
-                        <div className="text-lg sm:text-2xl font-black font-heading text-red-600">100K+</div>
-                        <div className="text-xs font-bold opacity-80">YouTube</div>
-                      </div>
-                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
-                        <div className="text-lg sm:text-2xl font-black font-heading text-blue-600">25K+</div>
-                        <div className="text-xs font-bold opacity-80">LinkedIn</div>
-                      </div>
-                      <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
-                        <div className="text-lg sm:text-2xl font-black font-heading text-emerald-600">4.8%</div>
-                        <div className="text-xs font-bold opacity-80">Avg. Engagement</div>
-                      </div>
+                    <div className="text-center py-6 text-xs opacity-50 italic">
+                      No social reach stats added yet.
                     </div>
                   )}
 
@@ -1447,7 +1408,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                             required
                             value={contactName}
                             onChange={(e) => setContactName(e.target.value)}
-                            placeholder="e.g. John Doe"
+                            placeholder="Your full name"
                             className="w-full px-3.5 py-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
@@ -1460,7 +1421,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                             type="tel"
                             value={contactPhone}
                             onChange={(e) => setContactPhone(e.target.value)}
-                            placeholder="+91 98765 43210"
+                            placeholder="Mobile number"
                             className="w-full px-3.5 py-3 min-h-[44px] rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>

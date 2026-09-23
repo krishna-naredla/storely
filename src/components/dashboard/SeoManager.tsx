@@ -12,7 +12,8 @@ import {
   Eye
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
-import { updateBusinessProfile } from '../../services/firebaseService';
+import { updateBusinessProfile, getStorefrontUrl, getBioLinkUrl } from '../../services/firebaseService';
+import { isCreatorProfile } from '../../utils/profileHelper';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 
 interface SeoManagerProps {
@@ -51,7 +52,8 @@ export const SeoManager: React.FC<SeoManagerProps> = ({ business }) => {
     }
   };
 
-  const storefrontUrl = `${window.location.origin}/@${business.username || business.slug}`;
+  const isCreator = isCreatorProfile(business);
+  const storefrontUrl = isCreator ? getBioLinkUrl(business.slug) : getStorefrontUrl(business.slug);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">

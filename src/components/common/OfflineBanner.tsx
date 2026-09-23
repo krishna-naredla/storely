@@ -10,21 +10,12 @@ export const OfflineBanner: React.FC = () => {
   useEffect(() => {
     const handleOnline = () => {
       setIsOffline(false);
-      // If we were previously offline during this session, trigger the 'Store Data Cached' status indicator
-      if (wasOffline || !navigator.onLine) {
-        setShowCachedStatus(true);
-        const timer = setTimeout(() => {
-          setShowCachedStatus(false);
-        }, 4500);
-        return () => clearTimeout(timer);
-      }
     };
 
     const handleOffline = () => {
       setIsOffline(true);
       setWasOffline(true);
       setShow(true);
-      setShowCachedStatus(false);
     };
 
     window.addEventListener('online', handleOnline);
@@ -36,47 +27,7 @@ export const OfflineBanner: React.FC = () => {
     };
   }, [wasOffline]);
 
-  // When back online and transitioned from offline: show "Store Data Cached"
-  if (!isOffline && showCachedStatus) {
-    return (
-      <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300">
-        <div
-          role="status"
-          aria-live="polite"
-          className="max-w-md mx-auto bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-emerald-500/40 flex items-center justify-between gap-3"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Back Online</h4>
-                <span className="text-[10px] text-slate-400">•</span>
-                <span className="text-xs font-bold text-white flex items-center gap-1">
-                  <Database className="w-3 h-3 text-emerald-400" />
-                  Store Data Cached
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-0.5">
-                Catalog & local modifications are safely cached and synced with Firestore.
-              </p>
-            </div>
-          </div>
-          
-          <button
-            type="button"
-            onClick={() => setShowCachedStatus(false)}
-            aria-label="Dismiss notification"
-            className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-400 hover:text-white rounded-lg transition cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  // When back online: do nothing extra (Removing PWA/Offline-mode shell)
   if (!isOffline || !show) return null;
 
   return (

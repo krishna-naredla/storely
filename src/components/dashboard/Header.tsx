@@ -16,10 +16,9 @@ import {
   QrCode,
   Globe
 } from 'lucide-react';
-import { BusinessProfile } from '../../types';
-import { getStorefrontUrl, subscribeToOrders } from '../../services/firebaseService';
+import { BusinessProfile, Notification } from '../../types';
+import { getStorefrontUrl, subscribeToNotifications } from '../../services/firebaseService';
 import { requestFcmNotificationPermission } from '../../services/fcmPushService';
-import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../context/LanguageContext';
 import { isCreatorProfile, getPrimaryPublicUrl, getProfileTypeLabel } from '../../utils/profileHelper';
@@ -35,6 +34,7 @@ interface HeaderProps {
   onToggleSidebar: () => void;
   onOpenStorefront: () => void;
   onOpenShareModal: () => void;
+  onNavigateToNotifications?: () => void;
   userName?: string | null;
 }
 
@@ -46,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   onOpenStorefront,
   onOpenShareModal,
+  onNavigateToNotifications,
   userName,
 }) => {
   const { t } = useLanguage();
@@ -54,19 +55,52 @@ export const Header: React.FC<HeaderProps> = ({
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [copiedBizId, setCopiedBizId] = useState<string | null>(null);
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const isCreator = isCreatorProfile(business);
   const storeUrl = business ? (isCreator ? getPrimaryPublicUrl(business) : getStorefrontUrl(business)) : '';
 
   useEffect(() => {
     if (!business) return;
-    const unsubscribe = subscribeToOrders(business.id, (orders) => {
-      const pendingCount = orders.filter(o => o.status === 'pending').length;
-      setPendingOrdersCount(pendingCount);
+    const unsubscribe = subscribeToNotifications(business.id, (notifications) => {
+      const count = notifications.filter(n => !n.read).length;
+      setUnreadNotificationsCount(count);
+      
+      // Play sound if a new notification arrives
+      if (count > unreadNotificationsCount && unreadNotificationsCount !== 0) {
+        playNotificationSound();
+      }
     });
     return () => unsubscribe();
-  }, [business]);
+  }, [business, unreadNotificationsCount]);
+
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+
+      const playNote = (freq: number, start: number, duration: number, vol: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(vol, start);
+        gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+
+      // Play a pleasant "pop" / "chime" sequence (D5 -> A5)
+      playNote(587.33, now, 0.4, 0.1);
+      playNote(880, now + 0.1, 0.5, 0.1);
+    } catch (err) {
+      // ignore
+    }
+  };
 
   const handleCopy = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -367,20 +401,24 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Notifications */}
         <button
           type="button"
-          onClick={() => requestFcmNotificationPermission()}
+          onClick={() => {
+            if (onNavigateToNotifications) {
+              onNavigateToNotifications();
+            } else {
+              requestFcmNotificationPermission();
+            }
+          }}
           className="relative touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-slate-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-xl transition cursor-pointer"
-          title="Enable Real-Time Browser Push Notifications (FCM)"
+          title="Notifications"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-          {pendingOrdersCount > 0 && (
+          {unreadNotificationsCount > 0 && (
             <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[9px] font-bold text-white">
-              {pendingOrdersCount > 9 ? '9+' : pendingOrdersCount}
+              {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
             </span>
           )}
         </button>
-
-        <PWAInstallPrompt variant="button" customTitle={isCreator ? "Install Storelly Creator App" : "Install Storelly Merchant App"} />
 
         {business && (
           <>

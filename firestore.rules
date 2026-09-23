@@ -1,39 +1,100 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() {
+
+    // =========================================================================
+    // Core Security Helpers & Role Based Access Control (RBAC)
+    // =========================================================================
+
+    function isSignedIn() {
       return request.auth != null;
     }
-    
-    function isUser(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
     }
 
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Secure Admin Strategy:
+    // 1. Firebase Auth Custom Claims (set by Admin SDK / server only)
+    // 2. Authoritative admins collection record by UID
+    // 3. Authoritative admins collection record by verified email
+    // 4. Bootstrapped admin email (strictly requiring verified email token)
     function isAdmin() {
-      return isAuthenticated() && (
-        (request.auth.token.email != null && (
-          request.auth.token.email == 'localride369@gmail.com' ||
+      return isSignedIn() && (
+        (request.auth.token.keys().hasAny(['admin', 'masterAdmin']) &&
+          (request.auth.token.admin == true || request.auth.token.masterAdmin == true)) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email != null && isEmailVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email))) ||
+        (request.auth.token.email != null && isEmailVerified() && (
           request.auth.token.email == 'maninaredla218@gmail.com' ||
           request.auth.token.email == 'admin@storelly.com' ||
-          request.auth.token.email == 'superadmin@storelly.com'
-        )) ||
-        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email)))
+          request.auth.token.email == 'superadmin@storelly.com' ||
+          request.auth.token.email == 'localride369@gmail.com'
+        ))
       );
     }
-    
+
+    // Business ownership resolution:
+    // Checks if the user is the owner of the specified business or has system admin privilege
     function isBusinessOwner(businessId) {
-      return isAuthenticated() && (
+      return isSignedIn() && (
         (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
         (exists(/databases/$(database)/documents/businesses/$(businessId)) &&
          get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid) ||
         isAdmin()
       );
     }
-    
-    // Top-level biolinks
+
+    // Helper: Validates that transactional orders created directly from client
+    // cannot be marked as authoritative 'paid', 'confirmed', or 'delivered'
+    function isValidClientOrderCreate() {
+      return (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid' || (request.resource.data.total == 0)) &&
+             (!('status' in request.resource.data) || (request.resource.data.status != 'delivered' && request.resource.data.status != 'confirmed'));
+    }
+
+    // Helper: Validates that bookings created directly from client
+    // cannot be marked as authoritative 'paid' or 'completed'
+    function isValidClientBookingCreate() {
+      return (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid' || (request.resource.data.totalPrice == 0)) &&
+             (!('status' in request.resource.data) || (request.resource.data.status != 'completed' && request.resource.data.status != 'confirmed'));
+    }
+
+    // =========================================================================
+    // Master Default Deny
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // User Profiles
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isUser(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isUser(userId);
+      allow update: if isUser(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // Admins Registry
+    // =========================================================================
+    match /admins/{adminId} {
+      allow read: if isAdmin() || (isSignedIn() && (request.auth.uid == adminId || (isEmailVerified() && request.auth.token.email == adminId)));
+      allow write: if isAdmin();
+    }
+
+    // =========================================================================
+    // Top-Level Public BioLinks
+    // =========================================================================
     match /biolinks/{linkId} {
       allow read: if true;
-      allow write: if isAuthenticated() && (
+      allow write: if isSignedIn() && (
         isAdmin() ||
         (resource == null && request.resource.data.businessId != null && 
           get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid) ||
@@ -42,38 +103,49 @@ service cloud.firestore {
       );
     }
 
-    // Top-level user profiles
-    match /users/{userId} {
-      allow read, write: if isUser(userId) || isAdmin();
-    }
-
-    // Admin collection
-    match /admins/{adminEmail} {
-      allow read: if isAuthenticated() && (isAdmin() || request.auth.token.email == adminEmail);
-      allow write: if isAdmin();
-    }
-
-    // Businesses & tenant data
+    // =========================================================================
+    // Businesses & Multi-Tenant Entities
+    // =========================================================================
     match /businesses/{businessId} {
+      // Public storefront can read active/published business profile
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (
+
+      // Create: Authenticated user only, ownerId must strictly equal auth.uid
+      allow create: if isSignedIn() && 
+                    request.resource.data.ownerId == request.auth.uid &&
+                    (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus in ['trial', 'inactive', 'pending']) &&
+                    (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan in ['free', 'starter', 'trial']);
+
+      // Update: Owner or Admin. OwnerId is strictly IMMUTABLE.
+      // Ordinary owner cannot self-promote subscription status or subscription plan
+      allow update: if isSignedIn() && (
         isAdmin() ||
-        (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
-        (request.resource != null && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid)
-      );
-      allow delete: if isAuthenticated() && (
-        isAdmin() ||
-        (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid)
+        (
+          resource.data.ownerId == request.auth.uid &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus == resource.data.subscriptionStatus) &&
+          (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan == resource.data.subscriptionPlan)
+        )
       );
 
-      // Publicly viewable catalog & showcase items
+      // Delete: Owner or Admin only
+      allow delete: if isSignedIn() && (
+        isAdmin() ||
+        resource.data.ownerId == request.auth.uid
+      );
+
+      // --- Public Showcase & Catalog Subcollections ---
+      match /catalog/{itemId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
       match /catalogue/{itemId} {
         allow read: if true;
         allow write: if isBusinessOwner(businessId);
       }
 
-      match /digital_products/{productId} {
+      match /categories/{categoryId} {
         allow read: if true;
         allow write: if isBusinessOwner(businessId);
       }
@@ -88,7 +160,12 @@ service cloud.firestore {
         allow write: if isBusinessOwner(businessId);
       }
 
-      match /events/{eventId} {
+      match /testimonials/{testimonialId} {
+        allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+      }
+
+      match /offers/{offerId} {
         allow read: if true;
         allow write: if isBusinessOwner(businessId);
       }
@@ -99,32 +176,96 @@ service cloud.firestore {
         allow update, delete: if isBusinessOwner(businessId);
       }
 
-      // Customer transactional data: orders, bookings, tickets, quotes
-      match /orders/{orderId} {
-        allow create: if true;
+      match /biolinks/{linkId} {
         allow read: if true;
-        allow update, delete: if isBusinessOwner(businessId);
+        allow write: if isBusinessOwner(businessId);
       }
 
-      match /bookings/{bookingId} {
-        allow create: if true;
+      // --- Events & Ticketing Subcollections ---
+      match /events/{eventId} {
         allow read: if true;
+        allow write: if isBusinessOwner(businessId);
+
+        match /seat_holds/{holdId} {
+          allow read: if true;
+          allow create: if request.resource.data.status == 'active';
+          allow update: if isBusinessOwner(businessId) || 
+            (resource.data.status == 'active' && request.resource.data.status in ['completed', 'released']);
+          allow delete: if isBusinessOwner(businessId);
+        }
+      }
+
+      match /tickets/{ticketId} {
+        // Only owner or admin can list all attendees
+        allow list: if isBusinessOwner(businessId);
+        // Customer can only view their own ticket by email verification or owner
+        allow get: if isBusinessOwner(businessId) || 
+                      (isSignedIn() && isEmailVerified() && resource.data.customerEmail == request.auth.token.email);
+        // Client can only create ticket if free or marked unpaid; paid status is strictly issued by server
+        allow create: if request.resource.data.paymentStatus != 'paid' || 
+                         (get(/databases/$(database)/documents/businesses/$(businessId)/events/$(request.resource.data.eventId)).data.isFree == true);
         allow update, delete: if isBusinessOwner(businessId);
       }
 
       match /event_tickets/{ticketId} {
-        allow create: if true;
-        allow read: if true;
+        allow list: if isBusinessOwner(businessId);
+        allow get: if isBusinessOwner(businessId) || 
+                      (isSignedIn() && isEmailVerified() && resource.data.customerEmail == request.auth.token.email);
+        allow create: if request.resource.data.paymentStatus != 'paid' || 
+                         (get(/databases/$(database)/documents/businesses/$(businessId)/events/$(request.resource.data.eventId)).data.isFree == true);
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      // --- Digital Products (Private Assets: Protected from Public Scraping) ---
+      match /digital_products/{productId} {
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      // --- Orders & Transactional Collections ---
+      // Private transactional collections: NEVER allow broad public read/list
+      match /orders/{orderId} {
+        // Customer can create order from storefront checkout (cannot mark as paid/delivered)
+        allow create: if isValidClientOrderCreate();
+        // Only owner or admin can list business orders
+        allow list: if isBusinessOwner(businessId);
+        // Customer can only read their own specific order if authenticated, or business owner
+        allow get: if isBusinessOwner(businessId) || 
+                      (isSignedIn() && resource.data.customerId == request.auth.uid);
+        // Customer cannot modify order payment status; only owner can update status
+        allow update: if isBusinessOwner(businessId);
+        allow delete: if isBusinessOwner(businessId);
+      }
+
+      match /bookings/{bookingId} {
+        allow create: if isValidClientBookingCreate();
+        allow list: if isBusinessOwner(businessId);
+        allow get: if isBusinessOwner(businessId) || 
+                      (isSignedIn() && resource.data.customerId == request.auth.uid);
+        allow update, delete: if isBusinessOwner(businessId);
+      }
+
+      match /quote_requests/{quoteId} {
+        allow create: if (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid') &&
+                         (!('status' in request.resource.data) || request.resource.data.status == 'new');
+        allow list: if isBusinessOwner(businessId);
+        allow get: if isBusinessOwner(businessId) || 
+                      (isSignedIn() && resource.data.customerId == request.auth.uid);
         allow update, delete: if isBusinessOwner(businessId);
       }
 
       match /quotes/{quoteId} {
-        allow create: if true;
-        allow read: if true;
-        allow update, delete: if isBusinessOwner(businessId);
+        allow list: if isBusinessOwner(businessId);
+        allow get: if isBusinessOwner(businessId) || 
+                      (isSignedIn() && resource.data.customerId == request.auth.uid);
+        allow create, update, delete: if isBusinessOwner(businessId);
       }
 
-      // Private tenant data: only owner and admin can access
+      match /analyticsEvents/{eventId} {
+        allow create: if true;
+        allow read, write: if isBusinessOwner(businessId);
+      }
+
+      // --- Private Merchant Subcollections (Strict Tenant Isolation) ---
       match /customers/{customerId} {
         allow read, write: if isBusinessOwner(businessId);
       }
@@ -149,13 +290,15 @@ service cloud.firestore {
         allow read, write: if isBusinessOwner(businessId);
       }
 
-      // Default fallback for any other subcollections
+      // Default fallback for any other subcollections inside a business
       match /{allOtherSubcollections=**} {
         allow read, write: if isBusinessOwner(businessId);
       }
     }
 
-    // Platform settings, plans, and public content
+    // =========================================================================
+    // Platform Settings, Plans, and CMS Content
+    // =========================================================================
     match /system_settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -181,22 +324,41 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Payment transactions & logs
+    // =========================================================================
+    // PAYMENTS: Authoritative Payment Transactions
+    // CRITICAL: NEVER publicly readable. Client MUST NOT create verified records.
+    // =========================================================================
     match /payment_transactions/{transactionId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin();
+      // Client write blocked: Only backend / Firebase Admin SDK writes authoritative transactions
+      allow write: if false;
     }
 
+    // =========================================================================
+    // AUDIT LOGS: Protected Admin Audit Trail
+    // CRITICAL: Clients cannot anonymously create admin audit logs.
+    // =========================================================================
     match /admin_audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if true;
+      allow create: if isAdmin();
       allow update, delete: if false;
     }
 
+    // =========================================================================
+    // SUPPORT: Platform Support Tickets with Tenant Isolation
+    // CRITICAL: Arbitrary authenticated users cannot read all support tickets.
+    // =========================================================================
     match /platform_support_tickets/{ticketId} {
-      allow read: if isAdmin() || isAuthenticated();
+      // Anyone can submit a support ticket
       allow create: if true;
+      // Read is restricted to Admin OR sender OR the owner of the referenced businessId
+      allow read: if isAdmin() || (
+        isSignedIn() && (
+          (request.auth.token.email != null && resource.data.senderEmail == request.auth.token.email) ||
+          ('businessId' in resource.data && isBusinessOwner(resource.data.businessId))
+        )
+      );
+      // Only Admin can update or delete support tickets
       allow update, delete: if isAdmin();
     }
   }

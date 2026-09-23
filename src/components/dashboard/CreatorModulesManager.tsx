@@ -61,12 +61,6 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
         (updatedModules as any)[k] = nextVal;
       }
       
-      // If enabling digital products, ensure cart_ordering and products flag are set for compatibility
-      if (keys.includes('digital_products') && nextVal) {
-        updatedModules.products = true;
-        updatedModules.cart_ordering = true;
-      }
-
       await updateBusinessProfile(business.id, { modules: updatedModules });
       onBusinessUpdated({ ...business, modules: updatedModules });
     } catch (err) {

@@ -176,8 +176,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId: item.id,
-          fileUrl: item.digitalFileUrl || item.images?.[0] || '',
-          fileName: item.fileName || item.name,
+          businessId: business.id,
           customerName: customerName.trim(),
           customerPhone: cleanPhone,
           customerEmail: customerEmail.trim() || undefined,
@@ -242,18 +241,46 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. Create Razorpay order on backend
+      // 1. Create Order record in Firestore first (as pending)
+      const pendingOrder = await createOrder(business.id, {
+        customerName: customerName.trim(),
+        customerPhone: cleanPhone,
+        customerEmail: customerEmail.trim() || undefined,
+        orderType: 'digital',
+        items: [
+          {
+            itemId: item.id,
+            name: item.name,
+            price: price,
+            quantity: 1,
+            image: item.images?.[0] || '',
+          },
+        ],
+        subtotal: price,
+        deliveryFee: 0,
+        discount: 0,
+        tax: 0,
+        total: price,
+        status: 'pending-verification',
+        paymentMethod: 'online',
+        paymentStatus: 'pending',
+      });
+
+      // 2. Create Razorpay order on backend
       const { res: orderRes, data: orderData } = await safeJsonFetch('/api/digital/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           itemId: item.id,
+          businessId: business.id,
           amount: price,
           customerName: customerName.trim(),
           customerPhone: cleanPhone,
           customerEmail: customerEmail.trim() || undefined,
+          orderId: pendingOrder.id // Link them
         }),
       });
+      
       if (!orderRes.ok || !orderData.id) {
         throw new Error(orderData.error || 'Failed to initialize payment');
       }
@@ -261,72 +288,9 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
       // Check for Razorpay SDK on window
       const RazorpayClass = (window as any).Razorpay;
 
-      const completeOrderVerification = async (paymentDetails: any) => {
-        if (!paymentDetails?.razorpay_payment_id) {
-          throw new Error('Payment completion details missing from gateway.');
-        }
-
-        const { res: verifyRes, data: verifyData } = await safeJsonFetch('/api/digital/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: paymentDetails.razorpay_order_id || orderData.id,
-            razorpay_payment_id: paymentDetails.razorpay_payment_id,
-            razorpay_signature: paymentDetails.razorpay_signature || '',
-            itemId: item.id,
-            fileUrl: item.digitalFileUrl || item.images?.[0] || '',
-            fileName: item.fileName || item.name,
-            customerName: customerName.trim(),
-            customerPhone: cleanPhone,
-            customerEmail: customerEmail.trim() || undefined,
-            amount: price || 0,
-          }),
-        });
-        if (!verifyRes.ok || !verifyData.success) {
-          throw new Error(verifyData.error || 'Payment verification failed');
-        }
-
-        // Log order in Firestore as DELIVERED
-        const newOrder = await createOrder(business.id, {
-          customerName: customerName.trim(),
-          customerPhone: cleanPhone,
-          customerEmail: customerEmail.trim() || undefined,
-          orderType: 'digital',
-          items: [
-            {
-              itemId: item.id,
-              name: item.name,
-              price: price,
-              quantity: 1,
-              image: item.images?.[0] || '',
-            },
-          ],
-          subtotal: price,
-          deliveryFee: 0,
-          discount: 0,
-          tax: 0,
-          total: price,
-          status: 'delivered',
-          paymentMethod: 'online',
-          paymentStatus: 'paid',
-          downloadStatus: 'completed',
-          digitalAccessUrl: verifyData.downloadUrl,
-        });
-
-        setPurchasedOrder(newOrder);
-        setDownloadUrl(verifyData.downloadUrl);
-        setExpiresAt(verifyData.expiresAt);
-        triggerConfetti();
-      };
-
-      const activeKey = orderData.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID;
-      if (!activeKey && price > 0) {
-        throw new Error('Online payment is not yet activated for this store. Please contact the seller directly.');
-      }
-
       if (RazorpayClass) {
         const options = {
-          key: activeKey,
+          key: (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || orderData.keyId,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: business.name,
@@ -343,7 +307,37 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
           },
           handler: async (response: any) => {
             try {
-              await completeOrderVerification(response);
+              // Verify on server
+              const { res: verifyRes, data: verifyData } = await safeJsonFetch('/api/digital/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  itemId: item.id,
+                  businessId: business.id,
+                  localOrderId: pendingOrder.id
+                }),
+              });
+              
+              if (!verifyRes.ok || !verifyData.success) {
+                throw new Error(verifyData.error || 'Payment verification failed on server');
+              }
+
+              // Update state for success UI
+              setPurchasedOrder({
+                ...pendingOrder,
+                status: 'delivered',
+                paymentStatus: 'paid',
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                digitalAccessUrl: verifyData.downloadUrl
+              });
+              setDownloadUrl(verifyData.downloadUrl);
+              setExpiresAt(verifyData.expiresAt);
+              triggerConfetti();
             } catch (err: any) {
               setErrorMessage(err.message || 'Payment verification failed');
             } finally {
@@ -360,7 +354,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
         const rzp = new RazorpayClass(options);
         rzp.open();
       } else {
-        throw new Error('Razorpay SDK failed to load. Please check your internet connection or disable ad-blockers.');
+        throw new Error('Razorpay SDK failed to load. Please check your internet connection.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Payment initiation failed');
@@ -377,9 +371,8 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: purchasedOrder?.id,
+          businessId: business.id,
           itemId: item.id,
-          fileUrl: item.digitalFileUrl || '',
-          fileName: item.fileName || item.name,
           phone: customerPhone,
         }),
       });
@@ -596,7 +589,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="e.g. John Doe"
+                    placeholder="Enter your name"
                     required
                     className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition"
                   />

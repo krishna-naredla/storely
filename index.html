@@ -10,13 +10,7 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <!-- PWA & Mobile Web App Capabilities -->
-    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#10b981" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Storelly" />
     <link rel="icon" type="image/jpeg" href="/main logo-1.jpg" />
     <link rel="apple-touch-icon" href="/main logo-1.jpg" />
 
@@ -25,12 +19,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700;1,800;1,900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       window.APP_BASE_URL = "https://storelly-ece40.web.app";
-      // Register Service Worker for PWA
+      
+      // Clean up legacy PWA Service Workers
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch((err) => {
-            console.warn('Service worker registration note:', err);
-          });
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (let registration of registrations) {
+            registration.unregister();
+            console.log('Unregistered legacy service worker:', registration.scope);
+          }
         });
       }
 

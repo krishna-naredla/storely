@@ -20,11 +20,15 @@ import {
   Loader2,
   Send,
   Download,
+  FileCheck,
+  Video,
+  FileText,
 } from 'lucide-react';
 import { BusinessProfile, Order, OrderStatus } from '../../types';
 import { getOrders, updateOrderStatus, subscribeToOrders, deleteOrder } from '../../services/firebaseService';
 import { SwipeToDelete } from '../common/SwipeToDelete';
 import { exportToCSV } from '../../utils/export';
+import { isCreatorProfile } from '../../utils/profileHelper';
 
 interface OrderManagerProps {
   business: BusinessProfile;
@@ -136,10 +140,18 @@ export const OrderManager: React.FC<any> = ({ business }) => {
     return matchesQuery && matchesStatus;
   });
 
-  const getStatusBadge = (status: OrderStatus) => {
-    switch (status) {
+  const isCreator = isCreatorProfile(business);
+
+  const getStatusBadge = (order: Order) => {
+    if (order.orderType === 'digital' && order.paymentStatus === 'paid') {
+      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    }
+
+    switch (order.status) {
       case 'pending':
         return 'bg-amber-50 text-amber-800 border-amber-200';
+      case 'pending-verification':
+        return 'bg-orange-50 text-orange-800 border-orange-200';
       case 'confirmed':
       case 'processing':
         return 'bg-blue-50 text-blue-800 border-blue-200';
@@ -160,11 +172,13 @@ export const OrderManager: React.FC<any> = ({ business }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-            Customer Orders
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+            {isCreator ? 'Digital Sales & Bookings' : 'Customer Orders'}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Manage incoming orders, update fulfilment status, and notify customers via WhatsApp.
+            {isCreator 
+              ? 'Manage your digital product sales and consultation bookings.'
+              : 'Manage incoming orders, update fulfilment status, and notify customers via WhatsApp.'}
           </p>
         </div>
 
@@ -238,13 +252,17 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                     </span>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
-                        order.status
+                        order
                       )}`}
                     >
                       {order.status}
                     </span>
                     <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                      {order.orderType === 'delivery'
+                      {order.orderType === 'digital'
+                        ? 'Digital Download'
+                        : order.orderType === 'consultation'
+                        ? 'Consultation Slot'
+                        : order.orderType === 'delivery'
                         ? 'Home Delivery'
                         : order.orderType === 'dine_in'
                         ? `Dine-In ${order.tableNumber ? `(Table ${order.tableNumber})` : ''}`
@@ -273,13 +291,15 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                     <div className="font-extrabold text-base text-slate-900">
                       {business.currencySymbol}{order.total}
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      {order.paymentMethod === 'cod'
-                        ? 'Cash On Delivery'
-                        : order.paymentMethod === 'upi_on_delivery'
-                        ? 'UPI On Delivery'
-                        : 'Paid Online'}
-                    </div>
+                  <div className="text-[10px] text-slate-400">
+                    {order.paymentMethod === 'cod'
+                      ? 'Cash On Delivery'
+                      : order.paymentMethod === 'upi_on_delivery'
+                      ? 'UPI On Delivery'
+                      : order.paymentMethod === 'online' || order.isPaid
+                      ? 'Paid Online'
+                      : 'Pending Payment'}
+                  </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -356,7 +376,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                   </h3>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
-                      selectedOrder.status
+                      selectedOrder
                     )}`}
                   >
                     {selectedOrder.status}
@@ -386,30 +406,32 @@ export const OrderManager: React.FC<any> = ({ business }) => {
               </div>
 
               {/* Status Update Control */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 print-hide">
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Update Fulfilment Status
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                  {(['pending', 'pending-verification', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'] as OrderStatus[]).map(
-                    (st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        disabled={isUpdatingStatus}
-                        onClick={() => handleStatusChange(selectedOrder, st)}
-                        className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition ${
-                          selectedOrder.status === st
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                        }`}
-                      >
-                        {st.replace('-', ' ')}
-                      </button>
-                    )
-                  )}
+              {!isCreator && selectedOrder.orderType !== 'digital' && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 print-hide">
+                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Update Fulfilment Status
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                    {(['pending', 'pending-verification', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'] as OrderStatus[]).map(
+                      (st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          disabled={isUpdatingStatus}
+                          onClick={() => handleStatusChange(selectedOrder, st)}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition ${
+                            selectedOrder.status === st
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          {st.replace('-', ' ')}
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Customer Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

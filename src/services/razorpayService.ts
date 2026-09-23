@@ -179,6 +179,10 @@ export async function initiateRazorpaySubscription(
           razorpay_order_id: response.razorpay_order_id,
           razorpay_signature: response.razorpay_signature,
           amount: plan.monthlyPrice,
+          businessId: business?.id,
+          businessName: business?.name || customer?.name,
+          planId: plan.id,
+          currency: plan.currency || "INR",
         }),
       });
 
@@ -186,10 +190,14 @@ export async function initiateRazorpaySubscription(
         throw new Error("Payment signature verification failed.");
       }
 
-      // 3. Write to Firestore after successful verification
-      const txId = "tx_" + Date.now();
-      const transaction: PlatformPaymentTransaction = {
-        id: txId,
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success || !verifyData.verified) {
+        throw new Error(verifyData.error || "Payment verification failed on server.");
+      }
+
+      // Authoritative transaction returned directly from server
+      const transaction: PlatformPaymentTransaction = verifyData.transaction || {
+        id: "tx_" + Date.now(),
         businessId: business?.id || "guest_vendor",
         businessName: business?.name || customer?.name || "Storelly Merchant",
         planId: plan.id,
@@ -198,18 +206,8 @@ export async function initiateRazorpaySubscription(
         status: "success",
         gateway: "razorpay",
         createdAt: Date.now(),
-        receiptUrl: `https://storelly.com/receipts/${txId}`,
+        receiptUrl: `https://storelly.com/receipts/${verifyData.orderId || response.razorpay_order_id}`,
       };
-
-      try {
-        await setDoc(doc(db, "payment_transactions", txId), {
-          ...transaction,
-          razorpayPaymentId: response.razorpay_payment_id,
-          razorpayOrderId: response.razorpay_order_id,
-        });
-      } catch (err) {
-        console.warn("Error recording payment transaction:", err);
-      }
 
       try {
         const existingRaw = localStorage.getItem(
@@ -224,26 +222,6 @@ export async function initiateRazorpaySubscription(
           JSON.stringify(existing),
         );
       } catch {}
-
-      if (config.autoUpgradePlan && business?.id) {
-        try {
-          const planSlug = plan.name.toLowerCase().includes("pro")
-            ? "pro"
-            : plan.id.replace("plan_", "");
-          await setDoc(
-            doc(db, "businesses", business.id),
-            {
-              subscriptionPlan: planSlug,
-              subscriptionStatus: "active",
-              subscriptionExpiry: Date.now() + 30 * 24 * 60 * 60 * 1000,
-              updatedAt: Date.now(),
-            },
-            { merge: true },
-          );
-        } catch (err) {
-          console.warn("Error updating business subscription:", err);
-        }
-      }
 
       window.dispatchEvent(
         new CustomEvent("storelly_subscription_upgraded", {
@@ -335,30 +313,91 @@ export async function getAllPaymentTransactions(): Promise<
     if (cached) return JSON.parse(cached);
   } catch {}
 
-  return [
-    {
-      id: "tx_sample_1",
-      businessId: "biz_demo_1",
-      businessName: "Royal Silk Sarees",
-      planId: "plan_pro",
-      amount: 199,
-      currency: "INR",
-      status: "success",
-      gateway: "razorpay",
-      createdAt: Date.now() - 86400000 * 2,
-      receiptUrl: "https://storelly.com/receipts/tx_sample_1",
-    },
-    {
-      id: "tx_sample_2",
-      businessId: "biz_demo_2",
-      businessName: "ByteCraft Coding Academy",
-      planId: "plan_pro",
-      amount: 199,
-      currency: "INR",
-      status: "success",
-      gateway: "razorpay",
-      createdAt: Date.now() - 86400000 * 4,
-      receiptUrl: "https://storelly.com/receipts/tx_sample_2",
-    },
-  ];
+  return [];
+}
+
+/**
+ * Generic Razorpay Checkout for Orders (Physical or Digital)
+ */
+export async function initiateRazorpayCheckout(options: {
+  amount: number;
+  currency: string;
+  businessName: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  businessId: string;
+  localOrderId?: string;
+  notes?: Record<string, string>;
+  themeColor?: string;
+  onSuccess: (response: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+  }) => void;
+  onFailure: (error: any) => void;
+}): Promise<void> {
+  const { 
+    amount, currency, businessName, customerName, customerEmail, customerPhone, 
+    businessId, localOrderId, notes, themeColor, onSuccess, onFailure 
+  } = options;
+
+  const scriptLoaded = await loadRazorpayScript();
+  if (!scriptLoaded || !window.Razorpay) {
+    onFailure(new Error("Razorpay SDK failed to load. Please check your connection."));
+    return;
+  }
+
+  const config = await getRazorpayConfig();
+
+  try {
+    // 1. Create Razorpay order on the server
+    const orderRes = await fetch("/api/orders/create-rzp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount,
+        currency,
+        businessId,
+        customerName,
+        orderId: localOrderId
+      }),
+    });
+
+    if (!orderRes.ok) throw new Error("Failed to create secure payment order on server.");
+    const { rzpOrderId } = await orderRes.json();
+
+    // 2. Configure checkout
+    const rzpOptions = {
+      key: config.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID,
+      amount: Math.round(amount * 100),
+      currency: currency || "INR",
+      order_id: rzpOrderId,
+      name: businessName,
+      description: `Payment for Order ${localOrderId || ""}`,
+      image: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+      handler: (response: any) => onSuccess(response),
+      prefill: {
+        name: customerName || "",
+        email: customerEmail || "",
+        contact: customerPhone || "",
+      },
+      notes: {
+        ...notes,
+        businessId,
+        localOrderId: localOrderId || "",
+      },
+      theme: {
+        color: themeColor || "#155330",
+      },
+      modal: {
+        ondismiss: () => onFailure(new Error("Payment window closed.")),
+      },
+    };
+
+    const rzp = new window.Razorpay(rzpOptions);
+    rzp.open();
+  } catch (err) {
+    onFailure(err);
+  }
 }

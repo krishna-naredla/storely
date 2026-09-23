@@ -78,27 +78,67 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
         const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
         const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
 
-        if (razorpayKey && hasRazorpayScript) {
-          // 1. Reserve the seat before payment
-          const holdId = `hold_${Date.now()}`;
-          try {
-            await reserveEventSeat(business.id, event.id, holdId, 10 * 60 * 1000);
-          } catch (reserveErr: any) {
-            setErrorMessage(reserveErr.message || 'Sold Out. Unable to reserve seat.');
-            setLoading(false);
-            return;
+        if (!razorpayKey || !hasRazorpayScript) {
+          throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
+        }
+
+        // 1. Reserve the seat before payment
+        const holdId = `hold_${Date.now()}`;
+        try {
+          await reserveEventSeat(business.id, event.id, holdId, 10 * 60 * 1000);
+        } catch (reserveErr: any) {
+          setErrorMessage(reserveErr.message || 'Sold Out. Unable to reserve seat.');
+          setLoading(false);
+          return;
+        }
+
+        try {
+          // 2. Create Razorpay Order on Server
+          const rzpOrderRes = await fetch('/api/events/create-rzp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              businessId: business.id,
+              eventId: event.id,
+              customerName,
+              customerPhone: cleanPhone,
+            }),
+          });
+
+          if (!rzpOrderRes.ok) {
+            const errData = await rzpOrderRes.json();
+            throw new Error(errData.error || 'Failed to initialize payment on server');
           }
+
+          const { rzpOrderId, amount, currency } = await rzpOrderRes.json();
 
           const options = {
             key: razorpayKey,
-            amount: event.price * 100, // in paise
-            currency: 'INR',
+            amount,
+            currency,
             name: business.name,
             description: `Ticket for ${event.title}`,
             image: business.logo || undefined,
+            order_id: rzpOrderId,
             handler: async function (response: any) {
               try {
-                // 3. Finalize payment and convert hold to ticket
+                setLoading(true);
+                // 3. Verify Payment Signature on Server
+                const verifyRes = await fetch('/api/events/verify-payment', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  }),
+                });
+
+                if (!verifyRes.ok) {
+                  throw new Error('Payment verification failed on server');
+                }
+
+                // 4. Finalize payment and convert hold to ticket
                 const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
                   customerName: customerName.trim(),
                   customerPhone: cleanPhone,
@@ -114,6 +154,8 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                 if (onSuccess) onSuccess(ticket);
               } catch (err: any) {
                 setErrorMessage(err.message || 'Payment recorded but failed to lock ticket.');
+              } finally {
+                setLoading(false);
               }
             },
             prefill: {
@@ -126,7 +168,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             },
             modal: {
               ondismiss: async function () {
-                // 2. Release seat if user closes checkout
+                // Release seat if user closes checkout
                 try {
                   await releaseEventSeat(business.id, event.id, holdId);
                 } catch (e) {
@@ -149,8 +191,10 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             setLoading(false);
           });
           rzp.open();
-        } else {
-          throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
+        } catch (payInitErr: any) {
+          // Release seat if payment initialization fails
+          await releaseEventSeat(business.id, event.id, holdId);
+          throw payInitErr;
         }
       }
     } catch (err: any) {

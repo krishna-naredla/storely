@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isCreatorProfile } from '../../utils/profileHelper';
 import {
   TrendingUp,
   ShoppingBag,
@@ -12,6 +13,9 @@ import {
   CheckCircle2,
   Clock,
   MessageCircle,
+  MousePointerClick,
+  FileDown,
+  ExternalLink,
 } from 'lucide-react';
 import { BusinessProfile, AnalyticsSummary } from '../../types';
 import { getAnalyticsSummary, getOrders } from '../../services/firebaseService';
@@ -39,6 +43,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ business }) => {
     loadData();
   }, [business.id]);
 
+  const isCreator = isCreatorProfile(business);
+
   const avgOrderValue =
     summary && summary.totalOrders > 0
       ? Math.round(summary.totalRevenue / summary.totalOrders)
@@ -48,22 +54,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ business }) => {
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-          Store Analytics & Intelligence
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+          {isCreator ? 'Performance & Creator Analytics' : 'Store Analytics & Intelligence'}
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Real-time metrics computed directly from your Firestore orders, bookings, and customer records.
+          {isCreator 
+            ? 'Track your profile visibility, link engagement, and digital product performance.'
+            : 'Real-time metrics computed directly from your Firestore orders, bookings, and customer records.'}
         </p>
       </div>
 
       {/* Primary KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Gross Revenue */}
+        {/* Profile Visibility / Gross Revenue */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Gross Revenue</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              {business.currencySymbol === '$' ? (
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isCreator ? 'Profile Views' : 'Gross Revenue'}
+            </span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isCreator ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
+              {isCreator ? (
+                <Eye className="w-4 h-4" />
+              ) : business.currencySymbol === '$' ? (
                 <DollarSign className="w-4 h-4" />
               ) : (
                 <IndianRupee className="w-4 h-4" />
@@ -71,46 +83,56 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ business }) => {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-            {isLoading ? '...' : `${business.currencySymbol}${(summary?.totalRevenue ?? 0).toLocaleString()}`}
+            {isLoading ? '...' : isCreator ? (summary?.totalViews ?? 0).toLocaleString() : `${business.currencySymbol}${(summary?.totalRevenue ?? 0).toLocaleString()}`}
           </div>
-          <p className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+          <p className={`text-[11px] font-semibold flex items-center gap-1 ${isCreator ? 'text-indigo-700' : 'text-emerald-700'}`}>
             <ArrowUpRight className="w-3 h-3" />
-            <span>Direct storefront revenue</span>
+            <span>{isCreator ? 'Total profile traffic' : 'Direct storefront revenue'}</span>
           </p>
         </div>
 
-        {/* Total Orders */}
+        {/* Link Clicks / Total Orders */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Orders</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isCreator ? 'Link Engagement' : 'Total Orders'}
+            </span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isCreator ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>
+              {isCreator ? <MousePointerClick className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-            {isLoading ? '...' : summary?.totalOrders ?? 0}
+            {isLoading ? '...' : isCreator ? (summary?.totalClicks ?? 0).toLocaleString() : summary?.totalOrders ?? 0}
           </div>
-          <p className="text-[11px] text-slate-400">Total checkouts processed</p>
+          <p className="text-[11px] text-slate-400">
+            {isCreator ? 'Clicks on your bio links' : 'Total checkouts processed'}
+          </p>
         </div>
 
-        {/* Average Order Value (AOV) */}
+        {/* Digital Downloads / Average Order Value */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Average Order</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isCreator ? 'Digital Sales' : 'Average Order'}
+            </span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isCreator ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'}`}>
+              {isCreator ? <FileDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
-            {isLoading ? '...' : `${business.currencySymbol}${avgOrderValue}`}
+            {isLoading ? '...' : isCreator ? (summary?.totalDigitalSales ?? summary?.totalOrders ?? 0) : `${business.currencySymbol}${avgOrderValue}`}
           </div>
-          <p className="text-[11px] text-slate-400">Per customer order value</p>
+          <p className="text-[11px] text-slate-400">
+            {isCreator ? 'Successful digital deliveries' : 'Per customer order value'}
+          </p>
         </div>
 
-        {/* Total Customers */}
+        {/* Customer Base */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Base</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isCreator ? 'Client Base' : 'Customer Base'}
+            </span>
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
@@ -118,7 +140,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ business }) => {
           <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-heading">
             {isLoading ? '...' : summary?.totalCustomers ?? 0}
           </div>
-          <p className="text-[11px] text-slate-400">Direct buyers in CRM</p>
+          <p className="text-[11px] text-slate-400">
+            {isCreator ? 'Direct buyers & clients' : 'Direct buyers in CRM'}
+          </p>
         </div>
       </div>
 

@@ -234,7 +234,7 @@ export const StorePaymentsManager: React.FC<StorePaymentsManagerProps> = ({
                       if (error) setError(null);
                     }}
                     onBlur={() => handleBlur('upiId')}
-                    placeholder="e.g. yourstore@okhdfcbank or 9876543210@paytm"
+                    placeholder="Enter your UPI ID"
                     className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 font-mono text-sm focus:ring-2 focus:bg-white focus:outline-hidden transition ${
                       touchedFields.upiId && errors.upiId
                         ? 'border-rose-400 focus:ring-rose-400 bg-rose-50/20'
@@ -351,7 +351,7 @@ export const StorePaymentsManager: React.FC<StorePaymentsManagerProps> = ({
                     value={accountHolderName}
                     onChange={(e) => setAccountHolderName(e.target.value)}
                     onBlur={() => handleBlur('accountHolderName')}
-                    placeholder="e.g. John Doe / Business Corp"
+                    placeholder="Account holder name"
                     className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:bg-white focus:outline-hidden ${
                       touchedFields.accountHolderName && errors.accountHolderName
                         ? 'border-rose-400 focus:ring-rose-400'
@@ -372,7 +372,7 @@ export const StorePaymentsManager: React.FC<StorePaymentsManagerProps> = ({
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
                     onBlur={() => handleBlur('bankName')}
-                    placeholder="e.g. State Bank of India, HDFC Bank"
+                    placeholder="Bank name"
                     className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm focus:ring-2 focus:bg-white focus:outline-hidden ${
                       touchedFields.bankName && errors.bankName
                         ? 'border-rose-400 focus:ring-rose-400'
@@ -393,7 +393,7 @@ export const StorePaymentsManager: React.FC<StorePaymentsManagerProps> = ({
                     value={accountNumber}
                     onChange={(e) => setAccountNumber(e.target.value)}
                     onBlur={() => handleBlur('accountNumber')}
-                    placeholder="e.g. 123456789012"
+                    placeholder="Bank account number"
                     className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl font-mono text-sm focus:ring-2 focus:bg-white focus:outline-hidden ${
                       touchedFields.accountNumber && errors.accountNumber
                         ? 'border-rose-400 focus:ring-rose-400'
@@ -414,7 +414,7 @@ export const StorePaymentsManager: React.FC<StorePaymentsManagerProps> = ({
                     value={ifscCode}
                     onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
                     onBlur={() => handleBlur('ifscCode')}
-                    placeholder="e.g. SBIN0001234"
+                    placeholder="IFSC code"
                     className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl font-mono text-sm uppercase focus:ring-2 focus:bg-white focus:outline-hidden ${
                       touchedFields.ifscCode && errors.ifscCode
                         ? 'border-rose-400 focus:ring-rose-400'

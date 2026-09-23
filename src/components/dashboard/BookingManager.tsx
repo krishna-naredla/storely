@@ -21,6 +21,7 @@ import {
 import { BusinessProfile, Booking, BookingStatus } from '../../types';
 import { getBookings, updateBookingStatus, getModuleDeepUrl } from '../../services/firebaseService';
 import { ModuleQrModal } from '../common/ModuleQrModal';
+import { isCreatorProfile } from '../../utils/profileHelper';
 
 interface BookingManagerProps {
   business: BusinessProfile;
@@ -34,6 +35,8 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  const isCreator = isCreatorProfile(business);
 
   const loadData = async () => {
     try {
@@ -73,7 +76,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
     const cleanPhone = booking.customerPhone.replace(/\D/g, '');
     const text = encodeURIComponent(
       `Hello ${booking.customerName}!\n\n` +
-      `Regarding your booking *${booking.bookingNumber}* for *${booking.itemName}* with *${business.name}*:\n` +
+      `Regarding your ${isCreator ? 'consultation' : 'booking'} *${booking.bookingNumber}* for *${booking.itemName}* with *${business.name}*:\n` +
       `Date: ${booking.bookingDate || booking.checkInDate || booking.startDate}\n` +
       `${booking.bookingTimeSlot ? `Time Slot: ${booking.bookingTimeSlot}\n` : ''}` +
       `Status: *${booking.status.toUpperCase()}*\n\n` +
@@ -98,10 +101,13 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
-            Appointments & Bookings
+            {isCreator ? 'Consultations & 1:1 Bookings' : 'Appointments & Bookings'}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Manage scheduled customer appointments, stay reservations, and vehicle rentals.
+            {isCreator 
+              ? 'Manage your scheduled mentorship sessions, consultations, and event bookings.'
+              : 'Manage scheduled customer appointments, stay reservations, and vehicle rentals.'
+            }
           </p>
         </div>
 
@@ -110,10 +116,10 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
             type="button"
             onClick={() => setIsQrModalOpen(true)}
             className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
-            title="Generate and download QR code for Bookings & Appointments page"
+            title={isCreator ? 'QR code for 1:1 Consultations' : 'QR code for Bookings'}
           >
             <QrCode className="w-4 h-4 text-amber-600" />
-            <span>Booking Page QR</span>
+            <span>{isCreator ? 'Consultation QR' : 'Booking Page QR'}</span>
           </button>
 
           <button
@@ -236,9 +242,12 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
             <CalendarCheck className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-900">No Bookings Yet</h3>
+          <h3 className="text-base font-bold text-slate-900">No {isCreator ? 'Consultations' : 'Bookings'} Yet</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Customers can book appointments, hotel stays, or vehicles directly from your public storefront.
+            {isCreator 
+              ? 'Clients can book 1:1 sessions or event tickets directly from your profile.'
+              : 'Customers can book appointments, hotel stays, or vehicles directly from your public storefront.'
+            }
           </p>
         </div>
       )}

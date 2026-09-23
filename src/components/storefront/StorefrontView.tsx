@@ -1,6 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { SafeImage } from '../common/SafeImage';
-import { getBusinessLogo } from '../../utils/branding';
+import { VerifiedBadge } from '../common/VerifiedBadge';
+import { getBusinessLogo, getAppLogo } from '../../utils/branding';
+import { useStorefrontCart } from '../../context/StorefrontCartContext';
+import {
+  getCatalogItems,
+  getCategories,
+  getOffers,
+  getReviews,
+  getEvents,
+  getBioLinks,
+  getPortfolioItems,
+  getTestimonials,
+  recordAnalyticsEvent,
+  incrementShareCount,
+} from '../../services/firebaseService';
+import {
+  BusinessProfile,
+  Category,
+  CatalogItem,
+  Offer,
+  Review,
+  EventItem,
+} from '../../types/index';
+import { BUSINESS_TYPES } from '../../services/businessConfig';
 import {
   Store,
   Download,
@@ -32,37 +55,32 @@ import {
   Wrench,
   Ticket,
   FileText,
+  Briefcase,
+  LayoutGrid,
+  Map,
+  Globe,
+  Instagram,
+  Twitter,
+  Facebook,
+  Mail,
+  ArrowUpRight,
+  ChevronDown,
+  Filter,
+  ShieldCheck,
+  Award,
 } from 'lucide-react';
-import {
-  BusinessProfile,
-  CatalogItem,
-  Category,
-  Offer,
-  Review,
-  EventItem,
-} from '../../types';
-import {
-  getCatalogItems,
-  getCategories,
-  getOffers,
-  getReviews,
-  getEvents, getBioLinks, recordBioLinkClick, getPortfolioItems, getTestimonials,
-  recordAnalyticsEvent,
-  incrementShareCount,
-} from '../../services/firebaseService';
-import { BUSINESS_TYPES } from '../../services/businessConfig';
-import { useStorefrontCart } from '../../context/StorefrontCartContext';
+
+// Modals
 import { ItemDetailModal } from './ItemDetailModal';
+import { AppointmentBookingModal } from './AppointmentBookingModal';
+import { StayBookingModal } from './StayBookingModal';
+import { RentalBookingModal } from './RentalBookingModal';
+import { ConsultationBookingModal } from './ConsultationBookingModal';
 import { StorefrontCartDrawer } from './StorefrontCartDrawer';
-import { PWAInstallPrompt } from '../common/PWAInstallPrompt';
-import { BookingModal } from './BookingModal';
+import { DigitalCheckoutModal } from './DigitalCheckoutModal';
 import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
-import { DigitalCheckoutModal } from './DigitalCheckoutModal';
-import { VerifiedBadge } from '../common/VerifiedBadge';
-import { EventsShowcase } from './EventsShowcase';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
-import { Briefcase, LayoutGrid } from 'lucide-react';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -270,7 +288,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       };
 
       const storeDesc = business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`;
-      const storeImage = business.logo || business.banner || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80';
+      const storeImage = business.logo || business.banner || '';
       const storeUrl = window.location.href;
 
       updateMetaTag('og:title', business.name);
@@ -387,6 +405,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       const itemId = urlParams.get('item') || urlParams.get('product');
       const categoryParam = urlParams.get('category');
       const viewParam = urlParams.get('view');
+      const tableParam = urlParams.get('table');
+
+      if (tableParam && business.modules.table_delivery) {
+        // Save table to local storage for persistence across the session
+        localStorage.setItem(`storelly_table_${business.id}`, tableParam);
+      }
 
       // Deep link to a specific item
       if (itemId) {
@@ -485,8 +509,22 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
      business.modules.menu ||
      business.modules.table_delivery);
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+          <img
+            src={getAppLogo()}
+            alt="Storelly"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 pb-28 font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900 pb-28 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Top Admin Control Bar (if viewing from app preview / management) */}
       {onBackToDashboard && (
         <aside aria-label="Customer preview toolbar" className="sticky top-0 z-40 bg-emerald-600 text-white px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shadow-md border-b border-slate-800">
@@ -520,82 +558,128 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       )}
 
       {/* Main Store Banner & Profile Header */}
-      <header className="relative bg-white border-b border-slate-200 shadow-xs">
+      <header className="relative bg-white">
         {/* Banner Cover */}
-        <div className="relative aspect-[16/6] sm:aspect-[21/6] w-full bg-slate-900 overflow-hidden">
+        <div className="relative h-[200px] sm:h-[300px] md:h-[400px] w-full bg-slate-100 overflow-hidden">
           {(business.banner || business.coverImage) && !bannerError ? (
-            <SafeImage
-              src={business.banner || business.coverImage}
-              alt={business.name}
-              fallbackType="banner"
-              loading="eager"
-              onError={() => setBannerError(true)}
-              className="w-full h-full object-cover object-center"
-            />
+            <div className="w-full h-full relative">
+              <SafeImage
+                src={business.banner || business.coverImage}
+                alt={business.name}
+                fallbackType="banner"
+                loading="eager"
+                onError={() => setBannerError(true)}
+                className="w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
+            </div>
           ) : (
-            <div className="w-full h-full bg-gradient-to-r from-emerald-900 to-teal-900 opacity-90" />
+            <div className="w-full h-full bg-emerald-900 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-400 via-transparent to-transparent" />
+              <div className="relative z-10 flex flex-col items-center gap-2 opacity-50">
+                <Store className="w-12 h-12 text-white/40" />
+                <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">{business.name}</span>
+              </div>
+            </div>
           )}
+
+          {/* Floating Share Button on Banner */}
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              type="button"
+              onClick={handleShareStore}
+              className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:bg-white transition-all active:scale-95 cursor-pointer text-slate-900 border border-white/50"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         
-        {/* Profile Info Card */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10 -mt-10 sm:-mt-14 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+        {/* Profile Info Section */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-end gap-6 -mt-12 sm:-mt-20 mb-8">
             {/* Logo */}
-            <div className="relative shrink-0 mx-auto sm:mx-0">
-              <div className="w-20 h-20 sm:w-28 sm:h-28 bg-white rounded-2xl sm:rounded-3xl shadow-lg border-4 border-white overflow-hidden flex items-center justify-center relative z-20">
-                {getBusinessLogo(business) ? (
-                  <SafeImage
-                    src={getBusinessLogo(business)!}
-                    alt={business.name}
-                    fallbackType="avatar"
-                    loading="eager"
-                    className="w-full h-full object-contain object-center p-1"
-                  />
-                ) : (
-                  <Store className="w-8 h-8 sm:w-12 sm:h-12 text-emerald-600/40" />
-                )}
+            <div className="relative shrink-0 mx-auto md:mx-0">
+              <div className="w-24 h-24 sm:w-36 sm:h-36 bg-white rounded-3xl sm:rounded-[2.5rem] shadow-2xl p-1.5 sm:p-2 border-4 border-white overflow-hidden relative group">
+                <div className="w-full h-full rounded-2xl sm:rounded-[2rem] overflow-hidden bg-slate-50 flex items-center justify-center">
+                  {getBusinessLogo(business) ? (
+                    <SafeImage
+                      src={getBusinessLogo(business)!}
+                      alt={business.name}
+                      fallbackType="avatar"
+                      loading="eager"
+                      className="w-full h-full object-contain object-center p-1"
+                    />
+                  ) : (
+                    <div className="text-emerald-600 font-black text-3xl sm:text-5xl uppercase font-heading select-none">
+                      {business.name.substring(0, 2)}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
-            {/* Core Info */}
-            <div className="flex-1 space-y-1.5 sm:pb-2 text-center sm:text-left min-w-0">
-              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-3xl font-black text-slate-900 font-heading truncate">{business.name}</h1>
-                <VerifiedBadge />
-              </div>
-              
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1.5 text-xs sm:text-sm text-slate-600 font-medium">
-                {business.category && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700">
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    <span>{business.category}</span>
-                  </span>
+            {/* Core Info & Primary Actions */}
+            <div className="flex-1 flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-2">
+              <div className="space-y-3 text-center md:text-left min-w-0">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                    <h1 className="text-2xl sm:text-4xl font-black text-slate-900 font-heading tracking-tight truncate leading-tight">
+                      {business.name}
+                    </h1>
+                    <VerifiedBadge size="md" />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5 text-xs sm:text-sm text-slate-500 font-bold uppercase tracking-wide">
+                    {business.category && (
+                      <span className="flex items-center gap-1 text-emerald-600">
+                        <LayoutGrid className="w-4 h-4" />
+                        <span>{business.category}</span>
+                      </span>
+                    )}
+                    {business.city && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        <span>{business.city}</span>
+                      </span>
+                    )}
+                    {business.status === 'open' && (
+                      <span className="flex items-center gap-1 text-emerald-600">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Open Now</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {(business.tagline || business.description || business.bio) && (
+                  <p className="text-sm sm:text-base text-slate-600 font-medium max-w-2xl line-clamp-3 leading-relaxed mx-auto md:mx-0">
+                    {business.tagline || business.bio || business.description}
+                  </p>
                 )}
-                {business.city && (
-                  <span className="flex items-center gap-1 text-slate-500">
-                    <MapPin className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{business.city}, {business.state}</span>
-                  </span>
+              </div>
+
+              {/* Action Group */}
+              <div className="flex items-center justify-center gap-3 shrink-0">
+                {(business.whatsapp || business.phone) && (
+                  <a
+                    href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${business.name}, I'm interested in your offerings.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 sm:flex-none min-h-[48px] px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    <span>WhatsApp Now</span>
+                  </a>
+                )}
+                {business.phone && (
+                  <a
+                    href={`tel:${business.phone}`}
+                    className="p-3.5 min-h-[48px] min-w-[48px] rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/10 flex items-center justify-center"
+                  >
+                    <Phone className="w-5 h-5" />
+                  </a>
                 )}
               </div>
-              
-              {(business.tagline || business.description || business.bio) && (
-                <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl line-clamp-2 leading-relaxed mx-auto sm:mx-0">
-                  {business.tagline || business.bio || business.description}
-                </p>
-              )}
-            </div>
-            
-            {/* Quick Actions (Share/Social) */}
-            <div className="flex items-center justify-center sm:justify-end gap-2 shrink-0 sm:pb-2">
-              <button
-                type="button"
-                onClick={handleShareStore}
-                aria-label="Share Storefront"
-                className="p-3 min-h-[44px] min-w-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center justify-center cursor-pointer shadow-xs"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>
@@ -605,191 +689,185 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         
         {/* Active Promotional Offers Ribbon */}
         {offers.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-emerald-600" />
-                Special Offers & Discounts
-              </span>
-            </div>
+          <section className="space-y-4">
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-[0.15em] flex items-center gap-2 px-1">
+              <Tag className="w-4 h-4 text-emerald-600" />
+              Exclusive Offers
+            </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x">
               {offers.map((offer) => (
                 <div
                   key={offer.id}
-                  className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 flex items-center justify-between gap-3 shadow-xs"
+                  className="min-w-[280px] sm:min-w-[320px] p-5 rounded-3xl bg-linear-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-600/10 flex flex-col justify-between gap-4 relative overflow-hidden group"
                 >
-                  <div className="space-y-0.5 min-w-0">
+                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all" />
+                  
+                  <div className="space-y-1 relative z-10">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-extrabold text-emerald-950 font-heading truncate">
-                        {offer.title}
-                      </span>
+                      <h3 className="text-sm font-black uppercase tracking-wider">{offer.title}</h3>
                       {offer.code && (
-                        <span className="text-[10px] font-mono font-bold bg-white text-emerald-800 px-2 py-0.5 rounded border border-emerald-300 uppercase">
+                        <span className="text-[10px] font-mono font-black bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/30">
                           {offer.code}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-emerald-800 line-clamp-1">
+                    <p className="text-xs text-white/80 font-medium leading-relaxed line-clamp-2">
                       {offer.description}
                     </p>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <span className="text-base font-black text-emerald-700 font-heading">
+                  <div className="flex items-end justify-between relative z-10">
+                    <div className="text-2xl font-black font-heading leading-none">
                       {offer.discountType === 'percentage'
                         ? `${offer.discountValue}% OFF`
                         : `${business.currencySymbol}${offer.discountValue} OFF`}
-                    </span>
+                    </div>
+                    <div className="text-[10px] font-black uppercase tracking-widest bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-md">
+                      Apply at checkout
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Search, Filter & Categories Navigation Bar */}
-        <div className={`space-y-4 sticky ${onBackToDashboard ? 'top-12 sm:top-14' : 'top-0'} z-20 bg-slate-50/95 backdrop-blur-md pt-2 pb-3 border-b border-slate-200 transition-all`}>
-          {/* Search bar & Sort Controls */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Search ${bizMeta.itemPlural.toLowerCase()}...`}
-                className="w-full min-h-[44px] pl-10 pr-4 py-2.5 bg-white text-xs border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden shadow-xs"
-              />
+        <div className={`sticky ${onBackToDashboard ? 'top-12 sm:top-14' : 'top-0'} z-30 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/60 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 transition-all duration-300`}>
+          <div className="max-w-6xl mx-auto space-y-4">
+            {/* Search bar & Sort Controls */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={`Search in ${business.name}...`}
+                  className="w-full min-h-[48px] pl-11 pr-4 py-3 bg-white text-sm border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-hidden shadow-sm transition-all"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
+                {/* Food Diet Filter */}
+                {(business.type === 'restaurant' || business.type === 'bakery' || business.type === 'grocery') && (
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shrink-0 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setFoodFilter('all')}
+                      className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                        foodFilter === 'all'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFoodFilter('veg')}
+                      className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        foodFilter === 'veg'
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-emerald-600 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-current" />
+                      <span>Veg</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFoodFilter('non_veg')}
+                      className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        foodFilter === 'non_veg'
+                          ? 'bg-rose-600 text-white'
+                          : 'text-rose-600 hover:bg-rose-50'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-current" />
+                      <span>Non-Veg</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Sort Dropdown */}
+                <div className="relative shrink-0 group">
+                  <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <select
+                    value={sortBy}
+                    onChange={(e: any) => setSortBy(e.target.value)}
+                    className="min-h-[44px] pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-hidden font-bold text-slate-700 shadow-sm appearance-none cursor-pointer"
+                  >
+                    <option value="default">Featured</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
             </div>
 
-            {/* Food Diet Filter (if restaurant/bakery/food) */}
-            {(business.type === 'restaurant' || business.type === 'bakery' || business.type === 'grocery') && (
-              <div className="flex items-center justify-between sm:justify-start gap-1 bg-white p-1 rounded-xl border border-slate-200 shrink-0">
+            {/* Categories Navigation */}
+            {categories.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x border-t border-slate-200/60 pt-4">
                 <button
                   type="button"
-                  onClick={() => setFoodFilter('all')}
-                  className={`flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                    foodFilter === 'all'
-                      ? 'bg-emerald-600 text-white'
-                      : 'text-slate-600 hover:text-slate-900'
+                  onClick={() => setSelectedCategory('all')}
+                  className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all cursor-pointer border-2 ${
+                    selectedCategory === 'all'
+                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                      : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
                   }`}
                 >
-                  All
+                  All Items
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFoodFilter('veg')}
-                  className={`flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 ${
-                    foodFilter === 'veg'
-                      ? 'bg-emerald-600 text-white'
-                      : 'text-slate-600 hover:text-emerald-700'
-                  }`}
-                >
-                  <span>🟢 Veg</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFoodFilter('non_veg')}
-                  className={`flex-1 sm:flex-initial min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 ${
-                    foodFilter === 'non_veg'
-                      ? 'bg-rose-600 text-white'
-                      : 'text-slate-600 hover:text-rose-700'
-                  }`}
-                >
-                  <span>🔴 Non-Veg</span>
-                </button>
+
+                {categories.map((cat) => {
+                  const count = catalogItems.filter((i) => i.categoryId === cat.id).length;
+                  const isSelected = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all flex items-center gap-2 cursor-pointer border-2 ${
+                        isSelected
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                          : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
+                      }`}
+                    >
+                      <span>{cat.name}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-lg font-bold ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
-
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <select
-                value={sortBy}
-                onChange={(e: any) => setSortBy(e.target.value)}
-                className="w-full sm:w-auto min-h-[44px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-medium text-slate-700"
-              >
-                <option value="default">Default Sorting</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Categories Horizontal Scroll Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 -mx-1 px-1 no-scrollbar touch-pan-x">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('all')}
-              className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center ${
-                selectedCategory === 'all'
-                  ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              All Offerings ({catalogItems.length})
-            </button>
-
-            {categories.map((cat) => {
-              const count = catalogItems.filter((i) => i.categoryId === cat.id).length;
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isSelected
-                      ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <span>{cat.name}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
           </div>
         </div>
 
         {/* Catalog Items Grid */}
         <div>
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl bg-white border border-slate-200 p-3 space-y-3 shadow-xs animate-pulse"
-                >
-                  <div className="h-40 sm:h-44 bg-slate-200 rounded-xl w-full" />
-                  <div className="space-y-1.5 pt-1">
-                    <div className="h-4 bg-slate-200 rounded-md w-4/5" />
-                    <div className="h-3 bg-slate-200 rounded-md w-3/5" />
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <div className="h-5 bg-slate-200 rounded w-1/3" />
-                    <div className="h-8 bg-slate-200 rounded-xl w-2/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="py-16 text-center bg-white rounded-3xl border border-dashed border-slate-200 p-8 space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                <ShoppingBag className="w-7 h-7" />
+          {filteredItems.length === 0 ? (
+            <div className="py-12 px-6 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3 shadow-xs max-w-md mx-auto my-6">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100/60 shadow-xs">
+                <ShoppingBag className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-slate-800 font-heading">
-                No items found in this section
-              </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Try selecting a different category or clearing search filters.
-              </p>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-900 font-heading">
+                  No products found
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  {searchQuery ? `No results matching "${searchQuery}".` : 'No items match your selected category or filter.'}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -797,13 +875,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   setSearchQuery('');
                   setFoodFilter('all');
                 }}
-                className="min-h-[44px] px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="min-h-[44px] px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-md inline-flex items-center gap-2"
               >
-                Reset Filters
+                <span>Reset all filters</span>
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredItems.map((item) => {
                 const isBookable =
                   item.type === 'service' ||
@@ -824,12 +902,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="group rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden relative"
+                    className="group rounded-[2rem] bg-white border border-slate-200/60 hover:border-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-900/5 transition-all duration-500 flex flex-col justify-between overflow-hidden relative"
                   >
                     {/* Item Image with Badges */}
                     <div
                       onClick={() => setSelectedItemForDetail(item)}
-                      className="relative h-44 sm:h-48 bg-slate-100 overflow-hidden cursor-pointer"
+                      className="relative aspect-square sm:aspect-square bg-slate-50 overflow-hidden cursor-pointer"
                     >
                       {item.images?.[0] ? (
                         <SafeImage 
@@ -837,116 +915,125 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                           alt={item.name} 
                           fallbackType="product" 
                           loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-                          <ShoppingBag className="w-10 h-10 stroke-1" />
+                        <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-200">
+                          <ShoppingBag className="w-16 h-16 stroke-[1.5]" />
                         </div>
                       )}
 
-                      {/* Badges */}
-                      <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">
+                      {/* Badges Overlay */}
+                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-10">
                         {isDigital && (
-                          <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                            Digital File
-                          </span>
-                        )}
-                        {item.productType === 'consultation_slot' && (
-                          <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
-                            Consultation
+                          <span className="px-2.5 py-1 rounded-lg bg-indigo-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest shadow-lg">
+                            Digital
                           </span>
                         )}
                         {item.isOffer && (
-                          <span className="px-2 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                          <span className="px-2.5 py-1 rounded-lg bg-rose-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest shadow-lg">
                             {item.offerText || 'Offer'}
                           </span>
                         )}
                         {typeof item.isVeg === 'boolean' && (
                           <span
-                            className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                              item.isVeg
-                                ? 'bg-emerald-700 text-white'
-                                : 'bg-rose-700 text-white'
+                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                              item.isVeg ? 'border-emerald-600 bg-white' : 'border-rose-600 bg-white'
                             }`}
                           >
-                            {item.isVeg ? '🟢 Veg' : '🔴 Non-Veg'}
-                          </span>
-                        )}
-                        {item.isFeatured && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider">
-                            ★ Top
+                            <span className={`w-2 h-2 rounded-full ${item.isVeg ? 'bg-emerald-600' : 'bg-rose-600'}`} />
                           </span>
                         )}
                       </div>
 
+                      {/* Featured Badge */}
+                      {item.isFeatured && (
+                        <div className="absolute top-3 right-3 z-10">
+                          <div className="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-lg">
+                            <Star className="w-4 h-4 fill-current" />
+                          </div>
+                        </div>
+                      )}
+
                       {item.inStock === false && (
-                        <div className="absolute inset-0 bg-white/70 backdrop-blur-xs flex items-center justify-center">
-                          <span className="px-2.5 py-1 bg-red-600 text-white text-[11px] font-bold uppercase rounded-lg shadow-xs">
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-20">
+                          <span className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl shadow-2xl">
                             Out of Stock
                           </span>
+                        </div>
+                      )}
+
+                      {/* Quick Add Hover Button (Desktop only) */}
+                      {!isDigital && !isBookable && item.inStock !== false && !(item.variants && item.variants.length > 0) && (
+                        <div className="absolute bottom-3 right-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hidden md:block">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addItem(item, 1);
+                            }}
+                            className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-xl transition active:scale-95"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
                         </div>
                       )}
                     </div>
 
                     {/* Content Card Body */}
-                    <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div
                         onClick={() => setSelectedItemForDetail(item)}
-                        className="cursor-pointer space-y-1"
+                        className="cursor-pointer space-y-2"
                       >
-                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
-                          {item.name}
-                        </h4>
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-tight font-heading">
+                            {item.name}
+                          </h4>
+                        </div>
 
                         {/* Extra metadata specs */}
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider flex-wrap">
                           {item.type === 'service' && item.durationMinutes && (
-                            <span className="flex items-center gap-1 text-purple-700 font-medium">
-                              <Clock className="w-3 h-3" />
-                              {item.durationMinutes} min
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {item.durationMinutes}m
                             </span>
                           )}
                           {item.type === 'room_stay' && item.roomCapacity && (
-                            <span className="flex items-center gap-1 text-blue-700 font-medium">
-                              <BedDouble className="w-3 h-3" />
-                              {item.roomCapacity} guests
+                            <span className="flex items-center gap-1">
+                              <BedDouble className="w-3.5 h-3.5" />
+                              {item.roomCapacity}p
                             </span>
                           )}
                           {item.type === 'rental_vehicle' && item.seatingCapacity && (
-                            <span className="flex items-center gap-1 text-teal-700 font-medium">
-                              <Car className="w-3 h-3" />
-                              {item.seatingCapacity} seats
+                            <span className="flex items-center gap-1">
+                              <Car className="w-3.5 h-3.5" />
+                              {item.seatingCapacity}s
                             </span>
-                          )}
-                          {item.type === 'menu_item' && item.spiceLevel && (
-                            <span>🌶️ {item.spiceLevel}</span>
                           )}
                         </div>
 
                         {item.shortDescription && (
-                          <p className="text-[11px] text-slate-500 line-clamp-1">
+                          <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
                             {item.shortDescription}
                           </p>
                         )}
                       </div>
 
                       {/* Price & Action Row */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-sm sm:text-base font-extrabold text-slate-900 font-heading leading-none">
-                            {business.currencySymbol}
-                            {displayPrice}
+                      <div className="pt-3 border-t border-slate-50 flex items-center justify-between gap-4">
+                        <div className="space-y-0.5">
+                          <div className="text-base sm:text-xl font-black text-slate-900 font-heading leading-none">
+                            {business.currencySymbol}{displayPrice}
                             {item.unit && (
-                              <span className="text-[10px] font-normal text-slate-500 ml-0.5">
+                              <span className="text-[10px] font-bold text-slate-400 ml-1">
                                 /{item.unit}
                               </span>
                             )}
                           </div>
                           {hasDiscount && (
-                            <div className="text-[10px] text-slate-400 line-through">
-                              {business.currencySymbol}
-                              {item.price}
+                            <div className="text-[11px] text-slate-400 font-bold line-through">
+                              {business.currencySymbol}{item.price}
                             </div>
                           )}
                         </div>
@@ -959,10 +1046,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                e.stopPropagation();
                                handleDigitalPurchase(item);
                             }}
-                            className="min-h-[44px] px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 touch-manipulation"
+                            className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-600/20 transition active:scale-95 cursor-pointer flex items-center gap-2"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>{item.price === 0 ? 'Get Free' : 'Buy Now'}</span>
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">Get</span>
                           </button>
                         ) : isBookable ? (
                           <button
@@ -971,32 +1058,62 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               e.stopPropagation();
                               setSelectedItemForBooking(item);
                             }}
-                            className="min-h-[44px] px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5 touch-manipulation"
+                            className="min-h-[44px] px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-teal-600/20 transition active:scale-95 cursor-pointer flex items-center gap-2"
                           >
-                            <CalendarCheck className="w-3.5 h-3.5" />
-                            <span>Book Now</span>
+                            <CalendarCheck className="w-4 h-4" />
+                            <span className="hidden sm:inline">Book</span>
                           </button>
                         ) : (
-                          <button
-                            type="button"
-                            disabled={item.inStock === false}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (item.variants && item.variants.length > 0) {
-                                setSelectedItemForDetail(item);
-                              } else {
-                                addItem(item, 1);
-                              }
-                            }}
-                            className={`min-h-[44px] px-3.5 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 cursor-pointer touch-manipulation ${
-                              inCart
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                            }`}
-                          >
-                            {inCart ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                            <span>{inCart ? 'In Cart' : 'Add to Cart'}</span>
-                          </button>
+                          <div className="flex items-center">
+                            {inCart ? (
+                              <div className="flex items-center bg-slate-100 rounded-2xl p-1 gap-2 shadow-inner">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addItem(item, -1);
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black"
+                                >
+                                  -
+                                </button>
+                                <span className="w-6 text-center text-xs font-black text-slate-900">
+                                  {inCart.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addItem(item, 1);
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={item.inStock === false}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item.variants && item.variants.length > 0) {
+                                    setSelectedItemForDetail(item);
+                                  } else {
+                                    addItem(item, 1);
+                                  }
+                                }}
+                                className={`min-h-[44px] px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition active:scale-95 cursor-pointer flex items-center gap-2 ${
+                                  item.inStock === false
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                }`}
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>Add</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1007,69 +1124,105 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           )}
         </div>
 
-        {/* Customer Reviews & Testimonials Section */}
-        <section className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
+        {/* Customer Reviews & Trust Section */}
+        <section id="reviews-section" className="rounded-3xl bg-linear-to-b from-white to-slate-50/80 border border-slate-200/70 p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-                <h3 className="text-lg font-bold text-slate-900 font-heading">
-                  Customer Ratings & Reviews
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shadow-xs">
+                  <Star className="w-5 h-5 fill-current" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
+                  Customer Stories & Trust
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Authentic feedback from verified store customers.
+              <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                Verified experiences from real customers of {business.name}.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsReviewModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-            >
-              <Star className="w-3.5 h-3.5 text-amber-400" />
-              <span>Write a Review</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="px-3.5 py-1.5 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center gap-2">
+                <span className="text-base font-black text-amber-700 leading-none">{averageRating}</span>
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={`w-3 h-3 ${i < Math.round(Number(averageRating)) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
+                  ))}
+                </div>
+                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider ml-1">
+                  ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsReviewModalOpen(true)}
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Write Review</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Verified Guarantee Strip */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-white border border-slate-200/60 shadow-xs text-xs">
+            <div className="flex items-center gap-2 text-slate-700">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">Storelly Verified Partner</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">Direct WhatsApp Orders</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-700">
+              <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">Live Merchant Confirmation</span>
+            </div>
           </div>
 
           {reviews.length === 0 ? (
-            <div className="py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              <Star className="w-8 h-8 text-amber-300 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-700">No reviews yet</p>
-              <p className="text-[11px] text-slate-400">
+            <div className="py-8 px-4 text-center bg-white rounded-2xl border border-slate-100 space-y-2">
+              <p className="text-xs font-bold text-slate-700">No customer reviews yet</p>
+              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
                 Be the first to share your experience with {business.name}!
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {reviews.map((rev) => (
                 <div
                   key={rev.id}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5"
+                  className="p-5 rounded-2xl bg-white border border-slate-100 space-y-3 shadow-xs hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">{rev.customerName}</h4>
-                      <span className="text-[10px] text-slate-400">
-                        {new Date(rev.createdAt).toLocaleDateString()}
-                      </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs uppercase">
+                        {rev.customerName.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">{rev.customerName}</h4>
+                        <span className="text-[10px] text-slate-400 font-bold block">
+                          {new Date(rev.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center text-amber-400 text-xs">
-                      {Array.from({ length: rev.rating }).map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <div className="flex items-center gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`w-3 h-3 ${i < rev.rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
                       ))}
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 leading-relaxed">{rev.comment}</p>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed italic">"{rev.comment}"</p>
 
                   {rev.reply && (
-                    <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1">
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
-                        Reply from Merchant:
-                      </span>
-                      <p className="text-slate-600">{rev.reply}</p>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-1 relative">
+                      <div className="text-emerald-700 font-black text-[9px] uppercase tracking-wider">
+                        Merchant Reply
+                      </div>
+                      <p className="text-slate-600 font-medium">{rev.reply}</p>
                     </div>
                   )}
                 </div>
@@ -1079,48 +1232,120 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         </section>
 
         {/* Store Information & Location Section */}
-        <section className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Store className="w-4 h-4 text-emerald-600" />
-              About Store
-            </h4>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              {business.description || `${business.name} is a verified business on Storelly Business OS.`}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-emerald-600" />
-              Location & Contact
-            </h4>
-            <p className="text-xs text-slate-600">
-              {business.address ? business.address : 'Contact merchant for direct address.'}
-              {business.city ? `, ${business.city}` : ''}
-            </p>
-            <div className="text-xs font-semibold text-slate-800 pt-1">
-              WhatsApp: {business.whatsapp || business.phone}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
+          {/* About Section */}
+          <div className="p-6 sm:p-7 rounded-3xl bg-slate-900 text-white shadow-md space-y-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/10 text-emerald-400 flex items-center justify-center">
+                  <Briefcase className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-black uppercase tracking-[0.15em] text-slate-200">
+                  Our Story
+                </h4>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
+                {business.description || business.bio || `${business.name} is a verified partner committed to providing high-quality offerings and exceptional customer service.`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 pt-2 border-t border-white/10">
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer">
+                <Globe className="w-3.5 h-3.5" />
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer">
+                <Instagram className="w-3.5 h-3.5" />
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer">
+                <Facebook className="w-3.5 h-3.5" />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-emerald-600" />
-              Store Hours
-            </h4>
-            <p className="text-xs text-slate-600">
-              {business.businessHours?.isAlwaysOpen
-                ? 'Open 24/7 Everyday'
-                : business.businessHours?.openTime && business.businessHours?.closeTime
-                ? `${business.businessHours.openTime} - ${business.businessHours.closeTime}`
-                : '10:00 AM - 09:00 PM'}
-            </p>
-            <div className="pt-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Store Operating Normally
-              </span>
+          {/* Contact & Location */}
+          <div className="p-6 sm:p-7 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.15em]">
+                  Find Us
+                </h4>
+              </div>
+              
+              <div className="space-y-3 text-xs">
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                    <Map className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-slate-900 font-bold">Address</p>
+                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                      {business.address || 'Contact merchant for exact location details.'}
+                      {business.city ? `, ${business.city}` : ''}
+                      {business.state ? `, ${business.state}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                    <Mail className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-slate-900 font-bold">Contact Info</p>
+                    <p className="text-[11px] text-slate-500">{business.email || 'Email not provided'}</p>
+                    <p className="text-[11px] text-slate-700 font-bold">{business.whatsapp || business.phone}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {business.address && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${business.address} ${business.city || ''} ${business.state || ''}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[44px] py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5"
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Get Directions</span>
+              </a>
+            )}
+          </div>
+
+          {/* Business Hours */}
+          <div className="p-6 sm:p-7 rounded-3xl bg-emerald-50/50 border border-emerald-100 shadow-xs space-y-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-black text-emerald-950 uppercase tracking-[0.15em]">
+                  Business Hours
+                </h4>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-1.5 border-b border-emerald-100/60">
+                  <span className="text-xs font-semibold text-emerald-800">Schedule</span>
+                  <span className="text-xs font-black text-emerald-950">
+                    {business.businessHours?.isAlwaysOpen
+                      ? '24/7 Available'
+                      : business.businessHours?.openTime && business.businessHours?.closeTime
+                      ? `${business.businessHours.openTime} — ${business.businessHours.closeTime}`
+                      : '10:00 AM — 09:00 PM'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-3.5 rounded-2xl bg-white border border-emerald-100 flex items-center gap-2.5 shadow-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider block">Operational Status</span>
+                <span className="text-xs font-black text-emerald-950">Accepting Orders Now</span>
+              </div>
             </div>
           </div>
         </section>
@@ -1143,32 +1368,57 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
       {/* Floating Bottom Cart Bar (if items in cart) */}
       {totalItemsCount > 0 && isOrderable && (
-        <aside aria-label="Cart summary" className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40 animate-in slide-in-from-bottom-5 duration-200">
-          <div className="p-3.5 bg-slate-950 text-white rounded-2xl shadow-2xl border border-slate-800 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
+        <aside aria-label="Cart summary" className="fixed bottom-6 left-4 right-4 max-w-lg mx-auto z-50 animate-in slide-in-from-bottom-10 duration-500">
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="w-full p-4 bg-slate-950 text-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 flex items-center justify-between gap-4 group active:scale-95 transition-all"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0 group-hover:rotate-12 transition-transform">
                 {totalItemsCount}
               </div>
-              <div>
-                <span className="text-xs text-slate-300 font-medium">Cart Total</span>
-                <div className="text-base font-extrabold text-white font-heading">
-                  {business.currencySymbol}
-                  {subtotal}
+              <div className="text-left">
+                <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Review Cart</span>
+                <div className="text-lg font-black text-white font-heading leading-none">
+                  {business.currencySymbol}{subtotal}
                 </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              className="py-2.5 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>View Cart & Checkout</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl text-emerald-400 text-xs font-black uppercase tracking-widest group-hover:bg-emerald-500 group-hover:text-slate-950 transition-all">
+              <span>Checkout</span>
               <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+            </div>
+          </button>
         </aside>
       )}
+
+      {/* Footer Section */}
+      <footer className="mt-20 border-t border-slate-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex flex-col items-center md:items-start gap-4">
+               <div className="flex items-center gap-3">
+                 <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-600">
+                    <Store className="w-4 h-4" />
+                 </div>
+                 <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{business.name}</span>
+               </div>
+               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center md:text-left max-w-xs">
+                 Shop digital products, services and more directly from {business.name}.
+               </p>
+            </div>
+
+            <div className="flex flex-col items-center md:items-end gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Powered by</span>
+                <img src="/main logo.jpg" alt="Storelly" className="h-4 grayscale opacity-60" />
+              </div>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">© {new Date().getFullYear()} Storelly Business OS</p>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Item Detail Modal */}
       <ItemDetailModal
@@ -1186,13 +1436,36 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         }}
       />
 
-      {/* Booking Modal */}
-      <BookingModal
-        business={business}
-        item={selectedItemForBooking}
-        isOpen={!!selectedItemForBooking}
-        onClose={() => setSelectedItemForBooking(null)}
-      />
+      {/* Specialized Booking Modals */}
+      {selectedItemForBooking?.productType === 'consultation_slot' ? (
+        <ConsultationBookingModal
+          business={business}
+          item={selectedItemForBooking}
+          isOpen={!!selectedItemForBooking}
+          onClose={() => setSelectedItemForBooking(null)}
+        />
+      ) : selectedItemForBooking?.type === 'room' ? (
+        <StayBookingModal
+          business={business}
+          item={selectedItemForBooking}
+          isOpen={!!selectedItemForBooking}
+          onClose={() => setSelectedItemForBooking(null)}
+        />
+      ) : selectedItemForBooking?.type === 'vehicle' ? (
+        <RentalBookingModal
+          business={business}
+          item={selectedItemForBooking}
+          isOpen={!!selectedItemForBooking}
+          onClose={() => setSelectedItemForBooking(null)}
+        />
+      ) : (
+        <AppointmentBookingModal
+          business={business}
+          item={selectedItemForBooking}
+          isOpen={!!selectedItemForBooking}
+          onClose={() => setSelectedItemForBooking(null)}
+        />
+      )}
 
       {/* Slide-over Cart Drawer */}
       <StorefrontCartDrawer

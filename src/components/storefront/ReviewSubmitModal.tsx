@@ -171,7 +171,7 @@ export const ReviewSubmitModal: React.FC<ReviewSubmitModalProps> = ({
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="Phone number (Optional)"
+                  placeholder="Phone number"
                   className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
@@ -180,7 +180,7 @@ export const ReviewSubmitModal: React.FC<ReviewSubmitModalProps> = ({
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Write your review: quality, service, speed, packaging..."
+                  placeholder="Write your feedback..."
                   rows={3}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   required

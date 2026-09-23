@@ -23,6 +23,8 @@ import {
   Store,
   ShoppingBag,
   Briefcase,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {
@@ -31,7 +33,7 @@ import {
   BIO_THEME_PRESETS,
 } from './SocialBrandIcons';
 import { DEFAULT_BIO_THEME } from './constants';
-import { getBusinessLogo } from '../../utils/branding';
+import { getBusinessLogo, getAppLogo } from '../../utils/branding';
 
 interface Props {
   business: BusinessProfile;
@@ -266,6 +268,20 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     business.modules?.catalog
   );
   const hasPortfolioModule = Boolean(business.modules?.work_portfolio || business.modules?.portfolio);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+          <img
+            src={getAppLogo()}
+            alt="Storelly"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -621,28 +637,71 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           </div>
         )}
 
-        {/* CUSTOM BIO LINKS CONTAINER: Refactored with CSS Grid auto-fit & minmax
-            Expands gracefully on tablets / foldables while staying compact on smaller mobile devices */}
+        {/* ENABLED MODULES SHOWCASE (Portfolio / Digital Store) */}
+        {(hasPortfolioModule || hasStoreModule) && (
+          <div className="w-full mt-6 xs:mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {hasPortfolioModule && (
+              <a
+                href={`/portfolio/${business.slug}`}
+                className="group p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 flex items-center justify-between shadow-lg text-left"
+                style={{ color: theme.textColor }}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-500/30 text-indigo-300 border border-indigo-400/40 flex items-center justify-center shrink-0">
+                    <Briefcase className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-300">Selected Works</div>
+                    <div className="text-sm sm:text-base font-extrabold truncate">Curated Portfolio</div>
+                    <div className="text-xs opacity-70 truncate mt-0.5">Explore case studies & projects</div>
+                  </div>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 ml-2 group-hover:translate-x-1 transition-transform">
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </a>
+            )}
+
+            {hasStoreModule && (
+              <a
+                href={`/store/${business.slug}`}
+                className="group p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 flex items-center justify-between shadow-lg text-left"
+                style={{ color: theme.textColor }}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                    <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-300">Digital Store</div>
+                    <div className="text-sm sm:text-base font-extrabold truncate">Downloads & Products</div>
+                    <div className="text-xs opacity-70 truncate mt-0.5">Instant downloads & resources</div>
+                  </div>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 ml-2 group-hover:translate-x-1 transition-transform">
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* CUSTOM BIO LINKS CONTAINER */}
         <div 
-          className="w-full mt-6 xs:mt-7 sm:mt-8 md:mt-10 grid grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-3 xs:gap-3.5 sm:gap-4 md:gap-5 animate-in fade-in duration-200 bio-grid-adaptive"
+          className="w-full mt-6 xs:mt-7 sm:mt-8 grid grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))] gap-3 xs:gap-3.5 sm:gap-4 animate-in fade-in duration-200 bio-grid-adaptive"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
             gap: 'clamp(0.75rem, 2vw, 1.25rem)',
           }}
         >
-          {loading ? (
-            <div className="py-16 col-span-full flex flex-col items-center justify-center space-y-3">
-              <div className="w-9 h-9 border-3 border-current border-t-transparent rounded-full animate-spin opacity-60" />
-              <span className="text-sm font-semibold opacity-70">Loading bio links...</span>
-            </div>
-          ) : displayedLinks.length === 0 ? (
-            <div className="py-14 col-span-full flex flex-col items-center justify-center space-y-2 text-center p-6 rounded-2xl border border-white/10 bg-black/10 backdrop-blur-xs">
-              <p className="text-base font-bold opacity-80" style={{ color: theme.textColor }}>
-                No public links published yet
+          {displayedLinks.length === 0 ? (
+            <div className="py-8 col-span-full flex flex-col items-center justify-center space-y-1.5 text-center p-5 rounded-2xl border border-white/10 bg-black/10 backdrop-blur-xs">
+              <p className="text-sm font-bold opacity-80" style={{ color: theme.textColor }}>
+                No additional links published yet
               </p>
-              <p className="text-xs sm:text-sm opacity-60 max-w-sm" style={{ color: theme.subtitleColor }}>
-                Check back soon for upcoming digital products, portfolio showcases, and social connections.
+              <p className="text-xs opacity-60 max-w-sm" style={{ color: theme.subtitleColor }}>
+                Check back soon for upcoming digital resources, creative showcases, and social connections.
               </p>
             </div>
           ) : (
@@ -722,8 +781,53 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           )}
         </div>
 
+        {/* TRUST SECTION */}
+        <div className="w-full mt-8 sm:mt-10 p-5 sm:p-6 rounded-3xl border border-white/15 bg-black/15 backdrop-blur-md shadow-lg text-left space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                Verified Creator Profile
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-bold opacity-75">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Direct Link</span>
+            </div>
+          </div>
+          <p className="text-xs sm:text-sm opacity-80 leading-relaxed font-normal">
+            This creator profile is officially verified on Storelly. All featured links, digital products, and portfolio works are published directly by {business.name}.
+          </p>
+        </div>
+
+        {/* PRIMARY CTA BAR */}
+        <div className="w-full mt-5 flex flex-col sm:flex-row items-center gap-3">
+          {(socialConfig.whatsapp || business.whatsapp || business.phone) && (
+            <a
+              href={`https://wa.me/${(socialConfig.whatsapp || business.whatsapp || business.phone)!.replace(/\D/g, '')}?text=${encodeURIComponent(
+                `Hi ${business.name}, I found your bio page on Storelly and would like to connect!`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:flex-1 min-h-[48px] px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm transition-all shadow-xl shadow-emerald-600/25 active:scale-95 flex items-center justify-center gap-2"
+            >
+              <SocialBrandIcon type="whatsapp" size={20} className="w-5 h-5 fill-current" />
+              <span>Chat on WhatsApp</span>
+            </a>
+          )}
+
+          <button
+            type="button"
+            onClick={handleShare}
+            className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-black text-sm transition-all border border-white/25 active:scale-95 flex items-center justify-center gap-2"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>Share Profile</span>
+          </button>
+        </div>
+
         {/* Footer: Made with ❤️ by Storelly */}
-        <div className="mt-14 sm:mt-16 flex flex-col items-center space-y-2">
+        <div className="mt-12 sm:mt-14 flex flex-col items-center space-y-2">
           <a
             href="/"
             className="flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 min-h-[44px] rounded-full backdrop-blur-md bg-black/15 hover:bg-black/25 text-xs sm:text-sm font-bold transition border border-white/10 active:scale-95 touch-manipulation"

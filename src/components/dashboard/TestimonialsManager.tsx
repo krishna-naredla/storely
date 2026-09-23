@@ -24,7 +24,7 @@ import {
   deleteTestimonial,
   reorderTestimonials,
 } from '../../services/firebaseService';
-import { uploadFileToStorage } from '../../services/firebaseService';
+import { uploadToCloudinary } from '../../services/cloudinary';
 import { ConfirmActionModal } from '../common/ConfirmActionModal';
 
 interface TestimonialsManagerProps {
@@ -93,7 +93,7 @@ export const TestimonialsManager: React.FC<TestimonialsManagerProps> = ({
     if (!file) return;
     setIsUploadingPhoto(true);
     try {
-      const url = await uploadFileToStorage(file, 'uploads');
+      const url = await uploadToCloudinary(file);
       setClientPhoto(url);
     } catch (err) {
       console.error('Photo upload failed:', err);

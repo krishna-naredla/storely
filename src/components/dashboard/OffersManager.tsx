@@ -254,7 +254,7 @@ export const OffersManager: React.FC<OffersManagerProps> = ({ business }) => {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. 20% Off on Weekend Orders"
+                  placeholder="20% Off on Weekend Orders"
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   required
                 />
@@ -269,7 +269,7 @@ export const OffersManager: React.FC<OffersManagerProps> = ({ business }) => {
                     type="text"
                     value={code}
                     onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. SAVE20"
+                    placeholder="SAVE20"
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl font-mono uppercase focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -314,7 +314,7 @@ export const OffersManager: React.FC<OffersManagerProps> = ({ business }) => {
                     onChange={(e) =>
                       setMinOrderValue(e.target.value ? Number(e.target.value) : undefined)
                     }
-                    placeholder="e.g. 499"
+                    placeholder="499"
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>

@@ -13,6 +13,7 @@ import { getBioLinkUrl, getPortfolioUrl, getDigitalStoreUrl } from '../services/
 export function isCreatorProfile(business?: BusinessProfile | null): boolean {
   if (!business) return false;
 
+  // Authoritative check
   if (business.profileType === 'creator' || business.storeType === 'creator') {
     return true;
   }
@@ -20,28 +21,8 @@ export function isCreatorProfile(business?: BusinessProfile | null): boolean {
     return false;
   }
 
-  // Legacy fallback heuristics
+  // Legacy fallback - only for migration/normalization
   if (business.type === 'digital_creator' || (business.type as string) === 'creator') {
-    return true;
-  }
-
-  // If creator modules are enabled and physical vendor modules are disabled
-  const hasCreatorModules = Boolean(
-    business.modules?.work_portfolio ||
-    business.modules?.portfolio ||
-    business.modules?.universal_links ||
-    business.modules?.digital_products
-  );
-  const hasVendorModules = Boolean(
-    business.modules?.products ||
-    business.modules?.menu ||
-    business.modules?.rooms ||
-    business.modules?.vehicles ||
-    business.modules?.cart_ordering ||
-    business.modules?.table_delivery
-  );
-
-  if (hasCreatorModules && !hasVendorModules) {
     return true;
   }
 

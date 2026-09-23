@@ -39,7 +39,14 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
 
       // 2. Attempt authentication with Firebase Auth
       try {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const isVerified = await verifyAdminInFirestore(cred.user.email, cred.user.uid);
+        if (!isVerified) {
+          await auth.signOut();
+          setError('Access Denied: This account lacks verified Master Admin privileges.');
+          setIsLoading(false);
+          return;
+        }
         onLoginSuccess();
       } catch (signInErr: any) {
         const code = signInErr.code || '';
@@ -71,8 +78,9 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
       const result = await signInWithPopup(auth, googleProvider);
       const userEmail = result.user.email;
       
-      const isAuthorized = await verifyAdminInFirestore(userEmail);
+      const isAuthorized = await verifyAdminInFirestore(userEmail, result.user.uid);
       if (!isAuthorized) {
+        await auth.signOut();
         setError('Access Denied: The Google account signed in is not authorized as a Master Admin.');
         setIsLoading(false);
         return;

@@ -64,49 +64,91 @@ export const QuotePaymentView: React.FC<QuotePaymentViewProps> = ({
       const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
       const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
 
-      if (razorpayKey && hasRazorpayScript) {
-        const options = {
-          key: razorpayKey,
-          amount: request.quotedPrice * 100, // paise
-          currency: 'INR',
-          name: business.name,
-          description: `Custom Commission: ${request.requestNumber}`,
-          image: business.logo || undefined,
-          handler: async function (response: any) {
-            try {
-              const updated = await acceptQuotePayment(business.id, request.id, {
-                paymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id,
-                amountPaid: request.quotedPrice,
-              });
-              setRequest(updated);
-              setPaymentSuccess(true);
-            } catch (err: any) {
-              setErrorMessage(err.message || 'Payment recorded but failed to update status.');
-            }
-          },
-          prefill: {
-            name: request.customerName,
-            contact: request.customerPhone,
-            email: request.customerEmail,
-          },
-          theme: {
-            color: '#7c3aed',
-          },
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.on('payment.failed', function (resp: any) {
-          setErrorMessage(resp.error.description || 'Payment cancelled or failed.');
-        });
-        rzp.open();
-      } else {
+      if (!razorpayKey || !hasRazorpayScript) {
         throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
       }
+
+      // 1. Create Razorpay Order on Server
+      const rzpOrderRes = await fetch('/api/quotes/create-rzp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: business.id,
+          requestId: request.id,
+        }),
+      });
+
+      if (!rzpOrderRes.ok) {
+        const errData = await rzpOrderRes.json();
+        throw new Error(errData.error || 'Failed to initialize payment on server');
+      }
+
+      const { rzpOrderId, amount, currency } = await rzpOrderRes.json();
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: razorpayKey,
+        amount,
+        currency,
+        name: business.name,
+        description: `Custom Commission: ${request.requestNumber}`,
+        image: business.logo || undefined,
+        order_id: rzpOrderId,
+        handler: async function (response: any) {
+          try {
+            setPaying(true);
+            // 3. Verify Payment on Server
+            const verifyRes = await fetch('/api/quotes/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                businessId: business.id,
+                requestId: request.id,
+              }),
+            });
+
+            if (!verifyRes.ok) {
+              throw new Error('Payment verification failed on server');
+            }
+
+            const updated = await getCustomQuoteRequest(business.id, request.id);
+            if (updated) {
+              setRequest(updated);
+              setPaymentSuccess(true);
+            }
+          } catch (err: any) {
+            setErrorMessage(err.message || 'Payment recorded but failed to update status.');
+          } finally {
+            setPaying(false);
+          }
+        },
+        prefill: {
+          name: request.customerName,
+          contact: request.customerPhone,
+          email: request.customerEmail,
+        },
+        theme: {
+          color: '#7c3aed',
+        },
+        modal: {
+          ondismiss: function () {
+            setPaying(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (resp: any) {
+        setErrorMessage(resp.error.description || 'Payment cancelled or failed.');
+        setPaying(false);
+      });
+      rzp.open();
     } catch (err: any) {
       console.error('Payment failure:', err);
       setErrorMessage(err.message || 'Payment processing failed');
-    } finally {
       setPaying(false);
     }
   };

@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { EventItem, EventFormat, EventStatus, BusinessProfile } from '../../types';
+import { getModuleDeepUrl } from '../../services/firebaseService';
 
 interface EventCalendarViewProps {
   business: BusinessProfile;
@@ -184,8 +185,7 @@ export const EventCalendarView: React.FC<EventCalendarViewProps> = ({
   }, [events, year, month]);
 
   const handleCopyLink = (event: EventItem) => {
-    const origin = window.location.origin;
-    const url = `${origin}/store/${business.slug}?tab=events&event=${event.id}`;
+    const url = `${getModuleDeepUrl(business, 'events')}#event-${event.id}`;
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);

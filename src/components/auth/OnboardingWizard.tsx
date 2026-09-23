@@ -171,9 +171,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             booking_appointments: Boolean(creatorModules.booking_appointments),
             custom_quotes: Boolean(creatorModules.custom_quotes),
             events_tickets: Boolean(creatorModules.events_tickets),
-            // Explicitly disable physical store modules for pure creators unless explicitly selected
-            products: Boolean(creatorModules.digital_products),
-            cart_ordering: Boolean(creatorModules.digital_products),
+            // Digital products now have their own checkout flow, no need to force physical store modules
+            products: Boolean(creatorModules.products),
+            cart_ordering: Boolean(creatorModules.cart_ordering),
             table_delivery: false,
           }
         : vendorModules;

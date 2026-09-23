@@ -2,6 +2,11 @@ import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
 import { useInitializationGuard } from './hooks/useInitializationGuard';
 import { normalizeBusinessData } from './utils/dataNormalization';
 import { ViewRouter } from './components/common/ViewRouter';
+import {
+  resolvePublicRouteFromUrl,
+  resolveTargetViewForBusiness,
+  PublicRouteInfo,
+} from './utils/publicRouteResolver';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAppLogo, getBusinessLogo } from './utils/branding';
@@ -57,7 +62,6 @@ import { isCreatorProfile, getPrimaryPublicDisplayPath } from './utils/profileHe
 import { Sidebar, DashboardTab } from './components/dashboard/Sidebar';
 import { Header } from './components/dashboard/Header';
 import { FloatingActionButton } from './components/dashboard/FloatingActionButton';
-import { ResponsiveDiagnostic } from './components/dashboard/ResponsiveDiagnostic';
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { BioProfileView } from './components/biolink/BioProfileView';
 import { StorefrontView } from './components/storefront/StorefrontView';
@@ -66,7 +70,6 @@ import { StandalonePortfolioView } from './components/portfolio/StandalonePortfo
 import { StandaloneTrustCardView } from './components/common/StandaloneTrustCardView';
 import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
-import { PWAInstallPrompt } from './components/common/PWAInstallPrompt';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { AuthModal } from './components/auth/AuthModal';
 import { isUserAuthorizedAdmin } from './services/adminService';
@@ -119,97 +122,14 @@ const DashboardTabSkeleton: React.FC = () => (
  * Extract quote payment parameters from URL
  */
 function parseQuotePayFromUrl(): { businessId: string; requestId: string } | null {
-  if (typeof window === 'undefined') return null;
-  const urlParams = new URLSearchParams(window.location.search);
-  const qBiz = urlParams.get('quote_biz');
-  const qReq = urlParams.get('quote_req');
-  if (qBiz && qReq) {
-    return { businessId: qBiz.trim(), requestId: qReq.trim() };
-  }
-  const pathname = window.location.pathname;
-  const match = pathname.match(/^\/quote-pay\/([^/?#]+)\/([^/?#]+)/i);
-  if (match && match[1] && match[2]) {
-    return { businessId: decodeURIComponent(match[1]).trim(), requestId: decodeURIComponent(match[2]).trim() };
-  }
-  return null;
+  return resolvePublicRouteFromUrl().quotePayInfo;
 }
 
 /**
  * Extract store slug from current URL query parameters or pathname
  */
 function parseStoreSlugFromUrl(): string | null {
-  if (typeof window === 'undefined') return null;
-
-  const pathname = window.location.pathname;
-  
-  const bioMatch = pathname.match(/^\/@([^/?#]+)/i);
-  if (bioMatch && bioMatch[1]) {
-    return decodeURIComponent(bioMatch[1]).trim();
-  }
-  
-  const portMatch = pathname.match(/^\/portfolio\/([^/?#]+)/i);
-  if (portMatch && portMatch[1]) {
-    return decodeURIComponent(portMatch[1]).trim();
-  }
-
-  const shortPortMatch = pathname.match(/^\/p\/([^/?#]+)/i);
-  if (shortPortMatch && shortPortMatch[1]) {
-    return decodeURIComponent(shortPortMatch[1]).trim();
-  }
-
-  const cardMatch = pathname.match(/^\/card\/([^/?#]+)/i);
-  if (cardMatch && cardMatch[1]) {
-    return decodeURIComponent(cardMatch[1]).trim();
-  }
-
-  const match = pathname.match(/^\/store\/([^/?#]+)/i);
-  if (match && match[1]) {
-    return decodeURIComponent(match[1]).trim();
-  }
-
-  // Direct handle fallback: /[slug] (excluding system-reserved paths)
-  const rawHandleMatch = pathname.match(/^\/([a-zA-Z0-9_.-]+)$/);
-  if (rawHandleMatch && rawHandleMatch[1]) {
-    const candidate = rawHandleMatch[1].toLowerCase();
-    const reserved = [
-      'login', 'register', 'dashboard', 'admin', 'api', 'assets', 'favicon.ico',
-      'portfolio', 'store', 'p', 'card', 'catalog', 'events', 'quotes',
-      'categories', 'orders', 'bookings', 'customers', 'reviews', 'offers',
-      'analytics', 'modules', 'payments', 'notifications', 'biolink', 'share',
-      'settings', 'profile', 'index.html', 'vite.svg'
-    ];
-    if (!reserved.includes(candidate)) {
-      return decodeURIComponent(rawHandleMatch[1]).trim();
-    }
-  }
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const cardParam = urlParams.get('card');
-  if (cardParam && cardParam.trim()) {
-    return decodeURIComponent(cardParam).trim();
-  }
-
-  const portfolioParam = urlParams.get('portfolio') || urlParams.get('p');
-  if (portfolioParam && portfolioParam.trim()) {
-    return decodeURIComponent(portfolioParam).trim();
-  }
-
-  const bioParam = urlParams.get('bio');
-  if (bioParam && bioParam.trim()) {
-    return decodeURIComponent(bioParam).trim();
-  }
-
-  const creatorParam = urlParams.get('creator');
-  if (creatorParam && creatorParam.trim()) {
-    return decodeURIComponent(creatorParam).trim();
-  }
-
-  const storeParam = urlParams.get('store');
-  if (storeParam && storeParam.trim()) {
-    return decodeURIComponent(storeParam).trim();
-  }
-
-  return null;
+  return resolvePublicRouteFromUrl().slug;
 }
 
 function generateFallbackOgImage(name: string): string {
@@ -394,16 +314,6 @@ function MainContent() {
   const seenOrderIdsRef = useRef<Set<string>>(new Set());
   const seenBookingIdsRef = useRef<Set<string>>(new Set());
 
-  // Register Service Worker for PWA Web Push background alerts
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((reg) => {
-        console.log('Storelly PWA ServiceWorker registered with scope:', reg.scope);
-      }).catch((err) => {
-        console.warn('ServiceWorker registration failed:', err);
-      });
-    }
-  }, []);
 
   const playNotificationChime = (volumeMultiplier = 1.0) => {
     const playSingle = (vol: number) => {
@@ -457,9 +367,10 @@ function MainContent() {
   }, [activeNewOrderNotification]);
 
   // Public Storefront Resolution States
-  const [publicStoreSlug, setPublicStoreSlug] = useState<string | null>(parseStoreSlugFromUrl);
+  const [publicRouteInfo, setPublicRouteInfo] = useState<PublicRouteInfo>(() => resolvePublicRouteFromUrl());
+  const publicStoreSlug = publicRouteInfo.slug;
   const [publicBusiness, setPublicBusiness] = useState<BusinessProfile | null>(null);
-  const [isLoadingPublicStore, setIsLoadingPublicStore] = useState(false);
+  const [isLoadingPublicStore, setIsLoadingPublicStore] = useState<boolean>(Boolean(publicRouteInfo.slug));
   const [publicStoreNotFound, setPublicStoreNotFound] = useState(false);
 
   const initGuard = useInitializationGuard({
@@ -469,18 +380,19 @@ function MainContent() {
     isInitializingBusiness: isLoadingBusinesses,
     publicBusiness,
     isLoadingPublicStore,
-    isPublicRoute: Boolean(publicStoreSlug),
+    isPublicRoute: Boolean(publicRouteInfo.isPublicRoute || publicStoreSlug),
   });
 
   // Dynamic White-Labeling & Favicon Sync
-  const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const isPortfolioPath = currentPathname.startsWith('/portfolio') || currentPathname.startsWith('/p/');
+  const isPortfolioPath = publicRouteInfo.explicitView === 'portfolio';
   const currentBrandingContext = isPortfolioPath ? 'portfolio' : (publicStoreSlug || viewMode === 'storefront') ? 'store' : 'dashboard';
   
   useDynamicBranding(publicBusiness || selectedBusiness, currentBrandingContext, publicStoreSlug);
 
   // Quote Pay Direct Route States
-  const [quotePayInfo, setQuotePayInfo] = useState<{ businessId: string; requestId: string } | null>(parseQuotePayFromUrl);
+  const [quotePayInfo, setQuotePayInfo] = useState<{ businessId: string; requestId: string } | null>(
+    () => publicRouteInfo.quotePayInfo
+  );
   const [quotePayBusiness, setQuotePayBusiness] = useState<BusinessProfile | null>(null);
   const [loadingQuotePay, setLoadingQuotePay] = useState(false);
 
@@ -531,12 +443,21 @@ function MainContent() {
           return;
         }
 
-        // 3. Check dedicated 'admin-settings' document in Firestore
-        const adminDocRef = doc(db, 'admin_settings', currentUser.uid);
+        // 3. Check dedicated 'admins' document in Firestore
+        const adminDocRef = doc(db, 'admins', currentUser.uid);
         const adminSnap = await getDoc(adminDocRef);
-        if (adminSnap.exists() && adminSnap.data()?.isActive) {
+        if (adminSnap.exists() && adminSnap.data()?.isActive !== false) {
           if (isMounted) setIsMasterAdminMode(true);
           return;
+        }
+
+        if (currentUser.email) {
+          const emailDocRef = doc(db, 'admins', currentUser.email.toLowerCase());
+          const emailSnap = await getDoc(emailDocRef);
+          if (emailSnap.exists() && emailSnap.data()?.isActive !== false) {
+            if (isMounted) setIsMasterAdminMode(true);
+            return;
+          }
         }
       } catch (err) {
         console.warn('Error verifying admin authorization:', err);
@@ -559,30 +480,22 @@ function MainContent() {
   // Sync state with browser URL popstate navigation (Back / Forward)
   useEffect(() => {
     const handlePopState = () => {
-      const quoteInfo = parseQuotePayFromUrl();
-      setQuotePayInfo(quoteInfo);
+      const nextRoute = resolvePublicRouteFromUrl();
+      setPublicRouteInfo(nextRoute);
+      setQuotePayInfo(nextRoute.quotePayInfo);
 
-      const slug = parseStoreSlugFromUrl();
-      setPublicStoreSlug(slug);
-      if (!slug && !quoteInfo) {
+      if (!nextRoute.isPublicRoute && !nextRoute.slug && !nextRoute.quotePayInfo) {
         setPublicBusiness(null);
         setPublicStoreNotFound(false);
         setViewMode('dashboard');
-      } else {
-        // Handle item deep linking
-        const urlParams = new URLSearchParams(window.location.search);
-        const itemId = urlParams.get('item');
-        if (itemId && publicBusiness) {
-           // We might need to fetch the item specifically if not in list
-        }
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [publicBusiness]);
+  }, []);
 
-  // Fetch and resolve public business whenever publicStoreSlug changes
+  // Fetch and resolve public business whenever publicRouteInfo.slug changes
   const resolvePublicStore = useCallback(async (slug: string) => {
     try {
       setIsLoadingPublicStore(true);
@@ -608,13 +521,14 @@ function MainContent() {
   }, []);
 
   useEffect(() => {
-    if (publicStoreSlug) {
-      resolvePublicStore(publicStoreSlug);
+    if (publicRouteInfo.slug) {
+      resolvePublicStore(publicRouteInfo.slug);
     } else {
       setPublicBusiness(null);
       setPublicStoreNotFound(false);
+      setIsLoadingPublicStore(false);
     }
-  }, [publicStoreSlug, resolvePublicStore]);
+  }, [publicRouteInfo.slug, resolvePublicStore]);
 
   // Load Logged-In User's Businesses
   const loadUserBusinesses = async () => {
@@ -755,6 +669,8 @@ function MainContent() {
   const handleSelectBusiness = (biz: BusinessProfile) => {
     setSelectedBusiness(biz);
     localStorage.setItem('storelly_active_biz', biz.id);
+    // Reset to overview to ensure no cross-profile tab state leaks
+    setActiveTab('overview');
   };
 
   // Onboarding Complete Handler
@@ -789,9 +705,14 @@ function MainContent() {
     }
 
     window.history.pushState({}, '', targetPath);
-    setPublicStoreSlug(slug);
+    const nextRoute = resolvePublicRouteFromUrl(targetPath);
+    setPublicRouteInfo(nextRoute);
     if (selectedBusiness && selectedBusiness.slug === slug) {
       setPublicBusiness(selectedBusiness);
+      setIsLoadingPublicStore(false);
+      setPublicStoreNotFound(false);
+    } else {
+      resolvePublicStore(slug);
     }
     setIsShareModalOpen(false);
     setViewMode('storefront');
@@ -800,9 +721,11 @@ function MainContent() {
   // Navigate back to Merchant Dashboard / Home
   const navigateToDashboard = () => {
     window.history.pushState({}, '', '/');
-    setPublicStoreSlug(null);
+    const nextRoute = resolvePublicRouteFromUrl('/', '');
+    setPublicRouteInfo(nextRoute);
     setPublicBusiness(null);
     setPublicStoreNotFound(false);
+    setIsLoadingPublicStore(false);
     setViewMode('dashboard');
   };
 
@@ -840,10 +763,13 @@ function MainContent() {
   if (quotePayInfo) {
     if (loadingQuotePay) {
       return (
-        <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6">
-          <div className="flex items-center gap-3 text-sm font-bold text-slate-300">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-            <span>Loading Custom Quote Payment...</span>
+        <div className="min-h-screen bg-white flex items-center justify-center p-6">
+          <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+            <img
+              src={getAppLogo()}
+              alt="Storelly"
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
       );
@@ -865,80 +791,17 @@ function MainContent() {
   // ==========================================
   // ROUTE 1: PUBLIC STOREFRONT RESOLUTION
   // ==========================================
-  if (publicStoreSlug || (viewMode === 'storefront' && (publicBusiness || selectedBusiness))) {
-    const isPortfolioPath =
-      window.location.pathname.startsWith('/portfolio') ||
-      window.location.pathname.startsWith('/p/') ||
-      new URLSearchParams(window.location.search).has('portfolio') ||
-      new URLSearchParams(window.location.search).has('p');
-
-    // 1A. Loading Screen
-    if (isLoadingPublicStore) {
+  if (publicRouteInfo.isPublicRoute || publicStoreSlug || (viewMode === 'storefront' && (publicBusiness || selectedBusiness))) {
+    // 1A. Loading Screen (shown while resolving - never flashes 404)
+    if (isLoadingPublicStore || (publicStoreSlug && !publicBusiness && !publicStoreNotFound)) {
       return (
-        <div className={`min-h-screen flex flex-col items-center justify-center space-y-6 px-4 ${
-          isPortfolioPath
-            ? 'bg-slate-950 text-white selection:bg-indigo-500 selection:text-white'
-            : 'bg-gradient-to-br from-emerald-50 via-white to-teal-50 text-slate-900 selection:bg-emerald-500 selection:text-white'
-        }`}>
-          <div className={`max-w-sm w-full backdrop-blur-xl rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-300 ${
-            isPortfolioPath
-              ? 'bg-slate-900/90 border border-slate-800'
-              : 'bg-white/90 border border-slate-200/80'
-          }`}>
-            {/* Creator / Vendor Custom Logo or Dynamic Branded Monogram */}
-            <div className="relative">
-              <div
-                className={`absolute -inset-2 rounded-3xl blur-md opacity-30 animate-pulse ${
-                  isPortfolioPath
-                    ? 'bg-gradient-to-tr from-indigo-500 to-purple-500'
-                    : 'bg-gradient-to-tr from-emerald-500 to-teal-400'
-                }`}
-              />
-              <div
-                className={`relative w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm ${
-                  isPortfolioPath
-                    ? 'bg-slate-800 border border-slate-700'
-                    : 'bg-white border border-emerald-200'
-                }`}
-              >
-                {getBusinessLogo(publicBusiness) ? (
-                  <img
-                    src={getBusinessLogo(publicBusiness)!}
-                    alt={publicBusiness?.name || 'Store'}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <img
-                    src={getAppLogo()}
-                    alt="Storelly Logo"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <h3
-                className={`text-base font-black font-heading tracking-tight ${
-                  isPortfolioPath ? 'text-white' : 'text-slate-900'
-                }`}
-              >
-                {publicBusiness?.name || (publicStoreSlug ? `@${publicStoreSlug}` : isPortfolioPath ? 'Creator Portfolio' : 'Storefront')}
-              </h3>
-              <p className={`text-xs ${isPortfolioPath ? 'text-slate-400' : 'text-slate-500'}`}>
-                {isPortfolioPath
-                  ? 'Official Creator Portfolio & Showcase'
-                  : publicBusiness?.tagline || (publicStoreSlug ? `Official Storefront • @${publicStoreSlug}` : 'Connecting to secure catalog...')}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <Loader2 className={`w-4 h-4 animate-spin ${isPortfolioPath ? 'text-indigo-400' : 'text-emerald-600'}`} />
-              <span className={`text-xs font-bold tracking-wider ${isPortfolioPath ? 'text-slate-400' : 'text-slate-600'}`}>
-                Connecting...
-              </span>
-            </div>
+        <div className="min-h-screen bg-white flex items-center justify-center p-6">
+          <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+            <img
+              src={getAppLogo()}
+              alt="Storelly"
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
       );
@@ -948,80 +811,52 @@ function MainContent() {
     const rawTargetBusiness = publicStoreSlug ? publicBusiness : selectedBusiness;
     const targetBusiness = normalizeBusinessData(rawTargetBusiness);
     if (targetBusiness && !publicStoreNotFound) {
-      const isOwner = currentUser && selectedBusiness && selectedBusiness.id === targetBusiness.id;
-      
-      const pathname = window.location.pathname;
-      const urlParams = new URLSearchParams(window.location.search);
+      const { targetView } = resolveTargetViewForBusiness(publicRouteInfo, targetBusiness);
 
-      const isCardRoute =
-        pathname.startsWith('/card') ||
-        urlParams.get('view') === 'card' ||
-        urlParams.has('card');
-
-      if (isCardRoute) {
-        return (
-          <StandaloneTrustCardView
-            business={targetBusiness}
-            onBackToDashboard={isOwner ? navigateToDashboard : undefined}
-            onOpenStorefront={() => navigateToStorefront(targetBusiness.slug, '/store/' + targetBusiness.slug)}
-            isOwner={!!isOwner}
-          />
-        );
-      }
-
-      const isBioStoreRoute =
-        Boolean(pathname.match(/^\/@[^/?#]+\/(store|shop|products|catalog)/i)) ||
-        (pathname.startsWith('/@') && (urlParams.get('view') === 'store' || urlParams.get('tab') === 'store'));
-      const isBioLink = !isBioStoreRoute && (pathname.startsWith('/@') || urlParams.has('bio'));
-      const isPortfolio =
-        pathname.startsWith('/portfolio') ||
-        pathname.startsWith('/p/') ||
-        urlParams.has('portfolio') ||
-        urlParams.has('p');
-      const isExplicitStore =
-        pathname.startsWith('/store') ||
-        urlParams.get('view') === 'store' ||
-        isBioStoreRoute;
-
-      const viewModeType = isBioLink ? 'biolink' : isPortfolio ? 'portfolio' : isExplicitStore ? 'storefront' : 'dashboard';
+      // Explicit owner preview mode: only active if query ?preview=true AND logged in as owner
+      const isExplicitOwnerPreview =
+        publicRouteInfo.isExplicitPreview &&
+        Boolean(currentUser && targetBusiness.ownerId === currentUser.uid);
 
       return (
         <ViewRouter
-          viewMode={viewModeType}
+          viewMode={targetView === 'store' ? 'storefront' : targetView === 'bio' ? 'biolink' : targetView}
           targetBusiness={targetBusiness}
-          isOwner={!!isOwner}
-          onBackToDashboard={navigateToDashboard}
+          isOwner={isExplicitOwnerPreview}
+          isExplicitPreview={isExplicitOwnerPreview}
+          onBackToDashboard={isExplicitOwnerPreview ? navigateToDashboard : undefined}
           onOpenStorefront={navigateToStorefront}
-          onOpenDigitalCard={() => {
-            setSelectedBusiness(targetBusiness);
-            setIsShareModalOpen(true);
-          }}
+          onOpenDigitalCard={
+            isExplicitOwnerPreview
+              ? () => {
+                  setSelectedBusiness(targetBusiness);
+                  setIsShareModalOpen(true);
+                }
+              : undefined
+          }
         />
       );
     }
 
     // 1C. Public Handle Not Found (404) -> Clean Public Not Found Page
-    const currentPath = window.location.pathname;
-    const currentParams = new URLSearchParams(window.location.search);
-    const isPortfolioRoute =
-      currentPath.startsWith('/portfolio') ||
-      currentPath.startsWith('/p/') ||
-      currentParams.has('portfolio') ||
-      currentParams.has('p');
+    const isPortfolioRoute = publicRouteInfo.explicitView === 'portfolio';
+    const isBioRoute = publicRouteInfo.explicitView === 'bio';
+    const notFoundTypeLabel = isBioRoute ? 'bio link profile' : isPortfolioRoute ? 'creator portfolio' : 'digital storefront';
+    const notFoundTitle = isBioRoute ? 'Bio Link Not Found' : isPortfolioRoute ? 'Portfolio Not Found' : 'Store Not Found';
 
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center selection:bg-emerald-500 selection:text-slate-950">
         <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
           <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
-            {isPortfolioRoute ? <Briefcase className="w-8 h-8" /> : <Store className="w-8 h-8" />}
+            {isBioRoute ? <Sparkles className="w-8 h-8" /> : isPortfolioRoute ? <Briefcase className="w-8 h-8" /> : <Store className="w-8 h-8" />}
           </div>
 
           <div className="space-y-2">
             <h1 className="text-2xl font-black text-white font-heading">
-              {isPortfolioRoute ? 'Portfolio Not Found' : 'Store Not Found'}
+              {notFoundTitle}
             </h1>
             <p className="text-xs text-slate-400 leading-relaxed">
-              We couldn't find an active {isPortfolioRoute ? 'creator portfolio' : 'digital storefront'} matching the handle{' '}
+              We couldn't find an active {notFoundTypeLabel} matching the handle{' '}
               <span className="font-mono font-bold text-emerald-400">"{publicStoreSlug}"</span>.
             </p>
           </div>
@@ -1032,9 +867,9 @@ function MainContent() {
               <span>Possible Reasons:</span>
             </div>
             <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-slate-400">
-              <li>The {isPortfolioRoute ? 'portfolio' : 'store'} link may contain a spelling mistake.</li>
-              <li>The {isPortfolioRoute ? 'creator' : 'merchant'} may have updated their handle.</li>
-              <li>The {isPortfolioRoute ? 'portfolio' : 'store'} has not been published yet.</li>
+              <li>The link may contain a spelling mistake.</li>
+              <li>The owner may have updated their handle.</li>
+              <li>This page has not been published yet.</li>
             </ul>
           </div>
 
@@ -1046,7 +881,7 @@ function MainContent() {
                 className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Retry Loading {isPortfolioRoute ? 'Portfolio' : 'Store'}</span>
+                <span>Retry Loading Page</span>
               </button>
             )}
 
@@ -1069,21 +904,13 @@ function MainContent() {
   // ==========================================
   if (authLoading || (currentUser && isLoadingBusinesses)) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-slate-900 space-y-6">
-        <div className="w-28 h-28 rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm overflow-hidden bg-white p-2">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 overflow-hidden">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
           <img
             src={getAppLogo()}
-            alt="Storelly Logo"
-            className="w-full h-full object-cover rounded-xl"
+            alt="Storelly"
+            className="w-full h-full object-contain"
           />
-        </div>
-        <div className="text-center space-y-1">
-          <h2 className="text-base font-bold text-slate-900 font-heading">
-            Storelly
-          </h2>
-          <p className="text-xs text-slate-500">
-            Loading your workspace...
-          </p>
         </div>
       </div>
     );
@@ -1168,10 +995,24 @@ function MainContent() {
   // ==========================================
   // ROUTE 3: LOGGED-IN VENDOR DASHBOARD
   // ==========================================
-  const biz = selectedBusiness!;
+  if (!selectedBusiness) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+          <img
+            src={getAppLogo()}
+            alt="Storelly"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const biz = selectedBusiness;
 
   return (
-    <div className="min-h-screen bg-slate-100/70 flex font-sans text-slate-900">
+    <div key={biz.id} className="min-h-screen bg-slate-100/70 flex font-sans text-slate-900">
       {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
@@ -1198,6 +1039,10 @@ function MainContent() {
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onOpenStorefront={() => navigateToStorefront(biz.slug)}
           onOpenShareModal={() => setIsShareModalOpen(true)}
+          onNavigateToNotifications={() => {
+            setActiveTab('notifications');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
           userName={currentUser.displayName || currentUser.email}
         />
 
@@ -1428,14 +1273,16 @@ function MainContent() {
                     ✕
                   </button>
                 </div>
-                <h4 className="font-extrabold text-sm text-white">{activeNewOrderNotification.title}</h4>
-                <p className="text-xs text-slate-300">{activeNewOrderNotification.body}</p>
+                <h4 className="font-extrabold text-sm text-white">{activeNewOrderNotification?.title}</h4>
+                <p className="text-xs text-slate-300">{activeNewOrderNotification?.body}</p>
                 <div className="pt-2">
                   <button
                     type="button"
                     onClick={() => {
-                      setActiveTab(activeNewOrderNotification.type === 'order' ? 'orders' : 'bookings');
-                      setActiveNewOrderNotification(null);
+                      if (activeNewOrderNotification) {
+                        setActiveTab(activeNewOrderNotification.type === 'order' ? 'orders' : 'bookings');
+                        setActiveNewOrderNotification(null);
+                      }
                     }}
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
                   >
@@ -1457,9 +1304,7 @@ export default function App() {
       <StorefrontCartProvider>
         <LanguageProvider>
           <MainContent />
-          <PWAInstallPrompt />
           <OfflineBanner />
-          <ResponsiveDiagnostic />
         </LanguageProvider>
       </StorefrontCartProvider>
     </AuthProvider>

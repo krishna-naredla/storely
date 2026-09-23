@@ -10,7 +10,7 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 import { BusinessProfile, Order, Booking, Review, Customer, CatalogItem } from '../types';
 import {
   PlatformPricingPlan,
@@ -112,26 +112,50 @@ export function isUserAuthorizedAdmin(email: string | null | undefined): boolean
   return AUTHORIZED_ADMIN_EMAILS.includes(normalized);
 }
 
-export async function verifyAdminInFirestore(email: string | null | undefined): Promise<boolean> {
-  if (!email) return false;
-  const normalized = email.trim().toLowerCase();
+export async function verifyAdminInFirestore(email: string | null | undefined, uid?: string | null): Promise<boolean> {
+  if (!email && !uid) return false;
+  const normalized = email?.trim().toLowerCase();
 
-  // First check hardcoded whitelisted super admins for instant access
-  if (isUserAuthorizedAdmin(normalized)) {
-    return true;
-  }
-  
-  try {
-    const adminDocRef = doc(db, 'admins', normalized);
-    const snap = await getDoc(adminDocRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data?.isActive !== false) {
+  // 1. If user is currently signed in, check Firebase Auth custom claims
+  if (auth.currentUser) {
+    try {
+      const tokenRes = await auth.currentUser.getIdTokenResult();
+      if (tokenRes.claims.admin === true || tokenRes.claims.masterAdmin === true) {
         return true;
       }
+    } catch (e) {
+      console.warn('Could not read user claims:', e);
     }
-  } catch (err) {
-    console.warn('Firestore admin verification warning:', err);
+  }
+
+  // 2. Authoritative check in Firestore /admins/{uid}
+  const targetUid = uid || auth.currentUser?.uid;
+  if (targetUid) {
+    try {
+      const snap = await getDoc(doc(db, 'admins', targetUid));
+      if (snap.exists() && snap.data()?.isActive !== false) {
+        return true;
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  // 3. Authoritative check in Firestore /admins/{email}
+  if (normalized) {
+    try {
+      const snap = await getDoc(doc(db, 'admins', normalized));
+      if (snap.exists() && snap.data()?.isActive !== false) {
+        return true;
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  // 4. Fallback check for whitelisted super admin email
+  if (normalized && isUserAuthorizedAdmin(normalized)) {
+    return true;
   }
 
   return false;

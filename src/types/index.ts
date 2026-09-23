@@ -373,6 +373,10 @@ export interface Order {
   status: OrderStatus;
   paymentMethod: 'cod' | 'upi_on_delivery' | 'online' | 'cash_at_counter';
   paymentStatus: 'pending' | 'paid' | 'failed';
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  webhookProcessed?: boolean;
   downloadStatus?: 'not_started' | 'completed';
   digitalAccessUrl?: string; // Temporary signed URL
   notes?: string;
@@ -399,7 +403,7 @@ export interface Booking {
   customerEmail?: string;
   
   // Date & Time details
-  bookingDate: string; // YYYY-MM-DD
+  bookingDate?: string; // YYYY-MM-DD
   bookingTimeSlot?: string; // e.g. "10:00 AM - 11:00 AM"
   checkInDate?: string;
   checkOutDate?: string;
@@ -447,6 +451,18 @@ export interface Review {
   isVerifiedPurchase?: boolean;
   status: 'published' | 'hidden';
   createdAt: number;
+}
+
+export interface Notification {
+  id: string;
+  businessId: string;
+  type: 'order' | 'booking' | 'payment' | 'quote' | 'event' | 'system' | 'review';
+  title: string;
+  message: string;
+  link?: string; // Deep link to the dashboard section
+  read: boolean;
+  createdAt: number;
+  metadata?: Record<string, any>;
 }
 
 export interface Offer {

@@ -71,6 +71,10 @@ import {
   CatalogItemAddon,
 } from '../../types';
 import {
+  isCreatorProfile,
+  getPrimaryPublicDisplayPath,
+} from '../../utils/profileHelper';
+import {
   getCatalogItems,
   getCategories,
   createCatalogItem,
@@ -84,7 +88,7 @@ import {
   generateSlug,
   getStorefrontUrl,
 } from '../../services/firebaseService';
-import { BUSINESS_TYPES } from '../../services/businessConfig';
+import { BUSINESS_TYPES, isModuleApplicableForBusiness } from '../../services/businessConfig';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { ImageSizeWarning } from '../common/ImageSizeWarning';
 import { ConfirmActionModal } from '../common/ConfirmActionModal';
@@ -177,7 +181,7 @@ export const productZodSchema = z.object({
     if (!data.consultationTimeSlotsCount || data.consultationTimeSlotsCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Please specify at least one time slot (e.g., 10:00, 14:00)',
+        message: 'Please specify at least one time slot (10:00, 14:00)',
         path: ['consultationTimeSlots'],
       });
     }
@@ -336,7 +340,7 @@ function parseCsvText(text: string, defaultItemType: CatalogItemType): ParsedCsv
 
 export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
   const { t } = useLanguage();
-  const isDigitalCreator = business.type === 'creator' || business.type === 'services' || business.modules?.digitalProducts;
+  const isDigitalCreator = isCreatorProfile(business);
   
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1910,51 +1914,57 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   Product Format
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductType('digital_file');
-                      setType('product');
-                    }}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition flex flex-col items-center gap-1.5 cursor-pointer ${
-                      productType === 'digital_file'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Digital Download</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductType('consultation_slot');
-                      setType('service');
-                    }}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition flex flex-col items-center gap-1.5 cursor-pointer ${
-                      productType === 'consultation_slot'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>1:1 Session / Call</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductType('physical');
-                      setType('product');
-                    }}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition flex flex-col items-center gap-1.5 cursor-pointer ${
-                      productType === 'physical'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Package className="w-4 h-4" />
-                    <span>Physical Item</span>
-                  </button>
+                  {isModuleApplicableForBusiness('digital_products', business) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductType('digital_file');
+                        setType('product');
+                      }}
+                      className={`p-3 rounded-2xl text-xs font-bold border transition flex flex-col items-center gap-1.5 cursor-pointer ${
+                        productType === 'digital_file'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Digital Download</span>
+                    </button>
+                  )}
+                  {isModuleApplicableForBusiness('booking_appointments', business) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductType('consultation_slot');
+                        setType('service');
+                      }}
+                      className={`p-3 rounded-2xl text-xs font-bold border transition flex flex-col items-center gap-1.5 cursor-pointer ${
+                        productType === 'consultation_slot'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>1:1 Session / Call</span>
+                    </button>
+                  )}
+                  {isModuleApplicableForBusiness('products', business) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductType('physical');
+                        setType('product');
+                      }}
+                      className={`p-3 rounded-2xl text-xs font-bold border transition flex flex-col items-center gap-1.5 cursor-pointer ${
+                        productType === 'physical'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>Physical Item</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2009,7 +2019,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                             setInlineCategoryName(e.target.value);
                             if (fieldErrors.categoryId) setFieldErrors(prev => ({ ...prev, categoryId: '' }));
                           }}
-                          placeholder="e.g. Presets, eBooks, Consultations"
+                          placeholder="Presets, eBooks, Consultations"
                           className="flex-1 px-2.5 py-1.5 text-xs border border-indigo-200 rounded-xl bg-white font-medium"
                           autoFocus
                           onKeyDown={e => {
@@ -2095,9 +2105,21 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     }}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white font-medium text-slate-800"
                   >
-                    {bizMeta.supportedItemTypes.map(t => (
+                    {bizMeta.supportedItemTypes.filter(t => {
+                      if (t === 'product') return !!business.modules?.products;
+                      if (t === 'service') return !!business.modules?.services;
+                      if (t === 'menu_item') return !!business.modules?.menu;
+                      if (t === 'room') return !!business.modules?.rooms;
+                      if (t === 'vehicle') return !!business.modules?.vehicles;
+                      return true; // default types like custom/package always allowed if catalog is open
+                    }).map(t => (
                       <option key={t} value={t}>
-                        {t === 'product' ? 'Product' : t === 'service' ? 'Service / Booking' : t.charAt(0).toUpperCase() + t.slice(1)}
+                        {t === 'product' ? 'Standard Product' : 
+                         t === 'service' ? 'Professional Service' : 
+                         t === 'menu_item' ? 'Food / Drink Item' :
+                         t === 'room' ? 'Room / Stay' :
+                         t === 'vehicle' ? 'Rental Vehicle' :
+                         t.charAt(0).toUpperCase() + t.slice(1)}
                       </option>
                     ))}
                   </select>
@@ -2115,7 +2137,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     setName(e.target.value);
                     if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }));
                   }}
-                  placeholder="e.g. Masterclass eBook, Lightroom Preset Pack"
+                  placeholder="Masterclass eBook, Lightroom Preset Pack"
                   className={`w-full px-3 py-2 text-xs border rounded-xl font-medium transition ${
                     fieldErrors.name ? 'border-red-400 bg-red-50/20 focus:ring-2 focus:ring-red-200' : 'border-slate-200'
                   }`}
@@ -2207,7 +2229,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                           setSalePrice(e.target.value ? Number(e.target.value) : undefined);
                           if (fieldErrors.salePrice) setFieldErrors(prev => ({ ...prev, salePrice: '' }));
                         }}
-                        placeholder="e.g. 999"
+                        placeholder="999"
                         className={`w-full px-3 py-2 text-xs border rounded-xl bg-white transition ${
                           fieldErrors.salePrice ? 'border-red-400 bg-red-50/20 focus:ring-2 focus:ring-red-200' : 'border-slate-200'
                         }`}
@@ -2403,7 +2425,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                           type="text"
                           value={newLessonTitle}
                           onChange={e => setNewLessonTitle(e.target.value)}
-                          placeholder="Lesson/Chapter Title (e.g. Chapter 1: Introduction)"
+                          placeholder="Lesson/Chapter Title (Chapter 1: Introduction)"
                           className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg"
                         />
                         <label className="flex items-center justify-center p-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl cursor-pointer transition gap-2">
@@ -2496,7 +2518,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   {/* Daily Time Slots */}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
-                      Daily Time Slots (e.g. 10:00, 11:30, 14:00, 16:00)
+                      Daily Time Slots (10:00, 11:30, 14:00, 16:00)
                     </label>
                     <input
                       value={consultationTimeSlots.join(', ')}
@@ -2529,7 +2551,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                         min="0"
                         value={stockQuantity !== undefined ? stockQuantity : ''}
                         onChange={e => setStockQuantity(e.target.value ? Number(e.target.value) : undefined)}
-                        placeholder="e.g. 50"
+                        placeholder="50"
                         className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white"
                       />
                     </div>
@@ -2553,7 +2575,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                         type="text"
                         value={sku}
                         onChange={e => setSku(e.target.value)}
-                        placeholder="e.g. PROD-001"
+                        placeholder="PROD-001"
                         className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white"
                       />
                     </div>
@@ -2671,7 +2693,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   type="text"
                   value={newCategoryName}
                   onChange={e => setNewCategoryName(e.target.value)}
-                  placeholder="Category Name (e.g. Digital Downloads, Consultations, eBooks)"
+                  placeholder="Category Name (Digital Downloads, Consultations, eBooks)"
                   className="w-full px-3 py-2 text-xs border border-indigo-200 rounded-xl bg-white font-medium text-slate-800"
                   required
                 />
@@ -3110,7 +3132,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                       step="0.5"
                       value={pricePercentageValue}
                       onChange={e => setPricePercentageValue(e.target.value)}
-                      placeholder="e.g. 10"
+                      placeholder="10"
                       className="w-full pl-3 pr-8 py-2.5 text-sm font-bold text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
@@ -3147,7 +3169,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                       onChange={() => setPriceRoundingOption('round')}
                       className="w-4 h-4 text-indigo-600"
                     />
-                    <span className="font-semibold">Round to whole integer (e.g. ₹499)</span>
+                    <span className="font-semibold">Round to whole integer (₹499)</span>
                   </label>
                   <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                     <input

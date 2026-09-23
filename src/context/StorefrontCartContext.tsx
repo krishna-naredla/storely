@@ -22,11 +22,35 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Switch store -> reset cart if visiting a different business
-  const setStorefrontBusinessId = (id: string) => {
-    if (businessId && businessId !== id) {
-      setItems([]);
+  // Load cart from localStorage on init if businessId matches
+  useEffect(() => {
+    if (businessId) {
+      try {
+        const saved = localStorage.getItem(`storelly_cart_${businessId}`);
+        if (saved) {
+          setItems(JSON.parse(saved));
+        } else {
+          setItems([]);
+        }
+      } catch (err) {
+        console.warn('Cart persistence load error:', err);
+      }
     }
+  }, [businessId]);
+
+  // Persist cart to localStorage whenever items change
+  useEffect(() => {
+    if (businessId) {
+      try {
+        localStorage.setItem(`storelly_cart_${businessId}`, JSON.stringify(items));
+      } catch (err) {
+        console.warn('Cart persistence save error:', err);
+      }
+    }
+  }, [items, businessId]);
+
+  // Switch store -> reset cart if visiting a different business (handled by effect above)
+  const setStorefrontBusinessId = (id: string) => {
     setBusinessId(id);
   };
 

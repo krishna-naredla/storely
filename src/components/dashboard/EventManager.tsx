@@ -39,8 +39,9 @@ import {
   deleteEvent,
   cancelEvent,
   getEventTickets,
+  getModuleDeepUrl,
 } from '../../services/firebaseService';
-import { uploadFileToStorage } from '../../services/firebaseService';
+import { uploadToCloudinary } from '../../services/cloudinary';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
 import { ModuleQrModal } from '../common/ModuleQrModal';
@@ -59,6 +60,7 @@ const PRESET_EVENT_COVERS = [
 ];
 
 export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStorefront }) => {
+  const isCreator = business.businessCategory === 'creator' || business.modules?.portfolio === true;
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -169,7 +171,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
 
     try {
       setUploadingImage(true);
-      const url = await uploadFileToStorage(file, 'uploads');
+      const url = await uploadToCloudinary(file);
       setFormCoverImage(url);
     } catch (err) {
       console.error('Failed to upload cover image:', err);
@@ -283,8 +285,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
   };
 
   const handleCopyPublicLink = (event: EventItem) => {
-    const origin = window.location.origin;
-    const url = `${origin}/${business.slug}?tab=events#event-${event.id}`;
+    const url = `${getModuleDeepUrl(business, 'events')}#event-${event.id}`;
     navigator.clipboard.writeText(url);
     setCopiedLinkEventId(event.id);
     setTimeout(() => setCopiedLinkEventId(null), 2000);
@@ -323,10 +324,12 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading tracking-tight">
-                Event & Webinar Ticketing
+                {isCreator ? 'Masterclasses & Workshops' : 'Event & Webinar Ticketing'}
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Host 1-to-many live webinars, workshops, and physical masterclasses with atomic seat limits.
+                {isCreator 
+                  ? 'Host live webinars, workshops, and physical masterclasses with seat management.'
+                  : 'Host 1-to-many live webinars, workshops, and physical masterclasses with atomic seat limits.'}
               </p>
             </div>
           </div>
@@ -368,7 +371,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                 title: 'Events & Workshops Hub',
                 subtitle: `Browse all upcoming masterclasses, workshops, and meetups by ${business.name}.`,
                 badge: 'Live Events',
-                url: `${window.location.origin}/${business.slug}?tab=events`,
+                url: getModuleDeepUrl(business, 'events'),
               })
             }
             className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
@@ -649,7 +652,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                           title: event.title,
                           subtitle: `${event.format === 'online' ? '🌐 Live Online Session' : `📍 ${event.venueCity || 'Physical Venue'}`} • ₹${event.price || 0}`,
                           badge: `${event.format.toUpperCase()} EVENT`,
-                          url: `${window.location.origin}/${business.slug}?tab=events#event-${event.id}`,
+                          url: `${getModuleDeepUrl(business, 'events')}#event-${event.id}`,
                         })
                       }
                       className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-pink-600 transition text-xs font-bold cursor-pointer"
@@ -747,7 +750,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Creator Growth Masterclass: 0 to 100k Followers"
+                  placeholder="Creator Growth Masterclass: 0 to 100k Followers"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -938,7 +941,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                       <label className="font-bold text-slate-700">Physical Venue Address</label>
                       <input
                         type="text"
-                        placeholder="e.g. WeWork Galaxy, 43 Residency Rd"
+                        placeholder="WeWork Galaxy, 43 Residency Rd"
                         value={formVenueAddress}
                         onChange={(e) => setFormVenueAddress(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -948,7 +951,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                       <label className="font-bold text-slate-700">City / Landmark</label>
                       <input
                         type="text"
-                        placeholder="e.g. Bangalore, Karnataka"
+                        placeholder="Bangalore, Karnataka"
                         value={formVenueCity}
                         onChange={(e) => setFormVenueCity(e.target.value)}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
@@ -1059,7 +1062,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
               <label className="font-bold text-slate-700">Reason for Cancellation (Optional)</label>
               <textarea
                 rows={2}
-                placeholder="e.g. Speaker reschedule, emergency maintenance..."
+                placeholder="Speaker reschedule, emergency maintenance..."
                 value={cancellationReason}
                 onChange={(e) => setCancellationReason(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 resize-none focus:outline-none focus:ring-2 focus:ring-rose-500/20"

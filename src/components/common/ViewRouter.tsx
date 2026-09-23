@@ -1,15 +1,17 @@
 import React from 'react';
 import { BusinessProfile } from '../../types';
-import { isCreatorProfile } from '../../utils/profileHelper';
-import { CreatorAuthGuard } from '../auth/CreatorAuthGuard';
 import { StorefrontView } from '../storefront/StorefrontView';
 import { BioProfileView } from '../biolink/BioProfileView';
 import { StandalonePortfolioView } from '../portfolio/StandalonePortfolioView';
+import { StandaloneTrustCardView } from './StandaloneTrustCardView';
+import { PublicModuleUnavailableView } from './PublicModuleUnavailableView';
+import { verifyModuleAvailability } from '../../utils/publicRouteResolver';
 
 interface ViewRouterProps {
-  viewMode: 'dashboard' | 'storefront' | 'portfolio' | 'biolink';
+  viewMode: 'dashboard' | 'storefront' | 'store' | 'portfolio' | 'biolink' | 'bio' | 'card';
   targetBusiness: BusinessProfile;
-  isOwner: boolean;
+  isOwner?: boolean;
+  isExplicitPreview?: boolean;
   onBackToDashboard?: () => void;
   onOpenStorefront?: (slug: string, path: string) => void;
   onOpenDigitalCard?: () => void;
@@ -18,77 +20,119 @@ interface ViewRouterProps {
 export const ViewRouter: React.FC<ViewRouterProps> = ({
   viewMode,
   targetBusiness,
-  isOwner,
+  isOwner = false,
+  isExplicitPreview = false,
   onBackToDashboard,
   onOpenStorefront,
   onOpenDigitalCard,
 }) => {
-  const isCreator = isCreatorProfile(targetBusiness);
-  const primaryPref = targetBusiness.primaryDestination;
+  // Enforce preview separation: owner preview controls ONLY show when isExplicitPreview is true
+  const activePreview = Boolean(isExplicitPreview && isOwner);
 
-  const portfolioEnabled = Boolean(
-    targetBusiness.modules?.work_portfolio || targetBusiness.modules?.portfolio
-  );
-  const bioEnabled = Boolean(
-    targetBusiness.modules?.universal_links || targetBusiness.modules?.bio_links || targetBusiness.modules?.biolink
-  );
-  const digitalEnabled = Boolean(
-    targetBusiness.modules?.digital_products ||
-    targetBusiness.modules?.digitalProducts ||
-    targetBusiness.modules?.products
-  );
-
-  let shouldRenderBio = viewMode === 'biolink';
-  let shouldRenderPortfolio = viewMode === 'portfolio';
-  let shouldRenderStore = viewMode === 'storefront';
-
-  if (!shouldRenderBio && !shouldRenderPortfolio && !shouldRenderStore && isCreator) {
-    if (primaryPref === 'biolink' && bioEnabled) {
-      shouldRenderBio = true;
-    } else if (primaryPref === 'store' && digitalEnabled) {
-      shouldRenderStore = true;
-    } else if (portfolioEnabled) {
-      shouldRenderPortfolio = true;
-    } else if (bioEnabled) {
-      shouldRenderBio = true;
-    } else if (digitalEnabled) {
-      shouldRenderStore = true;
-    } else {
-      shouldRenderPortfolio = true;
-    }
-  }
-
-  if (shouldRenderBio) {
-    return (
-      <CreatorAuthGuard business={targetBusiness} currentBusinessId={targetBusiness.id} moduleName="bio" isOwner={isOwner}>
-        <BioProfileView
+  // 1. Universal Bio Link View
+  if (viewMode === 'biolink' || viewMode === 'bio') {
+    const status = verifyModuleAvailability(targetBusiness, 'bio', activePreview);
+    if (!status.isAvailable) {
+      return (
+        <PublicModuleUnavailableView
           business={targetBusiness}
-          onBackToDashboard={isOwner ? onBackToDashboard : undefined}
-          onOpenStorefront={onOpenStorefront ? () => onOpenStorefront(targetBusiness.slug, `/store/${targetBusiness.slug}`) : undefined}
+          moduleType="bio"
+          title={status.title}
+          message={status.message}
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
         />
-      </CreatorAuthGuard>
+      );
+    }
+
+    return (
+      <BioProfileView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        onOpenStorefront={
+          onOpenStorefront
+            ? () => onOpenStorefront(targetBusiness.slug, `/store/${targetBusiness.slug}`)
+            : undefined
+        }
+      />
     );
   }
 
-  if (shouldRenderPortfolio) {
-    return (
-      <CreatorAuthGuard business={targetBusiness} currentBusinessId={targetBusiness.id} moduleName="portfolio" isOwner={isOwner}>
-        <StandalonePortfolioView
+  // 2. Professional Portfolio View
+  if (viewMode === 'portfolio') {
+    const status = verifyModuleAvailability(targetBusiness, 'portfolio', activePreview);
+    if (!status.isAvailable) {
+      return (
+        <PublicModuleUnavailableView
           business={targetBusiness}
-          onBackToDashboard={isOwner ? onBackToDashboard : undefined}
-          isOwner={isOwner}
+          moduleType="portfolio"
+          title={status.title}
+          message={status.message}
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
         />
-      </CreatorAuthGuard>
+      );
+    }
+
+    return (
+      <StandalonePortfolioView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 3. Digital Trust Card View
+  if (viewMode === 'card') {
+    const status = verifyModuleAvailability(targetBusiness, 'card', activePreview);
+    if (!status.isAvailable) {
+      return (
+        <PublicModuleUnavailableView
+          business={targetBusiness}
+          moduleType="card"
+          title={status.title}
+          message={status.message}
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        />
+      );
+    }
+
+    return (
+      <StandaloneTrustCardView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        onOpenStorefront={
+          onOpenStorefront
+            ? () => onOpenStorefront(targetBusiness.slug, `/store/${targetBusiness.slug}`)
+            : undefined
+        }
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 4. Default Storefront View (Vendor storefront or Creator digital store)
+  const storeStatus = verifyModuleAvailability(targetBusiness, 'store', activePreview);
+  if (!storeStatus.isAvailable) {
+    return (
+      <PublicModuleUnavailableView
+        business={targetBusiness}
+        moduleType="store"
+        title={storeStatus.title}
+        message={storeStatus.message}
+        isExplicitPreview={activePreview}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+      />
     );
   }
 
   return (
-    <CreatorAuthGuard business={targetBusiness} currentBusinessId={targetBusiness.id} moduleName="store" isOwner={isOwner}>
-      <StorefrontView
-        business={targetBusiness}
-        onBackToDashboard={isOwner ? onBackToDashboard : undefined}
-        onOpenDigitalCard={onOpenDigitalCard}
-      />
-    </CreatorAuthGuard>
+    <StorefrontView
+      business={targetBusiness}
+      onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+      onOpenDigitalCard={onOpenDigitalCard}
+    />
   );
 };

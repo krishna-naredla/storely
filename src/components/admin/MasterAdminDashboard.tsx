@@ -76,6 +76,7 @@ import {
   adminSaveGlobalSettings,
   adminRecordAuditLog,
 } from '../../services/adminService';
+import { getStorefrontUrl } from '../../services/firebaseService';
 import { AdminPricingManager } from './AdminPricingManager';
 import { AdminClientsManager } from './AdminClientsManager';
 
@@ -1124,7 +1125,7 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/store/${biz.slug}`);
+                              navigator.clipboard.writeText(getStorefrontUrl(biz.slug));
                               alert('Storefront URL copied to clipboard!');
                             }}
                             className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg"

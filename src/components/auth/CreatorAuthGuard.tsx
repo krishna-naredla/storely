@@ -14,11 +14,11 @@ interface Props {
 export const CreatorAuthGuard: React.FC<Props> = ({ business, currentBusinessId, moduleName, isOwner, children, onBackToDashboard }) => {
   if (currentBusinessId && business && business.id !== currentBusinessId) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
-          <h1 className="text-2xl font-black text-white">Unauthorized Business Context</h1>
-          <p className="text-sm text-slate-400">
-            The requested business ID does not match your active session context.
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl space-y-4">
+          <h1 className="text-xl font-bold text-slate-900">Access Restricted</h1>
+          <p className="text-sm text-slate-500">
+            The requested business context does not match your active session.
           </p>
         </div>
       </div>
@@ -55,10 +55,10 @@ export const CreatorAuthGuard: React.FC<Props> = ({ business, currentBusinessId,
 
   if (!isEnabled && !isOwner) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
-          <h1 className="text-2xl font-black text-white">{moduleTitle} Unavailable</h1>
-          <p className="text-sm text-slate-400">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl space-y-4">
+          <h1 className="text-xl font-bold text-slate-900">{moduleTitle} Unavailable</h1>
+          <p className="text-sm text-slate-500">
             This module is currently unavailable or disabled by the creator.
           </p>
         </div>

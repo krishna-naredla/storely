@@ -1532,7 +1532,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                      Custom Profession Title (e.g. Lead Wedding Photographer)
+                      Custom Profession Title (Lead Wedding Photographer)
                     </label>
                     <input
                       type="text"
@@ -1557,7 +1557,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                           setSlogan(e.target.value);
                           markDirty();
                         }}
-                        placeholder="e.g. Crafting timeless visual narratives"
+                        placeholder="Crafting timeless visual narratives"
                         className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium"
                       />
                     </div>
@@ -1573,7 +1573,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                           setLocation(e.target.value);
                           markDirty();
                         }}
-                        placeholder="e.g. Hyderabad & Mumbai"
+                        placeholder="Hyderabad & Mumbai"
                         className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium"
                       />
                     </div>
@@ -1657,7 +1657,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                             type="text"
                             value={pkg.badge || ''}
                             onChange={(e) => handleUpdateServicePackage(pkg.id, 'badge', e.target.value)}
-                            placeholder="e.g. Most Popular"
+                            placeholder="Most Popular"
                             className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
                           />
                         </div>
@@ -1684,7 +1684,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                             type="text"
                             value={pkg.duration || ''}
                             onChange={(e) => handleUpdateServicePackage(pkg.id, 'duration', e.target.value)}
-                            placeholder="e.g. 5-7 Days"
+                            placeholder="5-7 Days"
                             className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
                           />
                         </div>
@@ -1716,7 +1716,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                               e.target.value.split(',').map((d) => d.trim()).filter(Boolean)
                             )
                           }
-                          placeholder="e.g. 50 Retouched Photos, Online Gallery, Drone Video"
+                          placeholder="50 Retouched Photos, Online Gallery, Drone Video"
                           className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
                         />
                       </div>
@@ -1787,7 +1787,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                     value={specInput}
                     onChange={(e) => setSpecInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddSpec()}
-                    placeholder="e.g. Cinematic Wedding Photography"
+                    placeholder="Cinematic Wedding Photography"
                     className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium"
                   />
                   <button
@@ -1827,7 +1827,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                       value={skillInput}
                       onChange={(e) => setSkillInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
-                      placeholder="e.g. Color Grading"
+                      placeholder="Color Grading"
                       className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium"
                     />
                     <button
@@ -1865,7 +1865,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                       value={toolInput}
                       onChange={(e) => setToolInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddTool()}
-                      placeholder="e.g. Adobe Lightroom, Figma"
+                      placeholder="Adobe Lightroom, Figma"
                       className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium"
                     />
                     <button
@@ -2053,7 +2053,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                             type="text"
                             value={stat.count}
                             onChange={(e) => handleUpdatePlatformStat(stat.id, 'count', e.target.value)}
-                            placeholder="e.g. 150K"
+                            placeholder="150K"
                             className="w-full px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-black text-indigo-600"
                           />
                         </div>
@@ -2066,7 +2066,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                             type="text"
                             value={stat.label || ''}
                             onChange={(e) => handleUpdatePlatformStat(stat.id, 'label', e.target.value)}
-                            placeholder="e.g. Subscribers"
+                            placeholder="Subscribers"
                             className="w-full px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
                           />
                         </div>
@@ -2076,7 +2076,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                             type="text"
                             value={stat.engagementRate || ''}
                             onChange={(e) => handleUpdatePlatformStat(stat.id, 'engagementRate', e.target.value)}
-                            placeholder="e.g. 5.2%"
+                            placeholder="5.2%"
                             className="w-full px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
                           />
                         </div>
@@ -2118,7 +2118,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                         type="text"
                         value={collab.description}
                         onChange={(e) => handleUpdateBrandCollab(collab.id, 'description', e.target.value)}
-                        placeholder="Campaign details (e.g. Summer launch reel)"
+                        placeholder="Campaign details (Summer launch reel)"
                         className="flex-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-medium"
                       />
                       <button
@@ -2364,7 +2364,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                   type="text"
                   value={testimonialClientName}
                   onChange={(e) => setTestimonialClientName(e.target.value)}
-                  placeholder="e.g. Rajesh & Priya"
+                  placeholder="Rajesh & Priya"
                   required
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
                 />
@@ -2378,7 +2378,7 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
                   type="text"
                   value={testimonialClientRole}
                   onChange={(e) => setTestimonialClientRole(e.target.value)}
-                  placeholder="e.g. Wedding Couple / CEO, Apex Studios"
+                  placeholder="Wedding Couple / CEO, Apex Studios"
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                 />
               </div>

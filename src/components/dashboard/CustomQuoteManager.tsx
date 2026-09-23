@@ -2,6 +2,7 @@ import { DashboardEmptyState } from "../common/DashboardEmptyState";
 import { DashboardSkeleton } from "../common/DashboardSkeleton";
 import { ConfirmActionModal } from "../common/ConfirmActionModal";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { isCreatorProfile } from '../../utils/profileHelper';
 import {
   FileText,
   Clock,
@@ -40,6 +41,7 @@ import {
   deleteCustomQuoteRequest,
   checkAndExpireOldQuotes,
   getModuleDeepUrl,
+  getQuotePayUrl,
 } from '../../services/firebaseService';
 import { ModuleQrModal } from '../common/ModuleQrModal';
 
@@ -86,6 +88,8 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   const [submittingQuote, setSubmittingQuote] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  const isCreator = isCreatorProfile(business);
 
   // Live timer tick for accurate countdowns
   useEffect(() => {
@@ -332,8 +336,7 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   };
 
   const handleCopyLink = (req: CustomQuoteRequest) => {
-    const origin = window.location.origin;
-    const url = `${origin}/quote-pay/${business.id}/${req.id}`;
+    const url = getQuotePayUrl(business.id, req.id);
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -383,10 +386,12 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading tracking-tight">
-                Custom Orders & Quote Requests
+                {isCreator ? 'Project Proposals & Custom Work' : 'Custom Orders & Quote Requests'}
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Review bespoke commission inquiries, send tailored price quotes, and track automatic 48-hour payment timers.
+                {isCreator 
+                  ? 'Review bespoke commission inquiries, send tailored project proposals, and track payment timers.'
+                  : 'Review bespoke commission inquiries, send tailored price quotes, and track automatic 48-hour payment timers.'}
               </p>
             </div>
           </div>
@@ -508,11 +513,11 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
 
         <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Paid Commissions</span>
+            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">{isCreator ? 'Project Revenue' : 'Paid Commissions'}</span>
             <DollarSign className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="text-2xl sm:text-3xl font-black text-indigo-950 font-heading">
-            ₹{totalCommissionRevenue.toLocaleString()}
+            {business.currencySymbol}{totalCommissionRevenue.toLocaleString()}
           </div>
           <p className="text-[11px] text-indigo-700 font-medium">{expiredQuotesCount} expired inquiries</p>
         </div>
@@ -977,7 +982,7 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
                   One-Time Payment Link
                 </span>
                 <div className="flex items-center justify-between text-[11px] text-purple-700 font-mono">
-                  <span className="truncate max-w-xs">{`${window.location.origin}/quote-pay/${business.id}/${selectedRequest.id}`}</span>
+                  <span className="truncate max-w-xs">{getQuotePayUrl(business.id, selectedRequest.id)}</span>
                   <button
                     type="button"
                     onClick={() => handleCopyLink(selectedRequest)}

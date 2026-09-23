@@ -1,6 +1,6 @@
 {
-  "name": "Remix Storelly Business OS",
-  "description": "Multi-business digital commerce, storefront \u0026 business management operating system powered by Firebase.",
+  "name": "Storelly — Digital Business OS & Instant Public Storefront",
+  "description": "Turn your local business into a digital storefront in minutes. Digital cards, instant WhatsApp ordering, appointment bookings, catalog, and operations dashboard.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

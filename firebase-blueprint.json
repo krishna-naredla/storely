@@ -267,6 +267,55 @@
         "updatedAt": { "type": "number" }
       },
       "required": ["id", "businessId", "requestNumber", "customerName", "customerPhone", "description", "status"]
+    },
+    "PlatformPaymentTransaction": {
+      "title": "PlatformPaymentTransaction",
+      "description": "Authoritative ledger of payment transactions for subscription upgrades and platform fees",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "businessName": { "type": "string" },
+        "planId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "pending", "failed", "refunded"] },
+        "gateway": { "type": "string" },
+        "razorpayPaymentId": { "type": "string" },
+        "razorpayOrderId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "businessId", "amount", "status", "createdAt"]
+    },
+    "PlatformAuditLog": {
+      "title": "PlatformAuditLog",
+      "description": "Security and administrative action audit trail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "target": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "adminEmail", "action", "target", "timestamp"]
+    },
+    "PlatformSupportTicket": {
+      "title": "PlatformSupportTicket",
+      "description": "Customer and vendor support tickets with strict tenant isolation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "open", "in_progress", "resolved", "closed"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "senderName", "senderEmail", "subject", "message", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -317,6 +366,18 @@
     "/businesses/{businessId}/biolinks/{linkId}": {
       "schema": "BioLink",
       "description": "Creator portfolio links"
+    },
+    "/payment_transactions/{transactionId}": {
+      "schema": "PlatformPaymentTransaction",
+      "description": "Private authoritative payment transactions"
+    },
+    "/admin_audit_logs/{logId}": {
+      "schema": "PlatformAuditLog",
+      "description": "Protected admin audit trail"
+    },
+    "/platform_support_tickets/{ticketId}": {
+      "schema": "PlatformSupportTicket",
+      "description": "Tenant isolated support tickets"
     }
   }
 }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { PortfolioShareModal } from './PortfolioShareModal';
+import { getPortfolioUrl } from '../../services/firebaseService';
 
 interface PortfolioUrlBannerProps {
   business: BusinessProfile;
@@ -25,11 +26,8 @@ export const PortfolioUrlBanner: React.FC<PortfolioUrlBannerProps> = ({
   const [copied, setCopied] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://storelly.com';
   const portfolioPath = `/portfolio/${business.slug}`;
-  const shortPath = `/p/${business.slug}`;
-  const portfolioFullUrl = `${origin}${portfolioPath}`;
-  const shortFullUrl = `${origin}${shortPath}`;
+  const portfolioFullUrl = getPortfolioUrl(business.slug);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(portfolioFullUrl);

@@ -201,7 +201,7 @@ export const PortfolioItemModal: React.FC<PortfolioItemModalProps> = ({
       await onSave({
         title: title.trim(),
         category,
-        coverImage: coverImage || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
+        coverImage: coverImage || '',
         mediaType,
         mediaUrls,
         externalUrl: externalUrl.trim() || undefined,

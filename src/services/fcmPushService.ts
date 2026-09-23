@@ -8,9 +8,10 @@ export async function requestFcmNotificationPermission(): Promise<boolean> {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
+      // Register standard notification permission (Service Worker registration removed for PWA-free SaaS architecture)
       try {
-        new Notification('Storelly Push Notifications Enabled!', {
-          body: 'You will now receive instant push alerts for orders and bookings even when your app is in the background.',
+        new Notification('Storelly Notifications Enabled!', {
+          body: 'You will now receive instant browser alerts for orders and bookings.',
           icon: '/icons/icon.svg',
           badge: '/icons/icon.svg',
         });
@@ -83,29 +84,10 @@ export function showMerchantNotification(title: string, body: string, business?:
 
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
-      // Try displaying via Service Worker registration if available for robust PWA background delivery
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then((registration) => {
-          registration.showNotification(title, {
-            body,
-            icon: business?.logo || '/icons/icon.svg',
-            badge: '/icons/icon.svg',
-            tag: 'storelly-realtime-alert',
-            renotify: true,
-            data: { url: window.location.href }
-          } as any);
-        }).catch(() => {
-          new Notification(title, {
-            body,
-            icon: business?.logo || '/icons/icon.svg',
-          });
-        });
-      } else {
-        new Notification(title, {
-          body,
-          icon: business?.logo || '/icons/icon.svg',
-        });
-      }
+      new Notification(title, {
+        body,
+        icon: business?.logo || '/icons/icon.svg',
+      });
 
       // Play alert chime
       const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');

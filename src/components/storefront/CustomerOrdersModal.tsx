@@ -15,7 +15,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { BusinessProfile, Order, OrderStatus } from '../../types';
-import { getOrders, updateOrderStatus } from '../../services/firebaseService';
+import { getOrder, updateOrderStatus } from '../../services/firebaseService';
 
 interface CustomerOrdersModalProps {
   business: BusinessProfile;
@@ -39,22 +39,51 @@ export const CustomerOrdersModal: React.FC<CustomerOrdersModalProps> = ({
   const fetchStoreOrders = async () => {
     try {
       setIsLoading(true);
-      const allOrders = await getOrders(business.id);
-      
-      // Also get locally stored order IDs placed by this user/device
+      // Retrieve locally stored order IDs placed by this user/device
       const localOrderIds: string[] = JSON.parse(
         localStorage.getItem(`storelly_my_order_ids_${business.id}`) || '[]'
       );
 
-      // Filter orders relevant to this customer (either matching phone or in local device storage)
-      const filtered = allOrders.filter((o) => {
-        if (localOrderIds.includes(o.id)) return true;
-        if (filterPhone && o.customerPhone && o.customerPhone.includes(filterPhone)) return true;
-        return false;
+      const customerOrders: Order[] = [];
+
+      // Securely fetch each permitted order document directly by ID
+      for (const orderId of localOrderIds) {
+        try {
+          const order = await getOrder(business.id, orderId);
+          if (order) {
+            customerOrders.push(order);
+          }
+        } catch {
+          // ignore individual fetch errors
+        }
+      }
+
+      // If user typed a search query that looks like an order ID not in local list, check order tracking endpoint
+      if (searchQuery.trim().length > 3 && !customerOrders.some(o => o.id === searchQuery.trim() || o.orderNumber === searchQuery.trim())) {
+        try {
+          const res = await fetch(`/api/orders/track?businessId=${encodeURIComponent(business.id)}&orderId=${encodeURIComponent(searchQuery.trim())}${filterPhone ? `&phone=${encodeURIComponent(filterPhone)}` : ''}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.order) {
+              customerOrders.push(data.order);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Sort recent first
+      customerOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      // Filter by phone or search query if customer entered one
+      const filtered = customerOrders.filter((o) => {
+        if (filterPhone && o.customerPhone && !o.customerPhone.includes(filterPhone)) return false;
+        if (searchQuery && !o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) && !o.id.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        return true;
       });
 
-      // If no strict filter match yet, show recent orders for this business so user can see them
-      setOrders(filtered.length > 0 ? filtered : allOrders.slice(0, 10));
+      setOrders(filtered);
     } catch (err) {
       console.error('Error fetching customer orders:', err);
     } finally {
