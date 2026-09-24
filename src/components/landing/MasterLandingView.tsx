@@ -128,30 +128,30 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden scroll-smooth">
+    <div className="min-h-screen bg-[var(--bg)] font-sans text-[var(--t1)] selection:bg-[var(--g100)] selection:text-[var(--g900)] overflow-x-hidden scroll-smooth">
       
       {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 py-4 shadow-sm">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--card)]/95 backdrop-blur-md border-b border-[var(--border)] py-4 shadow-[var(--shadow-sm)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200 shadow-xs flex items-center justify-center bg-white">
+            <div className="w-8 h-8 rounded-[var(--r8)] overflow-hidden border border-[var(--border)] shadow-[var(--shadow-xs)] flex items-center justify-center bg-[var(--card)]">
               <img src={getAppLogo()} alt="Storelly Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold text-slate-900 tracking-tight">Storelly</span>
+            <span className="text-xl font-heading font-black text-[var(--t1)] tracking-tight">Storelly</span>
           </div>
 
           <div className="hidden lg:flex items-center gap-8">
-            <a href="#" className="text-sm font-semibold text-slate-900 hover:text-emerald-600 transition">Home</a>
-            <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition">Features</a>
-            <a href="#how-it-works" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition">How It Works</a>
-            <a href="#pricing" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition">Pricing</a>
-            <a href="#faq" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition">FAQ</a>
+            <a href="#" className="text-sm font-semibold text-[var(--t1)] hover:text-[var(--g600)] transition">Home</a>
+            <a href="#features" className="text-sm font-semibold text-[var(--t2)] hover:text-[var(--g600)] transition">Features</a>
+            <a href="#how-it-works" className="text-sm font-semibold text-[var(--t2)] hover:text-[var(--g600)] transition">How It Works</a>
+            <a href="#pricing" className="text-sm font-semibold text-[var(--t2)] hover:text-[var(--g600)] transition">Pricing</a>
+            <a href="#faq" className="text-sm font-semibold text-[var(--t2)] hover:text-[var(--g600)] transition">FAQ</a>
           </div>
 
           <div className="hidden lg:flex items-center gap-4">
             <button 
               onClick={() => onOpenAuth('signup')}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-6 py-2.5 rounded-full shadow-md transition-all active:scale-95"
+              className="bg-[var(--g600)] hover:bg-[var(--g700)] text-white text-sm font-bold px-6 py-2.5 rounded-[var(--r8)] shadow-[var(--shadow-sm)] transition-all active:scale-95"
             >
               Get Started Free
             </button>
@@ -160,7 +160,7 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
           <div className="lg:hidden flex items-center">
              <button
                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-               className="p-2 text-slate-600 hover:text-slate-900 rounded-lg"
+               className="p-2 text-[var(--t2)] hover:text-[var(--t1)] rounded-[var(--r8)]"
                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
              >
                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -176,16 +176,16 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
             initial={{ opacity: 0, y: -20 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-white pt-24 px-6 flex flex-col gap-6"
+            className="fixed inset-0 z-40 bg-[var(--card)] pt-24 px-6 flex flex-col gap-6"
           >
-            <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-900">Home</a>
-            <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-600">Features</a>
-            <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-600">How It Works</a>
-            <a href="#pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-600">Pricing</a>
-            <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-slate-600">FAQ</a>
+            <a href="#" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-heading font-bold text-[var(--t1)]">Home</a>
+            <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-heading font-bold text-[var(--t2)]">Features</a>
+            <a href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-heading font-bold text-[var(--t2)]">How It Works</a>
+            <a href="#pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-heading font-bold text-[var(--t2)]">Pricing</a>
+            <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-heading font-bold text-[var(--t2)]">FAQ</a>
             <button 
               onClick={() => { setIsMobileMenuOpen(false); onOpenAuth('signup'); }}
-              className="mt-6 bg-emerald-600 text-white text-lg font-bold px-6 py-4 rounded-xl w-full"
+              className="mt-6 bg-[var(--g600)] hover:bg-[var(--g700)] text-white text-lg font-bold px-6 py-4 rounded-[var(--r8)] w-full transition"
             >
               Get Started Free
             </button>
@@ -194,7 +194,7 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </AnimatePresence>
 
       {/* HERO SECTION */}
-      <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 bg-white relative overflow-hidden">
+      <section className="pt-32 pb-16 lg:pt-40 lg:pb-24 bg-[var(--card)] relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-8">
             
@@ -202,54 +202,54 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
               initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
               className="lg:w-1/2 space-y-8 z-10 text-center lg:text-left"
             >
-              <h1 className="text-5xl sm:text-6xl lg:text-[72px] font-black text-slate-900 tracking-tight leading-[1.1]">
+              <h1 className="text-5xl sm:text-6xl lg:text-[72px] font-heading font-black text-[var(--t1)] tracking-tight leading-[1.1]">
                 Your Business. <br />
-                <span className="text-emerald-600">One Link.</span> <br />
+                <span className="text-[var(--g600)]">One Link.</span> <br />
                 More Sales.
               </h1>
 
-              <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
+              <p className="text-lg sm:text-xl text-[var(--t2)] max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
                 Create your Storelly page, showcase products or services, accept UPI payments, share everything from one link, and sell through WhatsApp — without building an app.
               </p>
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                 <button 
                   onClick={() => onOpenAuth('signup')}
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto bg-[var(--g600)] hover:bg-[var(--g700)] text-white font-bold text-lg px-8 py-4 rounded-[var(--r8)] shadow-[var(--shadow-sm)] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   Create Your Free Store <ArrowRight className="w-5 h-5" />
                 </button>
                 <a 
                   href="#how-it-works"
-                  className="w-full sm:w-auto bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-lg px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto bg-[var(--g100)] hover:bg-[var(--g200)] text-[var(--g800)] font-bold text-lg px-8 py-4 rounded-[var(--r8)] transition-all flex items-center justify-center gap-2 border border-[var(--g200)]"
                 >
                   See How It Works
                 </a>
               </div>
               
-              <p className="text-sm text-slate-500 font-medium flex items-center justify-center lg:justify-start gap-2 pt-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" /> No app for your customers. No commission on your sales.
+              <p className="text-sm text-[var(--t3)] font-medium flex items-center justify-center lg:justify-start gap-2 pt-2">
+                <ShieldCheck className="w-4 h-4 text-[var(--g500)]" /> No app for your customers. No commission on your sales.
               </p>
 
               {/* Vendor & Creator Profile Types Indicator */}
               <div className="pt-8 flex flex-wrap items-center justify-center lg:justify-start gap-4">
-                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-emerald-200/90 shadow-sm">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-[var(--r12)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)]">
+                  <div className="w-10 h-10 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center font-bold shrink-0">
                     <Store className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <div className="text-xs font-black text-slate-900">Local Merchant & Stores</div>
-                    <div className="text-[11px] text-slate-500 font-medium">Retail, dining & local services</div>
+                    <div className="text-xs font-heading font-black text-[var(--t1)]">Local Merchant & Stores</div>
+                    <div className="text-[11px] text-[var(--t2)] font-medium">Retail, dining & local services</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white border border-indigo-200/90 shadow-sm">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-[var(--r12)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)]">
+                  <div className="w-10 h-10 rounded-[var(--r8)] bg-[var(--p100)] text-[var(--p500)] flex items-center justify-center font-bold shrink-0">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <div className="text-xs font-black text-slate-900">Creators & Professionals</div>
-                    <div className="text-[11px] text-slate-500 font-medium">Portfolios, bio links & digital sales</div>
+                    <div className="text-xs font-heading font-black text-[var(--t1)]">Creators & Professionals</div>
+                    <div className="text-[11px] text-[var(--t2)] font-medium">Portfolios, bio links & digital sales</div>
                   </div>
                 </div>
               </div>
@@ -261,21 +261,21 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
             >
                <div className="relative w-full max-w-2xl mx-auto z-20 flex flex-col gap-6">
                   <div className="w-full flex items-center justify-center relative">
-                      <div className="w-full relative overflow-hidden transform hover:scale-[1.02] transition-transform duration-500 rounded-2xl shadow-2xl border border-slate-200/60 bg-white p-2">
-                        <img src="/landingpage.jpeg" alt="Hero Storefront" className="w-full h-auto object-contain rounded-xl" style={{ imageRendering: "high-quality" }} />
+                      <div className="w-full relative overflow-hidden transform hover:scale-[1.02] transition-transform duration-500 rounded-[var(--r16)] shadow-[var(--shadow-lg)] border border-[var(--border)] bg-[var(--card)] p-2">
+                        <img src="/landingpage.jpeg" alt="Hero Storefront" className="w-full h-auto object-contain rounded-[var(--r12)]" style={{ imageRendering: "high-quality" }} />
                       </div>
                   </div>
                   
                   <div className="w-full flex items-center justify-center relative mt-4">
-                      <div className="w-full relative overflow-hidden transform hover:scale-105 transition-transform duration-700 rounded-2xl">
-                        <img src="/cteatorlink.jpeg" alt="Creator Link Showcase" className="w-full h-auto object-contain drop-shadow-2xl" style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
+                      <div className="w-full relative overflow-hidden transform hover:scale-105 transition-transform duration-700 rounded-[var(--r16)] shadow-[var(--shadow-lg)] border border-[var(--border)] bg-[var(--card)] p-2">
+                        <img src="/cteatorlink.jpeg" alt="Creator Link Showcase" className="w-full h-auto object-contain rounded-[var(--r12)]" style={{ imageRendering: "high-quality", transform: "translateZ(0)", backfaceVisibility: "hidden" }} />
                       </div>
                   </div>
                </div>
               
               {/* Decorative dotted pattern */}
-              <div className="absolute top-20 -right-8 w-32 h-32 bg-repeat opacity-20 -z-10" style={{ backgroundImage: 'radial-gradient(#cbd5e1 2px, transparent 2px)', backgroundSize: '16px 16px' }}></div>
-              <div className="absolute bottom-20 -left-12 w-24 h-24 bg-repeat opacity-20 -z-10" style={{ backgroundImage: 'radial-gradient(#059669 2px, transparent 2px)', backgroundSize: '16px 16px' }}></div>
+              <div className="absolute top-20 -right-8 w-32 h-32 bg-repeat opacity-20 -z-10" style={{ backgroundImage: 'radial-gradient(#8aaa90 2px, transparent 2px)', backgroundSize: '16px 16px' }}></div>
+              <div className="absolute bottom-20 -left-12 w-24 h-24 bg-repeat opacity-20 -z-10" style={{ backgroundImage: 'radial-gradient(#2d8a45 2px, transparent 2px)', backgroundSize: '16px 16px' }}></div>
             </motion.div>
           </div>
         </div>
@@ -288,17 +288,17 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       <motion.div 
         initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
       >
-            <section id="vendors" className="py-20 md:py-28 bg-emerald-50">
+            <section id="vendors" className="py-20 md:py-28 bg-[var(--g100)]/40 border-y border-[var(--border)]">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col lg:flex-row items-center gap-16">
                   
                   {/* Left: Image for Vendor */}
                   <div className="lg:w-[55%] flex justify-center items-center relative w-full mx-auto">
-                     <div className="w-full relative rounded-3xl overflow-hidden border border-emerald-200/80 bg-white p-2 sm:p-3 shadow-xl">
+                     <div className="w-full relative rounded-[var(--r20)] overflow-hidden border border-[var(--border)] bg-[var(--card)] p-2 sm:p-3 shadow-[var(--shadow-lg)]">
                         <img 
                           src="/storelly6.jpg" 
                           alt="Storelly for Vendors" 
-                          className="w-full h-auto object-contain rounded-2xl transition-transform duration-500 hover:scale-[1.02]"
+                          className="w-full h-auto object-contain rounded-[var(--r16)] transition-transform duration-500 hover:scale-[1.02]"
                           style={{ imageRendering: "high-quality" }}
                           onError={(e) => {
                             (e.currentTarget as HTMLImageElement).src = '/storelly6.jpg.jpeg';
@@ -310,42 +310,42 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                   {/* Right: Content */}
                   <div className="lg:w-[45%] space-y-8">
                     <div>
-                      <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight mb-4">
+                      <h2 className="text-3xl sm:text-4xl font-heading font-black text-[var(--t1)] tracking-tight leading-tight mb-4">
                         Take Your Local Business Online — Without the Complexity.
                       </h2>
-                      <p className="text-lg text-slate-600 font-medium">
+                      <p className="text-lg text-[var(--t2)] font-medium">
                         Show your products, collect UPI payments and receive orders directly on WhatsApp. Storelly gives your business one simple digital home.
                       </p>
                     </div>
                     
                     <div className="space-y-6">
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                      <div className="bg-[var(--card)] rounded-[var(--r12)] p-6 shadow-[var(--shadow-sm)] border border-[var(--border)] flex items-start gap-4 hover:shadow-[var(--shadow)] transition">
+                        <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center shrink-0">
                           <Store className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">Create Your Store in Minutes</h3>
-                          <p className="text-slate-600 text-sm mt-1">Add your products, prices and photos and publish your storefront with one simple link.</p>
+                          <h3 className="font-heading font-bold text-lg text-[var(--t1)]">Create Your Store in Minutes</h3>
+                          <p className="text-[var(--t2)] text-sm mt-1">Add your products, prices and photos and publish your storefront with one simple link.</p>
                         </div>
                       </div>
 
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                      <div className="bg-[var(--card)] rounded-[var(--r12)] p-6 shadow-[var(--shadow-sm)] border border-[var(--border)] flex items-start gap-4 hover:shadow-[var(--shadow)] transition">
+                        <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center shrink-0">
                           <MessageCircle className="w-6 h-6 fill-current" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">Orders on WhatsApp</h3>
-                          <p className="text-slate-600 text-sm mt-1">Get customer order details where you already work — WhatsApp.</p>
+                          <h3 className="font-heading font-bold text-lg text-[var(--t1)]">Orders on WhatsApp</h3>
+                          <p className="text-[var(--t2)] text-sm mt-1">Get customer order details where you already work — WhatsApp.</p>
                         </div>
                       </div>
 
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition">
-                        <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                      <div className="bg-[var(--card)] rounded-[var(--r12)] p-6 shadow-[var(--shadow-sm)] border border-[var(--border)] flex items-start gap-4 hover:shadow-[var(--shadow)] transition">
+                        <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--p100)] text-[var(--p500)] flex items-center justify-center shrink-0">
                           <Zap className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">Get Paid Directly</h3>
-                          <p className="text-slate-600 text-sm mt-1">Accept UPI payments and keep your sales. Storelly doesn't take a commission from every order.</p>
+                          <h3 className="font-heading font-bold text-lg text-[var(--t1)]">Get Paid Directly</h3>
+                          <p className="text-[var(--t2)] text-sm mt-1">Accept UPI payments and keep your sales. Storelly doesn't take a commission from every order.</p>
                         </div>
                       </div>
                     </div>
@@ -368,12 +368,12 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                          }}
                          animate={{ y: [-5, 5, -5] }}
                          transition={{ y: { repeat: Infinity, duration: 4, ease: "easeInOut" } }}
-                         className="bg-white rounded-2xl p-5 shadow-[0_20px_50px_-12px_rgba(16,185,129,0.4)] border-2 border-emerald-100 flex items-center gap-4 relative overflow-hidden group hover:border-emerald-300 transition-colors"
+                         className="bg-[var(--card)] rounded-[var(--r12)] p-5 shadow-[var(--shadow-lg)] border border-[var(--border)] flex items-center gap-4 relative overflow-hidden group hover:border-[var(--g400)] transition-colors"
                       >
-                         <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-emerald-400 to-emerald-600 animate-pulse"></div>
+                         <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-[var(--g400)] to-[var(--g600)] animate-pulse"></div>
                          
                          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-100 to-orange-100 border border-orange-200 text-orange-600 flex items-center justify-center shrink-0 shadow-inner relative group-hover:scale-110 transition-transform duration-500">
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-[var(--g500)] rounded-full border-2 border-white flex items-center justify-center shadow-sm">
                                <Check className="w-3 h-3 text-white font-bold" />
                             </div>
                             <span className="text-2xl" role="img" aria-label="pickle">🥘</span>
@@ -381,13 +381,13 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
 
                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                               <span className="text-[10px] font-black text-white bg-emerald-500 px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">New Order</span>
-                               <span className="text-[10px] font-bold text-slate-400">Just now</span>
+                               <span className="text-[10px] font-black text-white bg-[var(--g600)] px-2 py-0.5 rounded-[var(--r4)] uppercase tracking-wider shadow-sm">New Order</span>
+                               <span className="text-[10px] font-bold text-[var(--t3)]">Just now</span>
                             </div>
-                            <div className="text-[15px] font-black text-slate-900 leading-tight">Chicken Pickle <span className="text-emerald-600">1kg</span></div>
-                            <div className="text-[11px] font-bold text-slate-500 mt-1 flex items-center gap-1.5">
-                               <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-black">₹249</span> 
-                               <span>Paid via <span className="text-emerald-600 font-black tracking-wide">UPI</span></span>
+                            <div className="text-[15px] font-heading font-black text-[var(--t1)] leading-tight">Chicken Pickle <span className="text-[var(--g600)]">1kg</span></div>
+                            <div className="text-[11px] font-bold text-[var(--t2)] mt-1 flex items-center gap-1.5">
+                               <span className="bg-[var(--g100)] text-[var(--t1)] px-1.5 py-0.5 rounded-[var(--r4)] font-black">₹249</span> 
+                               <span>Paid via <span className="text-[var(--g600)] font-black tracking-wide">UPI</span></span>
                             </div>
                          </div>
                       </motion.div>
@@ -399,12 +399,12 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                          }}
                          animate={{ y: [5, -5, 5] }}
                          transition={{ y: { repeat: Infinity, duration: 4.5, ease: "easeInOut" } }}
-                         className="bg-white rounded-2xl p-5 shadow-[0_20px_50px_-12px_rgba(16,185,129,0.3)] border-2 border-emerald-50 flex items-center gap-4 relative overflow-hidden group hover:border-emerald-200 transition-colors ml-4 lg:ml-8"
+                         className="bg-[var(--card)] rounded-[var(--r12)] p-5 shadow-[var(--shadow-lg)] border border-[var(--border)] flex items-center gap-4 relative overflow-hidden group hover:border-[var(--g400)] transition-colors ml-4 lg:ml-8"
                       >
-                         <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-emerald-300 to-emerald-500 animate-pulse"></div>
+                         <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-b from-[var(--g300)] to-[var(--g500)] animate-pulse"></div>
                          
                          <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-pink-100 to-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0 shadow-inner relative group-hover:scale-110 transition-transform duration-500">
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-[var(--g500)] rounded-full border-2 border-white flex items-center justify-center shadow-sm">
                                <Check className="w-3 h-3 text-white font-bold" />
                             </div>
                             <span className="text-2xl" role="img" aria-label="sweet">🍪</span>
@@ -412,19 +412,19 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
 
                          <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                               <span className="text-[10px] font-black text-white bg-emerald-500 px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">New Order</span>
-                               <span className="text-[10px] font-bold text-slate-400">2 mins ago</span>
+                               <span className="text-[10px] font-black text-white bg-[var(--g600)] px-2 py-0.5 rounded-[var(--r4)] uppercase tracking-wider shadow-sm">New Order</span>
+                               <span className="text-[10px] font-bold text-[var(--t3)]">2 mins ago</span>
                             </div>
-                            <div className="text-[15px] font-black text-slate-900 leading-tight">Ghee Sweets <span className="text-emerald-600">500g</span></div>
-                            <div className="text-[11px] font-bold text-slate-500 mt-1 flex items-center gap-1.5">
-                               <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-black">₹399</span> 
-                               <span>Paid via <span className="text-emerald-600 font-black tracking-wide">UPI</span></span>
+                            <div className="text-[15px] font-heading font-black text-[var(--t1)] leading-tight">Ghee Sweets <span className="text-[var(--g600)]">500g</span></div>
+                            <div className="text-[11px] font-bold text-[var(--t2)] mt-1 flex items-center gap-1.5">
+                               <span className="bg-[var(--g100)] text-[var(--t1)] px-1.5 py-0.5 rounded-[var(--r4)] font-black">₹399</span> 
+                               <span>Paid via <span className="text-[var(--g600)] font-black tracking-wide">UPI</span></span>
                             </div>
                          </div>
                       </motion.div>
                     </motion.div>
 
-                    <button onClick={() => onOpenAuth('signup')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg px-8 py-4 rounded-full shadow-md transition-all active:scale-95 w-full sm:w-auto">
+                    <button onClick={() => onOpenAuth('signup')} className="bg-[var(--g600)] hover:bg-[var(--g700)] text-white font-bold text-lg px-8 py-4 rounded-[var(--r8)] shadow-[var(--shadow-sm)] transition-all active:scale-95 w-full sm:w-auto">
                       Create Your Store
                     </button>
 
@@ -438,49 +438,49 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       <motion.div 
         initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
       >
-            <section id="creators" className="py-20 md:py-28 bg-emerald-50">
+            <section id="creators" className="py-20 md:py-28 bg-[var(--card)]">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
                   
                   {/* Left: Content */}
                   <div className="lg:w-1/2 space-y-8">
                     <div>
-                      <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight mb-4">
+                      <h2 className="text-3xl sm:text-4xl font-heading font-black text-[var(--t1)] tracking-tight leading-tight mb-4">
                         Sell What You Know.<br/>Share What You Create.
                       </h2>
-                      <p className="text-lg text-slate-600 font-medium">
+                      <p className="text-lg text-[var(--t2)] font-medium">
                         Turn your audience into customers with one simple page for digital products, consultations and all your important links.
                       </p>
                     </div>
                     
                     <div className="space-y-6">
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                      <div className="bg-[var(--card)] rounded-[var(--r12)] p-6 shadow-[var(--shadow-sm)] border border-[var(--border)] flex items-start gap-4 hover:shadow-[var(--shadow)] transition">
+                        <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center shrink-0">
                           <FileText className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">Sell Digital Products</h3>
-                          <p className="text-slate-600 text-sm mt-1">Sell PDFs, notes, guides, files and other digital products with secure delivery.</p>
+                          <h3 className="font-heading font-bold text-lg text-[var(--t1)]">Sell Digital Products</h3>
+                          <p className="text-[var(--t2)] text-sm mt-1">Sell PDFs, notes, guides, files and other digital products with secure delivery.</p>
                         </div>
                       </div>
 
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                      <div className="bg-[var(--card)] rounded-[var(--r12)] p-6 shadow-[var(--shadow-sm)] border border-[var(--border)] flex items-start gap-4 hover:shadow-[var(--shadow)] transition">
+                        <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--b100)] text-[var(--b500)] flex items-center justify-center shrink-0">
                           <Calendar className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">Book Paid Consultations</h3>
-                          <p className="text-slate-600 text-sm mt-1">Let customers choose an available slot and book a paid 1:1 session.</p>
+                          <h3 className="font-heading font-bold text-lg text-[var(--t1)]">Book Paid Consultations</h3>
+                          <p className="text-[var(--t2)] text-sm mt-1">Let customers choose an available slot and book a paid 1:1 session.</p>
                         </div>
                       </div>
 
-                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-start gap-4 hover:shadow-md transition">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                      <div className="bg-[var(--card)] rounded-[var(--r12)] p-6 shadow-[var(--shadow-sm)] border border-[var(--border)] flex items-start gap-4 hover:shadow-[var(--shadow)] transition">
+                        <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center shrink-0">
                           <Link2 className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-slate-900">One Link for Everything</h3>
-                          <p className="text-slate-600 text-sm mt-1">Bring your WhatsApp groups, Telegram, YouTube, Instagram, Forms and more into one place.</p>
+                          <h3 className="font-heading font-bold text-lg text-[var(--t1)]">One Link for Everything</h3>
+                          <p className="text-[var(--t2)] text-sm mt-1">Bring your WhatsApp groups, Telegram, YouTube, Instagram, Forms and more into one place.</p>
                         </div>
                       </div>
                     </div>
@@ -491,44 +491,42 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                        whileInView={{ scale: 1, opacity: 1, y: 0 }} 
                        animate={{ y: [-5, 5, -5] }}
                        transition={{ y: { repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 0.5 }, opacity: { duration: 0.5 }, scale: { duration: 0.5 } }}
-                       className="bg-white rounded-2xl p-5 shadow-[0_20px_50px_-12px_rgba(59,130,246,0.25)] border-2 border-blue-50 flex items-center gap-4 mt-8 relative overflow-hidden group hover:border-blue-200 transition-colors"
+                       className="bg-[var(--card)] rounded-[var(--r12)] p-5 shadow-[var(--shadow-lg)] border border-[var(--border)] flex items-center gap-4 mt-8 relative overflow-hidden group hover:border-[var(--b500)] transition-colors"
                     >
-                       <div className="absolute -right-10 -top-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-500"></div>
-
                        {/* Colorful PDF Image Icon */}
-                       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white flex flex-col items-center justify-center shrink-0 shadow-lg shadow-red-500/30 transform group-hover:-rotate-6 transition-transform duration-300 border-2 border-white relative z-10">
+                       <div className="w-14 h-14 rounded-[var(--r8)] bg-gradient-to-br from-[var(--r500)] to-rose-600 text-white flex flex-col items-center justify-center shrink-0 shadow-lg shadow-red-500/30 transform group-hover:-rotate-6 transition-transform duration-300 border-2 border-white relative z-10">
                           <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 rounded-bl-lg"></div>
                           <FileText className="w-6 h-6 mb-0.5 drop-shadow-md" />
                           <span className="font-black text-[9px] tracking-wider drop-shadow-md">PDF</span>
                        </div>
 
                        <div className="flex-1 relative z-10">
-                          <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Digital File
+                          <div className="text-[10px] font-black text-[var(--b500)] uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--b500)] animate-pulse"></span> Digital File
                           </div>
-                          <div className="text-[15px] font-black text-slate-900 leading-tight">TSPSC Complete Notes</div>
-                          <div className="text-[13px] font-black text-emerald-600 mt-1 flex items-center gap-1.5">
-                             ₹49 <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded line-through">₹199</span>
+                          <div className="text-[15px] font-heading font-black text-[var(--t1)] leading-tight">TSPSC Complete Notes</div>
+                          <div className="text-[13px] font-black text-[var(--g600)] mt-1 flex items-center gap-1.5">
+                             ₹49 <span className="text-[10px] font-bold text-[var(--t3)] bg-[var(--g100)] px-1.5 py-0.5 rounded line-through">₹199</span>
                           </div>
                        </div>
                        
-                       <button className="relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-[0_8px_16px_-4px_rgba(16,185,129,0.4)] active:scale-95 hover:shadow-lg transition-all z-10 group/btn">
+                       <button className="relative overflow-hidden bg-[var(--g600)] hover:bg-[var(--g700)] text-white text-sm font-bold px-6 py-3 rounded-[var(--r8)] shadow-[var(--shadow-sm)] active:scale-95 transition-all z-10">
                           Buy Now
                        </button>
                     </motion.div>
 
-                    <button onClick={() => onOpenAuth('signup')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg px-8 py-4 rounded-full shadow-md transition-all active:scale-95 w-full sm:w-auto">
+                    <button onClick={() => onOpenAuth('signup')} className="bg-[var(--g600)] hover:bg-[var(--g700)] text-white font-bold text-lg px-8 py-4 rounded-[var(--r8)] shadow-[var(--shadow-sm)] transition-all active:scale-95 w-full sm:w-auto">
                       Create Your Creator Page
                     </button>
                   </div>
 
                   {/* Right: Image for Creator */}
                   <div className="lg:w-1/2 flex justify-center items-center relative w-full mx-auto">
-                     <div className="w-full relative rounded-3xl overflow-hidden border border-indigo-200/80 bg-white p-2 sm:p-3 shadow-xl">
+                     <div className="w-full relative rounded-[var(--r20)] overflow-hidden border border-[var(--border)] bg-[var(--card)] p-2 sm:p-3 shadow-[var(--shadow-lg)]">
                         <img 
                           src="/cteatorlink.jpeg" 
                           alt="Storelly for Creators" 
-                          className="w-full h-auto object-contain rounded-2xl transition-transform duration-500 hover:scale-[1.02]"
+                          className="w-full h-auto object-contain rounded-[var(--r16)] transition-transform duration-500 hover:scale-[1.02]"
                           style={{ imageRendering: "high-quality" }}
                         />
                      </div>
@@ -540,24 +538,24 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
           </motion.div>
 
       {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-24 bg-white">
+      <section id="how-it-works" className="py-24 bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-20">Go From Offline to Online in 3 Simple Steps</h2>
+          <h2 className="text-3xl sm:text-4xl font-heading font-black text-[var(--t1)] mb-20">Go From Offline to Online in 3 Simple Steps</h2>
 
           <div className="flex flex-col md:flex-row items-start justify-between relative max-w-5xl mx-auto">
             {/* Dotted connecting line */}
-            <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-[2px] border-t-2 border-dashed border-slate-300 -z-10"></div>
+            <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-[2px] border-t-2 border-dashed border-[var(--border)] -z-10"></div>
 
             {howItWorksData.map((step, index) => (
-              <div key={index} className="flex flex-col items-center text-center w-full md:w-1/3 mb-16 md:mb-0 relative bg-white px-6">
-                <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center border-2 border-slate-100 shadow-md relative mb-6">
-                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-lg">{step.step}</div>
-                  <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center shadow-inner">
+              <div key={index} className="flex flex-col items-center text-center w-full md:w-1/3 mb-16 md:mb-0 relative bg-[var(--card)] px-6">
+                <div className="w-24 h-24 rounded-full bg-[var(--bg)] flex items-center justify-center border-2 border-[var(--border)] shadow-[var(--shadow-xs)] relative mb-6">
+                  <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-[var(--g600)] text-white font-bold flex items-center justify-center text-sm shadow-[var(--shadow-sm)]">{step.step}</div>
+                  <div className="w-12 h-12 bg-[var(--g900)] rounded-[var(--r12)] flex items-center justify-center shadow-inner">
                     <step.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
-                <h3 className="font-bold text-slate-900 text-xl mb-3">{step.title}</h3>
-                <p className="text-slate-600 font-medium leading-relaxed">{step.desc}</p>
+                <h3 className="font-heading font-bold text-[var(--t1)] text-xl mb-3">{step.title}</h3>
+                <p className="text-[var(--t2)] font-medium leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -565,15 +563,15 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* FEATURES GRID */}
-      <section id="features" className="py-24 bg-slate-50 border-y border-slate-100 relative overflow-hidden">
+      <section id="features" className="py-24 bg-[var(--bg)] border-y border-[var(--border)] relative overflow-hidden">
         {/* Background decorative blobs */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-emerald-100 rounded-full blur-[100px] opacity-40 -z-10 pointer-events-none transform -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-100 rounded-full blur-[120px] opacity-40 -z-10 pointer-events-none transform translate-x-1/3 translate-y-1/3"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-[var(--g200)] rounded-full blur-[100px] opacity-30 -z-10 pointer-events-none transform -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[var(--p100)] rounded-full blur-[120px] opacity-40 -z-10 pointer-events-none transform translate-x-1/3 translate-y-1/3"></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-20">
-            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 mb-6 tracking-tight">Everything You Need to Sell From <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-600">One Link</span></h2>
-            <p className="text-lg text-slate-600 font-medium max-w-2xl mx-auto">We've built all the tools you need to run your online business, right into your Storelly page.</p>
+            <h2 className="text-3xl sm:text-5xl font-heading font-black text-[var(--t1)] mb-6 tracking-tight">Everything You Need to Sell From <span className="text-[var(--g600)]">One Link</span></h2>
+            <p className="text-lg text-[var(--t2)] font-medium max-w-2xl mx-auto">We've built all the tools you need to run your online business, right into your Storelly page.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
@@ -585,16 +583,16 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 whileHover={{ y: -8, scale: 1.02 }} 
-                className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-300 group overflow-hidden relative"
+                className="bg-[var(--card)] rounded-[var(--r16)] p-8 shadow-[var(--shadow-sm)] border border-[var(--border)] hover:shadow-[var(--shadow-lg)] transition-all duration-300 group overflow-hidden relative"
               >
                 {/* Glow effect on hover */}
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${feat.iconGradient} rounded-full blur-[60px] opacity-0 group-hover:opacity-30 group-hover:animate-pulse-subtle transition-opacity duration-500 pointer-events-none transform translate-x-1/2 -translate-y-1/2`}></div>
                 
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feat.iconGradient} flex items-center justify-center shrink-0 mb-6 shadow-lg ${feat.shadow} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 border-2 border-white relative z-10`}>
+                <div className={`w-16 h-16 rounded-[var(--r12)] bg-gradient-to-br ${feat.iconGradient} flex items-center justify-center shrink-0 mb-6 shadow-md ${feat.shadow} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 border-2 border-white relative z-10`}>
                   <div className="drop-shadow-md flex items-center justify-center w-full h-full">{feat.icon}</div>
                 </div>
-                <h3 className="font-bold text-slate-900 text-xl mb-3 relative z-10">{feat.title}</h3>
-                <p className="text-slate-500 font-medium leading-relaxed relative z-10">{feat.desc}</p>
+                <h3 className="font-heading font-bold text-[var(--t1)] text-xl mb-3 relative z-10">{feat.title}</h3>
+                <p className="text-[var(--t2)] font-medium leading-relaxed relative z-10">{feat.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -602,32 +600,32 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* QR / OFFLINE TO ONLINE SECTION */}
-      <section className="py-24 bg-white overflow-hidden">
+      <section className="py-24 bg-[var(--card)] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-[#1e293b] rounded-[40px] p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden">
+          <div className="bg-[var(--g900)] rounded-[var(--r24)] p-8 md:p-16 flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-[var(--shadow-xl)]">
             
             <div className="lg:w-1/2 z-10 text-center lg:text-left">
-              <h2 className="text-3xl sm:text-4xl font-black text-white mb-6 leading-tight">Your Shop Has a <br/><span className="text-emerald-600">Digital Address.</span></h2>
-              <p className="text-lg text-slate-300 font-medium mb-8 max-w-lg mx-auto lg:mx-0">
+              <h2 className="text-3xl sm:text-4xl font-heading font-black text-white mb-6 leading-tight">Your Shop Has a <br/><span className="text-[var(--g400)]">Digital Address.</span></h2>
+              <p className="text-lg text-[var(--g200)] font-medium mb-8 max-w-lg mx-auto lg:mx-0">
                 Put your Storelly QR code on your counter, packaging, business card or storefront. Customers scan, browse and order instantly.
               </p>
-              <button onClick={() => onOpenAuth('signup')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg px-8 py-4 rounded-full shadow-lg transition-all active:scale-95">
+              <button onClick={() => onOpenAuth('signup')} className="bg-[var(--g500)] hover:bg-[var(--g600)] text-white font-bold text-lg px-8 py-4 rounded-[var(--r8)] shadow-[var(--shadow-sm)] transition-all active:scale-95">
                 Create My Store
               </button>
             </div>
 
             <div className="lg:w-1/2 relative flex justify-center z-10">
-               <div className="relative w-64 h-64 bg-white rounded-3xl p-6 shadow-2xl flex flex-col items-center rotate-3 border-4 border-slate-100">
+               <div className="relative w-64 h-64 bg-white rounded-[var(--r20)] p-6 shadow-2xl flex flex-col items-center rotate-3 border-4 border-[var(--border)]">
                   <div className="flex items-center gap-2 mb-4">
-                     <Store className="w-6 h-6 text-emerald-600" />
-                     <span className="font-black text-xl text-slate-900">Storelly</span>
+                     <Store className="w-6 h-6 text-[var(--g600)]" />
+                     <span className="font-heading font-black text-xl text-[var(--g900)]">Storelly</span>
                   </div>
                   <QrCode className="w-32 h-32 text-slate-900" />
-                  <div className="mt-4 bg-emerald-600 text-white font-bold text-sm px-6 py-2 rounded-full">Scan to Shop</div>
+                  <div className="mt-4 bg-[var(--g600)] text-white font-bold text-sm px-6 py-2 rounded-[var(--r8)]">Scan to Shop</div>
                </div>
                
                {/* Background glowing circle */}
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-600 opacity-20 blur-[100px] rounded-full -z-10"></div>
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[var(--g500)] opacity-20 blur-[100px] rounded-full -z-10"></div>
             </div>
             
           </div>
@@ -635,20 +633,20 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* TRUST SECTION */}
-      <section className="py-24 bg-slate-50">
+      <section className="py-24 bg-[var(--bg)] border-y border-[var(--border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 max-w-3xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4">Built for the Way Indian Businesses Actually Sell</h2>
+            <h2 className="text-3xl sm:text-4xl font-heading font-black text-[var(--t1)] mb-4">Built for the Way Indian Businesses Actually Sell</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {trustData.map((item, index) => (
-              <div key={index} className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm text-center flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
+              <div key={index} className="bg-[var(--card)] rounded-[var(--r16)] p-8 border border-[var(--border)] shadow-[var(--shadow-xs)] text-center flex flex-col items-center hover:shadow-[var(--shadow-sm)] transition">
+                <div className="w-12 h-12 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center mb-6">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-3">{item.title}</h3>
-                <p className="text-slate-600 font-medium text-sm leading-relaxed">{item.desc}</p>
+                <h3 className="font-heading font-bold text-[var(--t1)] text-lg mb-3">{item.title}</h3>
+                <p className="text-[var(--t2)] font-medium text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -656,16 +654,16 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* TESTIMONIALS */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-[var(--card)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             
             {/* Vendor Testimonial */}
-            <div className="bg-emerald-50 rounded-[32px] p-10 relative overflow-hidden border border-[#ffedd5]">
+            <div className="bg-[var(--g100)]/40 rounded-[var(--r20)] p-10 relative overflow-hidden border border-[var(--border)] shadow-[var(--shadow-xs)]">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />)}
               </div>
-              <p className="text-xl font-bold text-slate-800 leading-relaxed mb-8">
+              <p className="text-xl font-bold text-[var(--t1)] leading-relaxed mb-8">
                 "I used to send product photos and prices one by one on WhatsApp. Now I just send my Storelly link. It saves me hours every day and looks so professional."
               </p>
               <div className="flex items-center gap-4">
@@ -673,18 +671,18 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                   P
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900">Priya</h4>
-                  <p className="text-sm font-medium text-slate-500">Homemade Food Seller</p>
+                  <h4 className="font-heading font-bold text-[var(--t1)]">Priya</h4>
+                  <p className="text-sm font-medium text-[var(--t2)]">Homemade Food Seller</p>
                 </div>
               </div>
             </div>
 
             {/* Creator Testimonial */}
-            <div className="bg-emerald-50 rounded-[32px] p-10 relative overflow-hidden border border-emerald-100">
+            <div className="bg-[var(--g100)]/40 rounded-[var(--r20)] p-10 relative overflow-hidden border border-[var(--border)] shadow-[var(--shadow-xs)]">
               <div className="flex gap-1 mb-6">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />)}
               </div>
-              <p className="text-xl font-bold text-slate-800 leading-relaxed mb-8">
+              <p className="text-xl font-bold text-[var(--t1)] leading-relaxed mb-8">
                 "My students can find my notes, booking link and YouTube channel in one place. Storelly makes selling PDFs via UPI completely effortless."
               </p>
               <div className="flex items-center gap-4">
@@ -692,8 +690,8 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                   R
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900">Rahul</h4>
-                  <p className="text-sm font-medium text-slate-500">Teacher & Creator</p>
+                  <h4 className="font-heading font-bold text-[var(--t1)]">Rahul</h4>
+                  <p className="text-sm font-medium text-[var(--t2)]">Teacher & Creator</p>
                 </div>
               </div>
             </div>
@@ -703,19 +701,19 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* PRICING SECTION */}
-      <section id="pricing" className="py-24 bg-slate-50 border-t border-slate-100">
+      <section id="pricing" className="py-24 bg-[var(--bg)] border-t border-[var(--border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 space-y-2">
             {pricingCMS.badge && (
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--g700)] bg-[var(--g100)] px-3 py-1 rounded-[var(--r8)] border border-[var(--g200)]">
                 {pricingCMS.badge}
               </span>
             )}
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-2">
+            <h2 className="text-3xl sm:text-4xl font-heading font-black text-[var(--t1)] mt-2">
               {pricingCMS.title || 'Start Free. Upgrade When You Grow.'}
             </h2>
             {pricingCMS.subtitle && (
-              <p className="text-slate-500 font-medium max-w-xl mx-auto text-sm sm:text-base">
+              <p className="text-[var(--t2)] font-medium max-w-xl mx-auto text-sm sm:text-base">
                 {pricingCMS.subtitle}
               </p>
             )}
@@ -727,40 +725,40 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
               return (
                 <div
                   key={plan.id}
-                  className={`bg-white rounded-[32px] p-8 sm:p-10 border flex flex-col relative transition-all duration-200 ${
+                  className={`bg-[var(--card)] rounded-[var(--r20)] p-8 sm:p-10 border flex flex-col relative transition-all duration-200 ${
                     isRecommended
-                      ? 'border-2 border-emerald-600 shadow-xl md:-translate-y-3'
-                      : 'border-slate-200 shadow-sm'
+                      ? 'border-2 border-[var(--g600)] shadow-[var(--shadow-lg)] md:-translate-y-3'
+                      : 'border-[var(--border)] shadow-[var(--shadow-sm)]'
                   }`}
                 >
                   {(plan.badge || isRecommended) && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest px-6 py-2 rounded-full flex items-center gap-1.5 shadow-md">
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[var(--g600)] text-white text-xs font-black uppercase tracking-widest px-6 py-2 rounded-[var(--r8)] flex items-center gap-1.5 shadow-[var(--shadow-sm)]">
                       <Star className="w-4 h-4 fill-white" /> {plan.badge || 'Recommended'}
                     </div>
                   )}
 
-                  <h3 className={`text-2xl font-black text-slate-900 mb-2 ${isRecommended ? 'mt-2' : ''}`}>
+                  <h3 className={`text-2xl font-heading font-black text-[var(--t1)] mb-2 ${isRecommended ? 'mt-2' : ''}`}>
                     {plan.name}
                   </h3>
 
                   <div className="flex items-end gap-1 mb-4">
-                    <span className="text-5xl font-black text-slate-900">
+                    <span className="text-5xl font-black text-[var(--t1)]">
                       {plan.currency || '₹'}{plan.monthlyPrice}
                     </span>
                     {plan.billingCycle && (
-                      <span className="text-slate-500 font-medium mb-1">{plan.billingCycle}</span>
+                      <span className="text-[var(--t2)] font-medium mb-1">{plan.billingCycle}</span>
                     )}
                   </div>
 
-                  <p className="text-slate-500 font-medium mb-8 text-sm sm:text-base">{plan.tagline}</p>
+                  <p className="text-[var(--t2)] font-medium mb-8 text-sm sm:text-base">{plan.tagline}</p>
 
                   <div className="space-y-4 mb-10 flex-1">
                     {plan.features?.map((feat, i) => (
                       <div key={i} className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isRecommended ? 'bg-emerald-600/10' : 'bg-emerald-100'}`}>
-                          <Check className="w-4 h-4 text-emerald-600 font-bold" />
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isRecommended ? 'bg-[var(--g100)]' : 'bg-[var(--g100)]'}`}>
+                          <Check className="w-4 h-4 text-[var(--g600)] font-bold" />
                         </div>
-                        <span className={`text-sm sm:text-base ${isRecommended ? 'font-bold text-slate-800' : 'font-medium text-slate-700'}`}>
+                        <span className={`text-sm sm:text-base ${isRecommended ? 'font-bold text-[var(--t1)]' : 'font-medium text-[var(--t2)]'}`}>
                           {feat}
                         </span>
                       </div>
@@ -773,10 +771,10 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
                       if (plan.ctaAction === 'login') onOpenAuth('login');
                       else onOpenAuth('signup');
                     }}
-                    className={`w-full py-4 rounded-full font-bold transition-all text-base sm:text-lg cursor-pointer active:scale-95 ${
+                    className={`w-full py-4 rounded-[var(--r8)] font-bold transition-all text-base sm:text-lg cursor-pointer active:scale-95 ${
                       isRecommended
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md'
-                        : 'border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300'
+                        ? 'bg-[var(--g600)] text-white hover:bg-[var(--g700)] shadow-[var(--shadow-sm)]'
+                        : 'border-2 border-[var(--border)] text-[var(--g700)] bg-[var(--g100)] hover:bg-[var(--g200)]'
                     }`}
                   >
                     {plan.ctaText || (plan.monthlyPrice === 0 ? 'Start Free' : 'Get Started')}
@@ -787,7 +785,7 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
           </div>
 
           {pricingCMS.footerNote && (
-            <p className="text-center text-slate-500 font-medium mt-10 text-sm sm:text-base">
+            <p className="text-center text-[var(--t3)] font-medium mt-10 text-sm sm:text-base">
               {pricingCMS.footerNote}
             </p>
           )}
@@ -795,27 +793,27 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="py-24 bg-white">
+      <section id="faq" className="py-24 bg-[var(--card)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-4">Frequently Asked Questions</h2>
+            <h2 className="text-3xl sm:text-4xl font-heading font-black text-[var(--t1)] mb-4">Frequently Asked Questions</h2>
           </div>
 
           <div className="space-y-4">
             {faqData.map((item, i) => (
-              <div key={i} className="border border-slate-200 rounded-2xl overflow-hidden bg-white hover:border-emerald-600/30 transition-colors">
+              <div key={i} className="border border-[var(--border)] rounded-[var(--r12)] overflow-hidden bg-[var(--card)] hover:border-[var(--g400)] transition-colors">
                 <button 
                   onClick={() => toggleFaq(i)}
-                  className="w-full px-6 py-5 flex items-center justify-between bg-white text-left focus:outline-none"
+                  className="w-full px-6 py-5 flex items-center justify-between bg-[var(--card)] text-left focus:outline-none"
                 >
-                  <span className="font-bold text-slate-900 text-lg">{item.q}</span>
-                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${openFaq === i ? 'rotate-180 text-emerald-600' : ''}`} />
+                  <span className="font-heading font-bold text-[var(--t1)] text-lg">{item.q}</span>
+                  <ChevronDown className={`w-5 h-5 text-[var(--t3)] transition-transform duration-300 ${openFaq === i ? 'rotate-180 text-[var(--g600)]' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {openFaq === i && (
                     <motion.div 
                       initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      className="px-6 pb-5 text-slate-600 font-medium leading-relaxed"
+                      className="px-6 pb-5 text-[var(--t2)] font-medium leading-relaxed"
                     >
                       {item.a}
                     </motion.div>
@@ -828,18 +826,18 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-24 bg-emerald-600 relative overflow-hidden">
+      <section className="py-24 bg-[var(--g700)] relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 2px, transparent 2px)', backgroundSize: '24px 24px' }}></div>
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl sm:text-5xl font-black text-white mb-6 leading-tight">Ready to Give Your Business <br/>One Link?</h2>
+          <h2 className="text-4xl sm:text-5xl font-heading font-black text-white mb-6 leading-tight">Ready to Give Your Business <br/>One Link?</h2>
           <p className="text-xl text-white/90 font-medium mb-10 max-w-2xl mx-auto">
             Create your Storelly page, share it with your customers and start selling.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-             <button onClick={() => onOpenAuth('signup')} className="bg-white text-emerald-600 font-black text-lg px-10 py-5 rounded-full shadow-xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto">
+             <button onClick={() => onOpenAuth('signup')} className="bg-white text-[var(--g800)] font-black text-lg px-10 py-5 rounded-[var(--r8)] shadow-[var(--shadow-xl)] transition-all hover:scale-105 active:scale-95 w-full sm:w-auto">
                Create Your Free Store
              </button>
-             <a href="#features" className="bg-emerald-700 text-white font-bold text-lg px-10 py-5 rounded-full transition-all hover:bg-emerald-800 w-full sm:w-auto">
+             <a href="#features" className="bg-[var(--g800)] text-white font-bold text-lg px-10 py-5 rounded-[var(--r8)] transition-all hover:bg-[var(--g900)] border border-white/20 w-full sm:w-auto">
                Explore Features
              </a>
           </div>
@@ -847,29 +845,29 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#1e293b] text-slate-300 py-20 border-t border-slate-800">
+      <footer className="bg-[var(--g900)] text-[var(--g200)] py-20 border-t border-[var(--border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
             
             {/* Brand */}
             <div className="lg:col-span-2 space-y-6">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-[var(--r8)] bg-[var(--g600)] flex items-center justify-center">
                   <Store className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-2xl font-black text-white tracking-tight">Storelly</span>
+                <span className="text-2xl font-heading font-black text-white tracking-tight">Storelly</span>
               </div>
-              <p className="text-slate-400 font-medium max-w-sm text-lg">One link for your business.</p>
+              <p className="text-[var(--g300)] font-medium max-w-sm text-lg">One link for your business.</p>
               <div className="flex gap-4 pt-4">
-                 <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 transition"><Instagram className="w-5 h-5" /></a>
-                 <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 transition"><Youtube className="w-5 h-5" /></a>
-                 <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-emerald-600 transition"><MessageCircle className="w-5 h-5" /></a>
+                 <a href="#" className="w-10 h-10 rounded-full bg-[var(--g800)] flex items-center justify-center hover:bg-[var(--g600)] transition text-white"><Instagram className="w-5 h-5" /></a>
+                 <a href="#" className="w-10 h-10 rounded-full bg-[var(--g800)] flex items-center justify-center hover:bg-[var(--g600)] transition text-white"><Youtube className="w-5 h-5" /></a>
+                 <a href="#" className="w-10 h-10 rounded-full bg-[var(--g800)] flex items-center justify-center hover:bg-[var(--g600)] transition text-white"><MessageCircle className="w-5 h-5" /></a>
               </div>
             </div>
 
             <div className="space-y-6">
-              <h4 className="text-white font-bold tracking-wider uppercase text-sm">Product</h4>
-              <ul className="space-y-4 text-slate-400 font-medium">
+              <h4 className="text-white font-heading font-bold tracking-wider uppercase text-sm">Product</h4>
+              <ul className="space-y-4 text-[var(--g300)] font-medium">
                 <li><a href="#features" className="hover:text-white transition">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition">Pricing</a></li>
                 <li><a href="#vendors" className="hover:text-white transition">For Vendors</a></li>
@@ -878,8 +876,8 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
             </div>
 
             <div className="space-y-6">
-              <h4 className="text-white font-bold tracking-wider uppercase text-sm">Company</h4>
-              <ul className="space-y-4 text-slate-400 font-medium">
+              <h4 className="text-white font-heading font-bold tracking-wider uppercase text-sm">Company</h4>
+              <ul className="space-y-4 text-[var(--g300)] font-medium">
                 <li><a href="#" className="hover:text-white transition">About</a></li>
                 <li><a href="#" className="hover:text-white transition">Contact</a></li>
                 <li><a href="#faq" className="hover:text-white transition">FAQ</a></li>
@@ -888,8 +886,8 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
             </div>
 
             <div className="space-y-6">
-              <h4 className="text-white font-bold tracking-wider uppercase text-sm">Legal</h4>
-              <ul className="space-y-4 text-slate-400 font-medium">
+              <h4 className="text-white font-heading font-bold tracking-wider uppercase text-sm">Legal</h4>
+              <ul className="space-y-4 text-[var(--g300)] font-medium">
                 <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-white transition">Terms of Service</a></li>
                 <li><a href="#" className="hover:text-white transition">Refund Policy</a></li>
@@ -897,9 +895,9 @@ export const MasterLandingView: React.FC<MasterLandingViewProps> = ({ onOpenAuth
             </div>
           </div>
           
-          <div className="mt-16 pt-8 border-t border-slate-800 text-center text-slate-500 font-medium flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="mt-16 pt-8 border-t border-[var(--g800)] text-center text-[var(--g300)] font-medium flex flex-col md:flex-row justify-between items-center gap-4">
              <p>&copy; {new Date().getFullYear()} Storelly. All rights reserved.</p>
-             <p className="flex items-center gap-1">Made with <span className="text-red-500">♥</span> for Indian Businesses</p>
+             <p className="flex items-center gap-1">Made with <span className="text-[var(--r500)]">♥</span> for Indian Businesses</p>
           </div>
         </div>
       </footer>

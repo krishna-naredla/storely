@@ -172,10 +172,10 @@ export const OrderManager: React.FC<any> = ({ business }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+          <h2 className="text-xl sm:text-2xl font-black text-[var(--t1)] font-heading">
             {isCreator ? 'Digital Sales & Bookings' : 'Customer Orders'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--t2)] mt-0.5">
             {isCreator 
               ? 'Manage your digital product sales and consultation bookings.'
               : 'Manage incoming orders, update fulfilment status, and notify customers via WhatsApp.'}
@@ -186,24 +186,24 @@ export const OrderManager: React.FC<any> = ({ business }) => {
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            className="px-3 py-2 bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 shadow-[var(--shadow-xs)] cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-[var(--t2)]" />
             <span>Export CSV</span>
           </button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[var(--card)] p-3 rounded-[var(--r12)] border border-[var(--border)] shadow-[var(--shadow-xs)]">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t3)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by order #, customer name, phone..."
-            className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
+            className="w-full pl-10 pr-4 py-2 text-xs border border-[var(--border)] rounded-[var(--r8)] focus:outline-[var(--g400)] bg-[var(--bg)] text-[var(--t1)]"
           />
         </div>
 
@@ -211,7 +211,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
+            className="px-3 py-2 text-xs border border-[var(--border)] rounded-[var(--r8)] focus:outline-[var(--g400)] bg-[var(--card)] text-[var(--t1)] font-medium"
           >
             <option value="all">All Statuses ({orders.length})</option>
             <option value="pending">{t("orders.pending")}</option>
@@ -228,11 +228,11 @@ export const OrderManager: React.FC<any> = ({ business }) => {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+            <div key={i} className="h-20 bg-[var(--card)] rounded-[var(--r16)] border border-[var(--border)] animate-pulse" />
           ))}
         </div>
       ) : filteredOrders.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+        <div className="bg-[var(--card)] rounded-[var(--r16)] border border-[var(--border)] shadow-[var(--shadow-xs)] divide-y divide-[var(--border)] overflow-hidden">
           {filteredOrders.map((order, index) => (
             <motion.div
               key={order.id}
@@ -242,22 +242,22 @@ export const OrderManager: React.FC<any> = ({ business }) => {
             >
               <SwipeToDelete onDelete={() => deleteOrder(business.id, order.id)} deleteLabel="Remove">
                 <div
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition bg-white"
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[var(--bg)] transition bg-[var(--card)]"
                 >
                 {/* Order Info & Customer */}
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-heading font-extrabold text-sm text-slate-900">
+                    <span className="font-heading font-extrabold text-sm text-[var(--t1)]">
                       {order.orderNumber}
                     </span>
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
+                      className={`px-2.5 py-0.5 rounded-[var(--r8)] text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
                         order
                       )}`}
                     >
                       {order.status}
                     </span>
-                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-semibold text-[var(--t2)] bg-[var(--bg)] border border-[var(--border)] px-2 py-0.5 rounded-[var(--r4)]">
                       {order.orderType === 'digital'
                         ? 'Digital Download'
                         : order.orderType === 'consultation'
@@ -270,28 +270,28 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                     </span>
                   </div>
 
-                  <div className="text-xs text-slate-600 flex items-center gap-2 flex-wrap pt-0.5">
-                    <span className="font-bold text-slate-800">{order.customerName}</span>
+                  <div className="text-xs text-[var(--t2)] flex items-center gap-2 flex-wrap pt-0.5">
+                    <span className="font-bold text-[var(--t1)]">{order.customerName}</span>
                     <span>•</span>
                     <span>{order.customerPhone}</span>
                     <span>•</span>
-                    <span className="text-slate-400">
+                    <span className="text-[var(--t3)]">
                       {new Date(order.createdAt).toLocaleString()}
                     </span>
                   </div>
 
-                  <div className="text-[11px] text-slate-500 line-clamp-1">
+                  <div className="text-[11px] text-[var(--t3)] line-clamp-1">
                     Items: {order.items.map((i) => `${i.name} x${i.quantity}`).join(', ')}
                   </div>
                 </div>
 
                 {/* Total & Action Buttons */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border)]">
                   <div className="text-left sm:text-right">
-                    <div className="font-extrabold text-base text-slate-900">
+                    <div className="font-extrabold text-base text-[var(--t1)]">
                       {business.currencySymbol}{order.total}
                     </div>
-                  <div className="text-[10px] text-slate-400">
+                  <div className="text-[10px] text-[var(--t3)]">
                     {order.paymentMethod === 'cod'
                       ? 'Cash On Delivery'
                       : order.paymentMethod === 'upi_on_delivery'
@@ -306,7 +306,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                     <button
                       type="button"
                       onClick={() => handleSendWhatsAppUpdate(order)}
-                      className="p-2 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-xl transition cursor-pointer"
+                      className="p-2 text-[var(--g600)] hover:bg-[var(--g100)] border border-[var(--g200)] rounded-[var(--r8)] transition cursor-pointer"
                       title="Send WhatsApp Update"
                     >
                       <MessageCircle className="w-4 h-4" />
@@ -315,7 +315,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                     <button
                       type="button"
                       onClick={() => setSelectedOrder(order)}
-                      className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-2 bg-[var(--g900)] hover:bg-[var(--g800)] text-white text-xs font-bold rounded-[var(--r8)] transition flex items-center gap-1 cursor-pointer shadow-[var(--shadow-xs)]"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>Details</span>
@@ -328,12 +328,12 @@ export const OrderManager: React.FC<any> = ({ business }) => {
         ))}
         </div>
       ) : (
-        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+        <div className="p-12 text-center bg-[var(--card)] rounded-[var(--r16)] border border-dashed border-[var(--border)] space-y-3">
+          <div className="w-12 h-12 rounded-[var(--r12)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center mx-auto">
             <ShoppingBag className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-900">No Orders Found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <h3 className="text-base font-bold text-[var(--t1)] font-heading">No Orders Found</h3>
+          <p className="text-xs text-[var(--t2)] max-w-sm mx-auto">
             When customers place orders on your public storefront, they will show up here instantly with full details.
           </p>
         </div>
@@ -366,30 +366,30 @@ export const OrderManager: React.FC<any> = ({ business }) => {
               }
             }
           `}</style>
-          <div className="relative w-full max-w-xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden printable-order-modal print:max-h-none print:overflow-visible">
+          <div className="relative w-full max-w-xl max-h-[90vh] bg-[var(--card)] rounded-[var(--r16)] shadow-[var(--shadow-xl)] border border-[var(--border)] flex flex-col overflow-hidden printable-order-modal print:max-h-none print:overflow-visible">
             {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between shrink-0">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900 font-heading">
+                  <h3 className="text-base font-bold text-[var(--t1)] font-heading">
                     Order {selectedOrder.orderNumber}
                   </h3>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
+                    className={`px-2.5 py-0.5 rounded-[var(--r8)] text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
                       selectedOrder
                     )}`}
                   >
                     {selectedOrder.status}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-[var(--t3)]">
                   Placed on {new Date(selectedOrder.createdAt).toLocaleString()}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg print-hide"
+                className="p-1.5 text-[var(--t3)] hover:text-[var(--t1)] rounded-[var(--r8)] print-hide"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -399,16 +399,16 @@ export const OrderManager: React.FC<any> = ({ business }) => {
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               {/* Store & Receipt Title for Print */}
               <div className="hidden print:block text-center border-b pb-4 mb-2">
-                <h2 className="text-lg font-extrabold text-slate-900">{business.name}</h2>
-                {business.tagline && <p className="text-xs text-slate-600">{business.tagline}</p>}
-                <p className="text-[11px] text-slate-500">Phone: {business.phone} {business.address ? `• ${business.address}` : ''}</p>
-                <div className="mt-2 text-xs font-bold uppercase tracking-widest text-slate-700">Official Order Invoice</div>
+                <h2 className="text-lg font-extrabold text-[var(--t1)] font-heading">{business.name}</h2>
+                {business.tagline && <p className="text-xs text-[var(--t2)]">{business.tagline}</p>}
+                <p className="text-[11px] text-[var(--t3)]">Phone: {business.phone} {business.address ? `• ${business.address}` : ''}</p>
+                <div className="mt-2 text-xs font-bold uppercase tracking-widest text-[var(--t2)]">Official Order Invoice</div>
               </div>
 
               {/* Status Update Control */}
               {!isCreator && selectedOrder.orderType !== 'digital' && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 print-hide">
-                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <div className="p-4 bg-[var(--bg)] rounded-[var(--r12)] border border-[var(--border)] space-y-2 print-hide">
+                  <label className="block text-xs font-bold text-[var(--t1)] uppercase tracking-wider font-heading">
                     Update Fulfilment Status
                   </label>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
@@ -419,10 +419,10 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                           type="button"
                           disabled={isUpdatingStatus}
                           onClick={() => handleStatusChange(selectedOrder, st)}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition ${
+                          className={`py-1.5 px-2 rounded-[var(--r8)] text-xs font-bold capitalize transition ${
                             selectedOrder.status === st
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                              ? 'bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]'
+                              : 'bg-[var(--card)] text-[var(--t2)] hover:bg-[var(--bg)] border border-[var(--border)]'
                           }`}
                         >
                           {st.replace('-', ' ')}
@@ -435,35 +435,35 @@ export const OrderManager: React.FC<any> = ({ business }) => {
 
               {/* Customer Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-1.5">
-                  <span className="font-bold text-slate-800 uppercase text-[10px] tracking-wider block text-slate-500">
+                <div className="p-3.5 rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg)] space-y-1.5">
+                  <span className="font-bold uppercase text-[10px] tracking-wider block text-[var(--t3)]">
                     Customer Information
                   </span>
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="font-bold text-[var(--t1)] flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-[var(--t3)]" />
                     {selectedOrder.customerName}
                   </div>
-                  <div className="text-slate-600 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="text-[var(--t2)] flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-[var(--t3)]" />
                     {selectedOrder.customerPhone}
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-1.5">
-                  <span className="font-bold text-slate-800 uppercase text-[10px] tracking-wider block text-slate-500">
+                <div className="p-3.5 rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg)] space-y-1.5">
+                  <span className="font-bold uppercase text-[10px] tracking-wider block text-[var(--t3)]">
                     Delivery / Fulfilment
                   </span>
-                  <div className="font-semibold text-slate-900 capitalize">
+                  <div className="font-semibold text-[var(--t1)] capitalize">
                     {selectedOrder.orderType.replace('_', ' ')}
                   </div>
                   {selectedOrder.customerAddress && (
-                    <div className="text-slate-600 text-[11px] leading-relaxed flex items-start gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <div className="text-[var(--t2)] text-[11px] leading-relaxed flex items-start gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-[var(--t3)] shrink-0 mt-0.5" />
                       <span>{selectedOrder.customerAddress}</span>
                     </div>
                   )}
                   {selectedOrder.tableNumber && (
-                    <div className="text-emerald-700 font-bold">
+                    <div className="text-[var(--g700)] font-bold">
                       Table: {selectedOrder.tableNumber}
                     </div>
                   )}
@@ -472,28 +472,28 @@ export const OrderManager: React.FC<any> = ({ business }) => {
 
               {/* Items Breakdown */}
               <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                <h4 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider mb-2 font-heading">
                   Order Items ({selectedOrder.items.length})
                 </h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                <div className="border border-[var(--border)] rounded-[var(--r12)] overflow-hidden divide-y divide-[var(--border)]">
                   {selectedOrder.items.map((item, idx) => (
-                    <div key={idx} className="p-3 flex items-center justify-between text-xs">
+                    <div key={idx} className="p-3 flex items-center justify-between text-xs bg-[var(--card)]">
                       <div>
-                        <div className="font-bold text-slate-900">{item.name}</div>
+                        <div className="font-bold text-[var(--t1)]">{item.name}</div>
                         {item.variantName && (
-                          <div className="text-[11px] text-emerald-700">Option: {item.variantName}</div>
+                          <div className="text-[11px] text-[var(--g700)]">Option: {item.variantName}</div>
                         )}
                         {item.addons && item.addons.length > 0 && (
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-[11px] text-[var(--t2)]">
                             Add-ons: {item.addons.map((a) => a.name).join(', ')}
                           </div>
                         )}
-                        <div className="text-slate-400 text-[11px]">
+                        <div className="text-[var(--t3)] text-[11px]">
                           {business.currencySymbol}{item.price} x {item.quantity}
                         </div>
                       </div>
 
-                      <div className="font-bold text-slate-900">
+                      <div className="font-bold text-[var(--t1)]">
                         {business.currencySymbol}{item.price * item.quantity}
                       </div>
                     </div>
@@ -502,50 +502,50 @@ export const OrderManager: React.FC<any> = ({ business }) => {
               </div>
 
               {/* Summary Calculations */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
-                <div className="flex justify-between text-slate-600">
+              <div className="p-4 bg-[var(--bg)] rounded-[var(--r12)] border border-[var(--border)] space-y-1.5 text-xs">
+                <div className="flex justify-between text-[var(--t2)]">
                   <span>Subtotal</span>
                   <span>{business.currencySymbol}{selectedOrder.subtotal}</span>
                 </div>
                 {selectedOrder.deliveryFee > 0 && (
-                  <div className="flex justify-between text-slate-600">
+                  <div className="flex justify-between text-[var(--t2)]">
                     <span>Delivery Charge</span>
                     <span>{business.currencySymbol}{selectedOrder.deliveryFee}</span>
                   </div>
                 )}
                 {selectedOrder.tax > 0 && (
-                  <div className="flex justify-between text-slate-600">
+                  <div className="flex justify-between text-[var(--t2)]">
                     <span>Tax</span>
                     <span>{business.currencySymbol}{selectedOrder.tax}</span>
                   </div>
                 )}
                 {selectedOrder.discount > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-semibold">
+                  <div className="flex justify-between text-[var(--g600)] font-semibold">
                     <span>Discount</span>
                     <span>-{business.currencySymbol}{selectedOrder.discount}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-extrabold text-sm text-slate-900 pt-2 border-t border-slate-200">
+                <div className="flex justify-between font-extrabold text-sm text-[var(--t1)] pt-2 border-t border-[var(--border)]">
                   <span>Total Amount</span>
                   <span>{business.currencySymbol}{selectedOrder.total}</span>
                 </div>
               </div>
 
               {/* Print Receipt Footer Notes */}
-              <div className="hidden print:block text-center text-[10px] text-slate-500 pt-4 border-t">
+              <div className="hidden print:block text-center text-[10px] text-[var(--t3)] pt-4 border-t">
                 Thank you for shopping with {business.name}! For queries, contact {business.phone}.
               </div>
             </div>
 
             {/* Footer actions */}
-            <div className="p-4 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50 flex-wrap gap-2 print-hide">
+            <div className="p-4 border-t border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--bg)] flex-wrap gap-2 print-hide">
               <button
                 type="button"
                 onClick={handlePrint}
-                className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-3.5 py-2 bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
                 title="Print simplified receipt invoice"
               >
-                <Printer className="w-4 h-4 text-slate-600" />
+                <Printer className="w-4 h-4 text-[var(--t2)]" />
                 <span>Print Receipt</span>
               </button>
 
@@ -553,17 +553,17 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                 <button
                   type="button"
                   onClick={() => handleShareOrderToMerchant(selectedOrder)}
-                  className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-2 bg-[var(--g100)] hover:bg-[var(--g200)] text-[var(--g800)] border border-[var(--g200)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer"
                   title="Share order details to WhatsApp"
                 >
-                  <Send className="w-4 h-4 text-emerald-600" />
+                  <Send className="w-4 h-4 text-[var(--g600)]" />
                   <span>Share Order</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSendWhatsAppUpdate(selectedOrder)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-[var(--g600)] hover:bg-[var(--g700)] text-white font-bold text-xs rounded-[var(--r8)] shadow-[var(--shadow-xs)] transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>WhatsApp Customer</span>

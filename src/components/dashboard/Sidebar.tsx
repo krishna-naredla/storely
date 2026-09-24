@@ -161,7 +161,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             !!modules?.services ||
             !!modules?.menu ||
             !!modules?.rooms ||
-            !!modules?.vehicles,
+            !!modules?.vehicles ||
+            !!modules?.digital_products ||
+            !!modules?.digitalProducts,
         },
         {
           id: "categories",
@@ -180,7 +182,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: ShoppingBag,
           badge: pendingOrdersCount > 0 ? pendingOrdersCount.toString() : undefined,
           visible:
-            !!modules?.cart_ordering || !!modules?.menu || !!modules?.products || !!modules?.table_delivery || !!modules?.inquiries,
+            !!modules?.cart_ordering ||
+            !!modules?.menu ||
+            !!modules?.products ||
+            !!modules?.table_delivery ||
+            !!modules?.inquiries ||
+            !!modules?.digital_products ||
+            !!modules?.digitalProducts,
+        },
+        {
+          id: "portfolio",
+          label: "Portfolio",
+          icon: Briefcase,
+          badge: "Showcase",
+          visible: !!modules?.work_portfolio || !!modules?.portfolio,
+        },
+        {
+          id: "biolink",
+          label: "Bio Link",
+          icon: Link,
+          badge: "@link",
+          visible: !!modules?.universal_links || !!modules?.biolink,
+        },
+        {
+          id: "events",
+          label: "Events & Tickets",
+          icon: Ticket,
+          visible: !!modules?.events_tickets || !!modules?.events_ticketing,
+        },
+        {
+          id: "quotes",
+          label: "Custom Quotes",
+          icon: FileText,
+          visible: !!modules?.custom_quotes,
         },
         {
           id: "bookings",
@@ -253,13 +287,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-slate-200/90 flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-40 h-full w-64 bg-[var(--card)] border-r border-[var(--border)] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Brand Header */}
         <div>
-          <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100">
+          <div className="h-16 px-5 flex items-center justify-between border-b border-[var(--border)]">
             <button
               type="button"
               onClick={() => {
@@ -269,8 +303,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={isCreator ? "Click to view live creator portfolio" : "Click to view live storefront"}
               className="touch-target-accessible min-h-[44px] flex items-center gap-2.5 text-left group cursor-pointer"
             >
-              <div className={`w-9 h-9 rounded-xl bg-white border overflow-hidden flex items-center justify-center shadow-xs transition ${
-                isCreator ? 'border-slate-200 group-hover:border-indigo-500' : 'border-slate-200 group-hover:border-emerald-500'
+              <div className={`w-9 h-9 rounded-[var(--r8)] bg-[var(--card)] border overflow-hidden flex items-center justify-center shadow-[var(--shadow-xs)] transition ${
+                isCreator ? 'border-[var(--border)] group-hover:border-[var(--p500)]' : 'border-[var(--border)] group-hover:border-[var(--g500)]'
               }`}>
                 {getBusinessLogo(business) ? (
                   <img
@@ -284,19 +318,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center font-black text-xs text-white ${
-                    isCreator ? 'bg-gradient-to-tr from-indigo-600 to-purple-600' : 'bg-gradient-to-tr from-emerald-600 to-teal-600'
+                    isCreator ? 'bg-gradient-to-tr from-[var(--p500)] to-purple-600' : 'bg-gradient-to-tr from-[var(--g600)] to-[var(--g400)]'
                   }`}>
                     {(business?.name || 'S').slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
               <div>
-                <span className={`font-heading font-extrabold text-lg text-slate-900 tracking-tight flex items-center gap-1 transition ${
-                  isCreator ? 'group-hover:text-indigo-700' : 'group-hover:text-emerald-700'
+                <span className={`font-heading font-extrabold text-lg text-[var(--t1)] tracking-tight flex items-center gap-1 transition ${
+                  isCreator ? 'group-hover:text-[var(--p500)]' : 'group-hover:text-[var(--g700)]'
                 }`}>
                   Storelly
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                    isCreator ? 'text-indigo-600 bg-indigo-50 border-indigo-200/60' : 'text-emerald-600 bg-emerald-50 border-emerald-200/60'
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] border ${
+                    isCreator ? 'text-[var(--p500)] bg-[var(--p100)] border-[var(--p100)]' : 'text-[var(--g600)] bg-[var(--g100)] border-[var(--g200)]'
                   }`}>
                     {isCreator ? 'CREATOR' : 'OS'}
                   </span>
@@ -306,7 +340,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               onClick={onClose}
               aria-label="Close menu"
-              className="lg:hidden touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              className="lg:hidden touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1.5 text-[var(--t3)] hover:text-[var(--t1)] rounded-[var(--r8)] cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -322,14 +356,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClose();
                 }}
                 title={isCreator ? "Click to view your live portfolio / public page" : "Click to open your live public storefront"}
-                className={`w-full text-left p-2.5 rounded-xl border flex items-center gap-2.5 transition group cursor-pointer shadow-2xs touch-target-accessible min-h-[48px] ${
+                className={`w-full text-left p-2.5 rounded-[var(--r12)] border flex items-center gap-2.5 transition group cursor-pointer shadow-[var(--shadow-xs)] touch-target-accessible min-h-[48px] ${
                   isCreator
-                    ? "bg-slate-50 hover:bg-indigo-50/80 active:bg-indigo-100/60 border-slate-200/80 hover:border-indigo-300"
-                    : "bg-slate-50 hover:bg-emerald-50/80 active:bg-emerald-100/60 border-slate-200/80 hover:border-emerald-300"
+                    ? "bg-[var(--bg)] hover:bg-[var(--p100)] active:bg-[var(--p100)] border-[var(--border)] hover:border-[var(--p500)]"
+                    : "bg-[var(--bg)] hover:bg-[var(--g100)] active:bg-[var(--g100)] border-[var(--border)] hover:border-[var(--g400)]"
                 }`}
               >
-                <div className={`w-9 h-9 rounded-lg bg-white border overflow-hidden shrink-0 transition ${
-                  isCreator ? "border-slate-200 group-hover:border-indigo-400" : "border-slate-200 group-hover:border-emerald-400"
+                <div className={`w-9 h-9 rounded-[var(--r8)] bg-[var(--card)] border overflow-hidden shrink-0 transition ${
+                  isCreator ? "border-[var(--border)] group-hover:border-[var(--p500)]" : "border-[var(--border)] group-hover:border-[var(--g500)]"
                 }`}>
                   {getBusinessLogo(business) ? (
                     <SafeImage
@@ -341,7 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     />
                   ) : (
                     <div className={`w-full h-full flex items-center justify-center font-black text-xs text-white ${
-                      isCreator ? 'bg-gradient-to-tr from-indigo-600 to-purple-600' : 'bg-gradient-to-tr from-emerald-600 to-teal-600'
+                      isCreator ? 'bg-gradient-to-tr from-[var(--p500)] to-purple-600' : 'bg-gradient-to-tr from-[var(--g600)] to-[var(--g400)]'
                     }`}>
                       {business.name.slice(0, 2).toUpperCase()}
                     </div>
@@ -349,26 +383,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1">
-                    <h4 className={`text-xs font-bold truncate ${
-                      isCreator ? "text-slate-900 group-hover:text-indigo-800" : "text-slate-900 group-hover:text-emerald-800"
+                    <h4 className={`text-xs font-heading font-bold truncate ${
+                      isCreator ? "text-[var(--t1)] group-hover:text-[var(--p500)]" : "text-[var(--t1)] group-hover:text-[var(--g700)]"
                     }`}>
                       {business.name}
                     </h4>
-                    <ExternalLink className={`w-3 h-3 text-slate-400 shrink-0 ${
-                      isCreator ? "group-hover:text-indigo-600" : "group-hover:text-emerald-600"
+                    <ExternalLink className={`w-3 h-3 text-[var(--t3)] shrink-0 ${
+                      isCreator ? "group-hover:text-[var(--p500)]" : "group-hover:text-[var(--g600)]"
                     }`} />
                   </div>
                   <p className={`text-[10px] font-medium truncate flex items-center justify-between gap-1 ${
-                    isCreator ? "text-indigo-600" : "text-emerald-600"
+                    isCreator ? "text-[var(--p500)]" : "text-[var(--g600)]"
                   }`}>
                     <span className="flex items-center gap-1 truncate">
                       <span className={`w-1.5 h-1.5 rounded-full inline-block animate-pulse shrink-0 ${
-                        isCreator ? "bg-indigo-500" : "bg-emerald-500"
+                        isCreator ? "bg-[var(--p500)]" : "bg-[var(--g500)]"
                       }`} />
                       <span className="truncate">{isCreator ? 'Creator Studio' : bizMeta.label}</span>
                     </span>
                     <span className={`text-[9px] font-semibold shrink-0 ${
-                      isCreator ? "text-slate-400 group-hover:text-indigo-700" : "text-slate-400 group-hover:text-emerald-700"
+                      isCreator ? "text-[var(--t3)] group-hover:text-[var(--p500)]" : "text-[var(--t3)] group-hover:text-[var(--g700)]"
                     }`}>
                       {isCreator ? "Live Profile →" : "Open Store →"}
                     </span>
@@ -377,21 +411,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               {/* Quick URL & QR Action Strip */}
-              <div className="mt-1.5 flex items-center justify-between gap-1 px-1 text-[11px] text-slate-500">
+              <div className="mt-1.5 flex items-center justify-between gap-1 px-1 text-[11px] text-[var(--t2)]">
                 <button
                   type="button"
                   onClick={handleCopyLink}
                   title="Copy store link"
-                  className="flex-1 touch-target-accessible min-h-[44px] py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="flex-1 touch-target-accessible min-h-[44px] py-1 px-2 rounded-[var(--r8)] bg-[var(--bg)] hover:bg-[var(--g100)] text-[var(--t1)] font-medium flex items-center justify-center gap-1 transition cursor-pointer border border-[var(--border)]"
                 >
                   {copiedUrl ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700 font-bold">Copied!</span>
+                      <Check className="w-3.5 h-3.5 text-[var(--g600)]" />
+                      <span className="text-[var(--g700)] font-bold">Copied!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <Copy className="w-3.5 h-3.5 text-[var(--t3)]" />
                       <span>Copy Link</span>
                     </>
                   )}
@@ -404,9 +438,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClose();
                   }}
                   title="Open Store QR Code"
-                  className="touch-target-accessible min-h-[44px] min-w-[44px] py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="touch-target-accessible min-h-[44px] min-w-[44px] py-1 px-2.5 rounded-[var(--r8)] bg-[var(--bg)] hover:bg-[var(--g100)] text-[var(--t1)] font-medium flex items-center justify-center gap-1 transition cursor-pointer border border-[var(--border)]"
                 >
-                  <QrCode className="w-3.5 h-3.5 text-slate-600" />
+                  <QrCode className="w-3.5 h-3.5 text-[var(--t2)]" />
                   <span>QR</span>
                 </button>
 
@@ -414,9 +448,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   onClick={handleOpenExternal}
                   title="Open live store in a new browser tab"
-                  className="touch-target-accessible min-h-[44px] min-w-[44px] py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium flex items-center justify-center gap-1 transition cursor-pointer"
+                  className="touch-target-accessible min-h-[44px] min-w-[44px] py-1 px-2.5 rounded-[var(--r8)] bg-[var(--bg)] hover:bg-[var(--g100)] text-[var(--t1)] font-medium flex items-center justify-center gap-1 transition cursor-pointer border border-[var(--border)]"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                  <ExternalLink className="w-3.5 h-3.5 text-[var(--t2)]" />
                   <span>New Tab</span>
                 </button>
               </div>
@@ -437,22 +471,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setActiveTab(item.id);
                       onClose();
                     }}
-                    className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+                    className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-[var(--r8)] transition-all cursor-pointer ${
                       isActive
                         ? isCreator
-                          ? "bg-indigo-50 text-indigo-700 font-bold shadow-xs"
-                          : "bg-emerald-50 text-emerald-700 font-bold shadow-xs"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                          ? "bg-[var(--p100)] text-[var(--p500)] font-bold shadow-[var(--shadow-xs)]"
+                          : "bg-[var(--g100)] text-[var(--g700)] font-bold shadow-[var(--shadow-xs)]"
+                        : "text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--bg)]"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                        className={`w-7 h-7 rounded-[var(--r8)] flex items-center justify-center transition-colors ${
                           isActive
                             ? isCreator
-                              ? "bg-indigo-600 text-white shadow-xs shadow-indigo-600/30"
-                              : "bg-emerald-600 text-white shadow-xs shadow-emerald-600/30"
-                            : "bg-slate-100 text-slate-500 group-hover:bg-slate-200"
+                              ? "bg-[var(--p500)] text-white shadow-[var(--shadow-xs)]"
+                              : "bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]"
+                            : "bg-[var(--bg)] text-[var(--t3)] group-hover:bg-[var(--card)]"
                         }`}
                       >
                         <Icon className="w-4 h-4" />
@@ -460,8 +494,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
-                        isCreator ? "bg-indigo-100/70 text-indigo-800" : "bg-emerald-100/70 text-emerald-800"
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] ${
+                        isCreator ? "bg-[var(--p100)] text-[var(--p500)]" : "bg-[var(--g100)] text-[var(--g700)]"
                       }`}>
                         {item.badge}
                       </span>
@@ -473,14 +507,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3 border-t border-slate-100 space-y-2 bg-slate-50/50">
+        <div className="p-3 border-t border-[var(--border)] space-y-2 bg-[var(--bg)]">
           {onOpenMasterAdmin && (
             <button
               type="button"
               onClick={onOpenMasterAdmin}
-              className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-[var(--card)] hover:bg-[var(--g100)] border border-[var(--border)] text-[var(--t1)] rounded-[var(--r8)] text-xs font-bold transition shadow-[var(--shadow-xs)] cursor-pointer"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-600" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[var(--t2)]" />
               <span>Master Admin Portal</span>
             </button>
           )}
@@ -488,19 +522,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onOpenStorefront}
-            className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer ${
-              isCreator ? "hover:text-indigo-700" : "hover:text-emerald-700"
+            className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-[var(--card)] hover:bg-[var(--bg)] border border-[var(--border)] text-[var(--t1)] rounded-[var(--r8)] text-xs font-semibold shadow-[var(--shadow-xs)] transition cursor-pointer ${
+              isCreator ? "hover:text-[var(--p500)]" : "hover:text-[var(--g700)]"
             }`}
           >
-            {isCreator ? <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> : <Store className="w-3.5 h-3.5 text-emerald-600" />}
+            {isCreator ? <Sparkles className="w-3.5 h-3.5 text-[var(--p500)]" /> : <Store className="w-3.5 h-3.5 text-[var(--g600)]" />}
             <span>{isCreator ? 'View Public Profile' : 'View Public Store'}</span>
-            <ExternalLink className="w-3 h-3 text-slate-400" />
+            <ExternalLink className="w-3 h-3 text-[var(--t3)]" />
           </button>
 
           <button
             type="button"
             onClick={onLogout}
-            className="w-full touch-target-accessible min-h-[44px] flex items-center gap-2 py-2 px-3 text-slate-500 hover:text-red-600 hover:bg-red-50/50 rounded-xl text-xs font-medium transition cursor-pointer"
+            className="w-full touch-target-accessible min-h-[44px] flex items-center gap-2 py-2 px-3 text-[var(--t2)] hover:text-[var(--r500)] hover:bg-[var(--r100)] rounded-[var(--r8)] text-xs font-medium transition cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>

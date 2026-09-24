@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from "express";
 import path from "path";
+import fs from "fs";
 import crypto from "crypto";
 import bodyParser from "body-parser";
 import Razorpay from "razorpay";
@@ -1514,6 +1515,23 @@ const startServer = async () => {
       appType: "spa",
     });
     app.use(vite.middlewares);
+
+    // Single-Page Application (SPA) HTML fallback for development routes (e.g. /store/:slug, /@:slug, /portfolio/:slug)
+    app.use(async (req, res, next) => {
+      if (req.method === "GET" && !req.path.startsWith("/api")) {
+        try {
+          const indexHtmlPath = path.resolve(process.cwd(), "index.html");
+          if (fs.existsSync(indexHtmlPath)) {
+            let template = fs.readFileSync(indexHtmlPath, "utf-8");
+            template = await vite.transformIndexHtml(req.originalUrl, template);
+            return res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).end(template);
+          }
+        } catch (e) {
+          return next(e);
+        }
+      }
+      next();
+    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));

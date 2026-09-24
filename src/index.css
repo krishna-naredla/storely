@@ -1,35 +1,214 @@
 @import "tailwindcss";
 
+:root {
+  --g900:#0d3318; --g800:#1a5c2a; --g700:#1e6b31; --g600:#2d8a45;
+  --g500:#3aa455; --g400:#4caf65; --g300:#7dcc90; --g200:#b8e8c2; --g100:#e8f5ec;
+  --y500:#f5c518; --y400:#f7d04a; --y100:#fff9e6;
+  --r500:#e74c3c; --r100:#ffeeee;
+  --b500:#2980b9; --b100:#e3f0fb;
+  --p500:#8e44ad; --p100:#f3e8fa;
+  --white:#ffffff;
+  --bg:#f2f7f3;
+  --card:#ffffff;
+  --border:#dde8df;
+  --t1:#1a2e1e; --t2:#4a6b52; --t3:#8aaa90;
+  --shadow-xs:0 1px 3px rgba(20,60,30,.07);
+  --shadow-sm:0 2px 8px rgba(20,60,30,.09);
+  --shadow:0 4px 20px rgba(20,60,30,.11);
+  --shadow-lg:0 8px 40px rgba(20,60,30,.15);
+  --shadow-xl:0 16px 60px rgba(20,60,30,.18);
+  --r4:4px; --r8:8px; --r12:12px; --r16:16px; --r20:20px; --r24:24px; --r32:32px;
+  --ease:.18s cubic-bezier(.4,0,.2,1);
+  --fh:'Poppins',sans-serif; --fb:'Inter',sans-serif;
+}
+
+.dark {
+  --bg:#0a1a0e; --card:#111e14; --border:#1e3324;
+  --t1:#e2f0e5; --t2:#7aaa83; --t3:#3a5c41;
+  --g100:#0f2216; --y100:#1a1500; --r100:#1e0808; --b100:#081422; --p100:#160d1e;
+  --shadow-xs:0 1px 3px rgba(0,0,0,.4); --shadow-sm:0 2px 8px rgba(0,0,0,.4);
+  --shadow:0 4px 20px rgba(0,0,0,.4); --shadow-lg:0 8px 40px rgba(0,0,0,.5);
+}
+
 @theme {
-  --color-primary-50: var(--color-emerald-50);
-  --color-primary-100: var(--color-emerald-100);
-  --color-primary-200: var(--color-emerald-200);
-  --color-primary-300: var(--color-emerald-300);
-  --color-primary-400: var(--color-emerald-400);
-  --color-primary-500: var(--color-emerald-500);
-  --color-primary-600: var(--color-emerald-600);
-  --color-primary-700: var(--color-emerald-700);
-  --color-primary-800: var(--color-emerald-800);
-  --color-primary-900: var(--color-emerald-900);
+  --font-sans: var(--fb);
+  --font-heading: var(--fh);
+
+  --color-g-100: var(--g100);
+  --color-g-200: var(--g200);
+  --color-g-300: var(--g300);
+  --color-g-400: var(--g400);
+  --color-g-500: var(--g500);
+  --color-g-600: var(--g600);
+  --color-g-700: var(--g700);
+  --color-g-800: var(--g800);
+  --color-g-900: var(--g900);
+
+  --color-y-100: var(--y100);
+  --color-y-400: var(--y400);
+  --color-y-500: var(--y500);
+
+  --color-r-100: var(--r100);
+  --color-r-500: var(--r500);
+
+  --color-b-100: var(--b100);
+  --color-b-500: var(--b500);
+
+  --color-p-100: var(--p100);
+  --color-p-500: var(--p500);
+
+  --color-brand-bg: var(--bg);
+  --color-brand-card: var(--card);
+  --color-brand-border: var(--border);
+  --color-brand-t1: var(--t1);
+  --color-brand-t2: var(--t2);
+  --color-brand-t3: var(--t3);
+
+  /* Primary brand scale mapping */
+  --color-primary-50: var(--g100);
+  --color-primary-100: var(--g100);
+  --color-primary-200: var(--g200);
+  --color-primary-300: var(--g300);
+  --color-primary-400: var(--g400);
+  --color-primary-500: var(--g500);
+  --color-primary-600: var(--g600);
+  --color-primary-700: var(--g700);
+  --color-primary-800: var(--g800);
+  --color-primary-900: var(--g900);
+
+  /* Emerald overrides to unify the entire application palette */
+  --color-emerald-50: var(--g100);
+  --color-emerald-100: var(--g100);
+  --color-emerald-200: var(--g200);
+  --color-emerald-300: var(--g300);
+  --color-emerald-400: var(--g400);
+  --color-emerald-500: var(--g500);
+  --color-emerald-600: var(--g600);
+  --color-emerald-700: var(--g700);
+  --color-emerald-800: var(--g800);
+  --color-emerald-900: var(--g900);
+  --color-emerald-950: var(--g900);
+
+  /* Radius tokens */
+  --radius-sm: var(--r4);
+  --radius-md: var(--r8);
+  --radius-lg: var(--r12);
+  --radius-xl: var(--r16);
+  --radius-2xl: var(--r20);
+  --radius-3xl: var(--r24);
+  --radius-4xl: var(--r32);
+
+  /* Shadow tokens */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
 }
 
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--fb);
+    background-color: var(--bg);
+    color: var(--t1);
   }
-  h1, h2, h3, h4, .font-heading {
-    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: var(--fh);
+  }
+  button {
+    font-family: var(--fb);
+    border-radius: var(--r8);
+    transition: all var(--ease);
+  }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--g400);
   }
   input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
   textarea,
   select {
-    color: #0f172a;
+    color: var(--t1);
   }
   .dark input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
   .dark textarea,
   .dark select {
-    color: #f8fafc;
+    color: var(--t1);
   }
+}
+
+/* Design System Unified Utility Classes */
+.ds-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r12);
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-card-lg {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r16);
+  box-shadow: var(--shadow);
+}
+
+.ds-btn-primary {
+  background-color: var(--g600);
+  color: var(--white);
+  border-radius: var(--r8);
+  font-family: var(--fb);
+  transition: all var(--ease);
+}
+.ds-btn-primary:hover {
+  background-color: var(--g700);
+}
+
+.ds-btn-secondary {
+  background-color: var(--card);
+  color: var(--t1);
+  border: 1px solid var(--border);
+  border-radius: var(--r8);
+  font-family: var(--fb);
+  transition: all var(--ease);
+}
+.ds-btn-secondary:hover {
+  background-color: var(--g100);
+  border-color: var(--g300);
+}
+
+.ds-badge {
+  border-radius: var(--r8);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  font-family: var(--fb);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.ds-badge-green {
+  background-color: var(--g100);
+  color: var(--g700);
+  border: 1px solid var(--g200);
+}
+.ds-badge-yellow {
+  background-color: var(--y100);
+  color: #8a6d00;
+  border: 1px solid var(--y400);
+}
+.ds-badge-red {
+  background-color: var(--r100);
+  color: var(--r500);
+  border: 1px solid #f9c2bb;
+}
+.ds-badge-blue {
+  background-color: var(--b100);
+  color: var(--b500);
+  border: 1px solid #b8daf1;
+}
+.ds-badge-purple {
+  background-color: var(--p100);
+  color: var(--p500);
+  border: 1px solid #dfc3ef;
 }
 
 /* Custom scrollbars and styling */

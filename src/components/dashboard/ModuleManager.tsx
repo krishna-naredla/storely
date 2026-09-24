@@ -19,6 +19,10 @@ import {
   Share2,
   Box,
   Sliders,
+  Link as LinkIcon,
+  Briefcase,
+  Ticket,
+  FileText,
 } from "lucide-react";
 import { BusinessProfile, BusinessModules } from "../../types";
 import { updateBusinessProfile } from "../../services/firebaseService";
@@ -35,9 +39,52 @@ interface ModuleDefinition {
   key: keyof BusinessModules;
   title: string;
   description: string;
-  category: "Catalog" | "Ordering" | "Bookings" | "Marketing";
+  category: "Catalog" | "Ordering" | "Bookings" | "Marketing" | "Creator Tools";
   icon: React.ReactNode;
 }
+
+export const CREATOR_MODULE_DEFINITIONS: ModuleDefinition[] = [
+  {
+    key: "digital_products",
+    title: "Digital Products & Downloads",
+    description:
+      "Sell downloadable assets, PDFs, design templates, ebooks, software, and presets with instant download links.",
+    category: "Creator Tools",
+    icon: <ShoppingBag className="w-4 h-4 text-teal-600" />,
+  },
+  {
+    key: "universal_links",
+    title: "Universal Bio Link",
+    description:
+      "One link in bio for all your socials, YouTube videos, resources, and custom links with click analytics.",
+    category: "Creator Tools",
+    icon: <LinkIcon className="w-4 h-4 text-purple-600" />,
+  },
+  {
+    key: "work_portfolio",
+    title: "Work Portfolio Showcase",
+    description:
+      "Display project case studies, visual galleries, client feedback, skills, and visual media kit.",
+    category: "Creator Tools",
+    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
+  },
+  {
+    key: "events_ticketing",
+    title: "Events, Workshops & Tickets",
+    description:
+      "Host live masterclasses, webinars, and meetups with live attendee seat tracking and ticket checkout.",
+    category: "Creator Tools",
+    icon: <Ticket className="w-4 h-4 text-pink-600" />,
+  },
+  {
+    key: "custom_quotes",
+    title: "Custom Project Quotes",
+    description:
+      "Receive detailed client project briefs and send custom price estimates, scopes of work, and invoices.",
+    category: "Creator Tools",
+    icon: <FileText className="w-4 h-4 text-amber-600" />,
+  },
+];
 
 const COMMERCE_MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
@@ -176,6 +223,14 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
       ...modules,
       [key]: nextValue,
     };
+    if (key === "work_portfolio") {
+      updated.portfolio = nextValue;
+    } else if (key === "events_ticketing") {
+      updated.events_tickets = nextValue;
+    } else if (key === "digital_products") {
+      updated.digitalProducts = nextValue;
+    }
+
     setModules(updated);
     setSavingKey(key);
 
@@ -194,8 +249,21 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
     }
   };
 
+  const isModuleActive = (key: keyof BusinessModules) => {
+    if (key === "work_portfolio") {
+      return !!(modules.work_portfolio || modules.portfolio);
+    }
+    if (key === "events_ticketing") {
+      return !!(modules.events_ticketing || modules.events_tickets);
+    }
+    if (key === "digital_products") {
+      return !!(modules.digital_products || modules.digitalProducts);
+    }
+    return !!modules[key];
+  };
+
   const handleToggleClick = (mod: ModuleDefinition) => {
-    const isCurrentlyEnabled = !!modules[mod.key];
+    const isCurrentlyEnabled = isModuleActive(mod.key);
     if (isCurrentlyEnabled) {
       // Opening confirm dialog before disabling
       setModuleToDisable(mod);
@@ -215,50 +283,47 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
   const categories = ["Catalog", "Ordering", "Bookings", "Marketing"] as const;
   const isCreator = isCreatorProfile(business);
 
-  if (isCreator) {
-    return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* If creator profile, show helpful quick-access banner without blocking modules */}
+      {isCreator && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-[11px] font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
               Creator Account Detected
             </span>
-            <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
+            <h3 className="text-base font-black font-heading text-white">
               Creator Modules Studio
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              This profile is registered as a Creator account. Manage your Portfolio Showcase, Bio Links, Digital Downloads, and 1:1 Bookings in the Creator Modules Hub.
+            </h3>
+            <p className="text-xs text-slate-300 max-w-xl">
+              You can configure all module capabilities below for your storefront. For dedicated creator showcase settings, visit the Creator Modules Studio.
             </p>
           </div>
           {onNavigateTab && (
             <button
               type="button"
-              onClick={() => onNavigateTab('modules')}
-              className="py-3 px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              onClick={() => onNavigateTab("modules")}
+              className="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
-              <span>Open Creator Modules</span>
+              <span>Open Creator Modules Hub</span>
             </button>
           )}
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white shadow-xl">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
             <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-            Vendor Commerce Engine
+            Dynamic Store Modules
           </div>
           <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
             Dynamic Store Modules
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-            Configure business capabilities for your retail storefront. Activated features immediately reflect on your navigation sidebar and live store.
+            Configure business and creator capabilities for your storefront. Activated features immediately reflect on your navigation sidebar and live store.
           </p>
         </div>
       </div>
@@ -278,7 +343,7 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {catModules.map((mod) => {
-                  const isEnabled = !!modules[mod.key];
+                  const isEnabled = isModuleActive(mod.key);
                   const isSavingThis = savingKey === mod.key;
 
                   return (
@@ -336,6 +401,77 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
             </div>
           );
         })}
+
+        {/* Creator Tools Category */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              Creator Tools
+            </h3>
+            <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+              For all businesses
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {CREATOR_MODULE_DEFINITIONS.map((mod) => {
+              const isEnabled = isModuleActive(mod.key);
+              const isSavingThis = savingKey === mod.key;
+
+              return (
+                <div
+                  key={mod.key}
+                  className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-4 ${
+                    isEnabled
+                      ? "bg-white border-indigo-300 shadow-2xs"
+                      : "bg-slate-50/70 border-slate-200 opacity-70"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                      {mod.icon}
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>{mod.title}</span>
+                        {isEnabled && (
+                          <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                            Active
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        {mod.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Toggle Button */}
+                  <button
+                    type="button"
+                    disabled={isSavingThis}
+                    onClick={() => handleToggleClick(mod)}
+                    className={`p-1 rounded-xl transition cursor-pointer shrink-0 ${
+                      isEnabled
+                        ? "text-indigo-600"
+                        : "text-slate-300 hover:text-slate-400"
+                    }`}
+                    title={isEnabled ? "Click to disable module" : "Click to enable module"}
+                  >
+                    {isSavingThis ? (
+                      <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
+                    ) : isEnabled ? (
+                      <ToggleRight className="w-8 h-8" />
+                    ) : (
+                      <ToggleLeft className="w-8 h-8" />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Confirmation Dialog for Disabling Module */}

@@ -1469,10 +1469,10 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--t1)] font-heading">
             {isDigitalCreator ? 'Standard Catalog & Services' : bizMeta.itemPlural}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[var(--t2)]">
             {isDigitalCreator
               ? 'Manage your standard physical items or 1:1 call consultation services.'
               : 'Manage your store offerings.'}
@@ -1482,10 +1482,10 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
           <button
             type="button"
             onClick={() => setIsCategoryModalOpen(true)}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition cursor-pointer"
+            className="px-3.5 py-2.5 bg-[var(--card)] hover:bg-[var(--bg)] active:bg-[var(--g100)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] flex items-center gap-2 shadow-[var(--shadow-xs)] transition cursor-pointer"
             title="Manage store categories"
           >
-            <FolderOpen className="w-4 h-4 text-indigo-600" />
+            <FolderOpen className="w-4 h-4 text-[var(--g600)]" />
             <span>Categories ({categories.length})</span>
           </button>
 
@@ -1499,15 +1499,15 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
           <button
             type="button"
             onClick={() => document.getElementById('csv-file-input')?.click()}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition cursor-pointer"
+            className="px-3.5 py-2.5 bg-[var(--card)] hover:bg-[var(--bg)] active:bg-[var(--g100)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] flex items-center gap-2 shadow-[var(--shadow-xs)] transition cursor-pointer"
             title="Import catalog items in bulk via CSV"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-[var(--g600)]" />
             <span>Bulk CSV Import</span>
           </button>
           <button
             onClick={openCreateModal}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition cursor-pointer"
+            className="px-4 py-2.5 bg-[var(--g600)] hover:bg-[var(--g700)] active:bg-[var(--g800)] text-white font-bold text-xs rounded-[var(--r8)] flex items-center gap-2 shadow-[var(--shadow-xs)] transition cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Add New Product
           </button>
@@ -1515,15 +1515,15 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       </div>
 
       {bulkImportSuccessMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2.5 shadow-xs animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-[var(--r12)] bg-[var(--g100)] border border-[var(--g200)] text-xs text-[var(--g800)] flex items-center gap-2.5 shadow-[var(--shadow-xs)] animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-[var(--g600)] shrink-0" />
           <span className="font-semibold">{bulkImportSuccessMsg}</span>
         </div>
       )}
 
       {categorySuccessMsg && (
-        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-center gap-2.5 shadow-xs animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+        <div className="p-4 rounded-[var(--r12)] bg-[var(--g100)] border border-[var(--g200)] text-xs text-[var(--g800)] flex items-center gap-2.5 shadow-[var(--shadow-xs)] animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-[var(--g600)] shrink-0" />
           <span className="font-semibold">{categorySuccessMsg}</span>
         </div>
       )}
@@ -1531,20 +1531,20 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       {/* =========================================================================
           DIGITAL STOREFRONT URL & LIVE SHARING HUB BANNER
          ========================================================================= */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl p-4 sm:p-5 shadow-sm space-y-3.5 border border-slate-700/80">
+      <div className="bg-[var(--g900)] text-white rounded-[var(--r16)] p-4 sm:p-5 shadow-[var(--shadow-sm)] space-y-3.5 border border-[var(--g800)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black">
+            <div className="w-9 h-9 rounded-[var(--r12)] bg-[var(--g500)] text-[var(--g900)] flex items-center justify-center font-black">
               <Globe className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-sm font-extrabold text-white">Digital Store Live Link</span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Public
+                <span className="text-xs sm:text-sm font-extrabold text-white font-heading">Digital Store Live Link</span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-[var(--r8)] bg-[var(--g600)]/40 text-[var(--g200)] border border-[var(--g400)]/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--g300)] animate-pulse" /> Public
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300">
+              <p className="text-[11px] text-[var(--g200)]/80">
                 Customers can open this URL to browse your products, add items to cart, and order directly on WhatsApp.
               </p>
             </div>
@@ -1554,7 +1554,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
             <button
               type="button"
               onClick={handleShareStoreWhatsApp}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 bg-[var(--g500)] hover:bg-[var(--g400)] text-[var(--g900)] font-bold text-xs rounded-[var(--r8)] shadow-[var(--shadow-xs)] transition flex items-center gap-1.5 cursor-pointer"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span>WhatsApp Share</span>
@@ -1562,7 +1562,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
             <button
               type="button"
               onClick={() => window.open(storeUrl, '_blank')}
-              className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition cursor-pointer"
+              className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-[var(--r8)] transition cursor-pointer"
               title="Open storefront in new tab"
             >
               <ExternalLink className="w-4 h-4" />
@@ -1571,43 +1571,43 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
         </div>
 
         {/* URL Box */}
-        <div className="flex items-center bg-black/40 border border-white/15 rounded-2xl p-1.5 sm:p-2 gap-2">
-          <Globe className="w-4 h-4 text-emerald-400 shrink-0 ml-1.5" />
+        <div className="flex items-center bg-black/40 border border-white/15 rounded-[var(--r12)] p-1.5 sm:p-2 gap-2">
+          <Globe className="w-4 h-4 text-[var(--g300)] shrink-0 ml-1.5" />
           <input
             type="text"
             readOnly
             value={storeUrl}
             onClick={(e) => (e.target as HTMLInputElement).select()}
-            className="w-full bg-transparent font-mono text-xs text-emerald-200 font-semibold focus:outline-none select-all"
+            className="w-full bg-transparent font-mono text-xs text-[var(--g200)] font-semibold focus:outline-none select-all"
           />
           <button
             type="button"
             onClick={handleCopyStoreUrl}
-            className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-xs"
+            className="px-3 py-1.5 bg-white hover:bg-slate-100 text-[var(--t1)] rounded-[var(--r8)] text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-[var(--shadow-xs)]"
           >
-            {copiedStoreUrl ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            {copiedStoreUrl ? <Check className="w-3.5 h-3.5 text-[var(--g600)]" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copiedStoreUrl ? 'Copied!' : 'Copy Link'}</span>
           </button>
         </div>
       </div>
 
       {/* Search & Category Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[var(--card)] p-3 rounded-[var(--r12)] border border-[var(--border)] shadow-[var(--shadow-xs)]">
         <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
           <input
             type="checkbox"
             checked={selectedItemIds.size > 0 && selectedItemIds.size === filteredItems.length}
             onChange={handleToggleSelectAll}
-            className="w-4 h-4 text-indigo-600 rounded cursor-pointer shrink-0"
+            className="w-4 h-4 text-[var(--g600)] rounded-[var(--r4)] cursor-pointer shrink-0"
             title="Select all products"
           />
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t3)]" />
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search by title or category..."
-              className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-indigo-500"
+              className="w-full pl-9 pr-4 py-2 text-xs border border-[var(--border)] rounded-[var(--r8)] bg-[var(--bg)] text-[var(--t1)] focus:outline-[var(--g400)]"
             />
           </div>
         </div>
@@ -1616,7 +1616,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
           <select
             value={selectedCategoryFilter}
             onChange={e => setSelectedCategoryFilter(e.target.value)}
-            className="w-full sm:w-48 px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 font-medium text-slate-700"
+            className="w-full sm:w-48 px-3 py-2 text-xs border border-[var(--border)] rounded-[var(--r8)] bg-[var(--bg)] font-medium text-[var(--t1)]"
           >
             <option value="all">All Categories ({items.length})</option>
             {categories.map(cat => {
@@ -1632,16 +1632,16 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
       </div>
 
       {selectedItemIds.size > 0 && (
-        <div className="sticky top-20 z-20 bg-indigo-50/95 backdrop-blur-xs border border-indigo-200 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="sticky top-20 z-20 bg-[var(--card)]/95 backdrop-blur-xs border border-[var(--border)] rounded-[var(--r12)] p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-[var(--shadow)] animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-            <span className="text-xs sm:text-sm font-bold text-indigo-950">
+            <span className="w-2 h-2 rounded-full bg-[var(--g600)] animate-pulse" />
+            <span className="text-xs sm:text-sm font-bold text-[var(--t1)]">
               {selectedItemIds.size} of {filteredItems.length} products selected
             </span>
             <button
               type="button"
               onClick={() => setSelectedItemIds(new Set())}
-              className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium cursor-pointer ml-1"
+              className="text-xs text-[var(--g600)] hover:text-[var(--g700)] underline font-medium cursor-pointer ml-1"
             >
               Clear
             </button>
@@ -1649,26 +1649,26 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Toggle Visibility Group */}
-            <div className="inline-flex rounded-xl shadow-2xs border border-indigo-200 bg-white overflow-hidden">
+            <div className="inline-flex rounded-[var(--r8)] shadow-[var(--shadow-xs)] border border-[var(--border)] bg-[var(--card)] overflow-hidden">
               <button
                 type="button"
                 onClick={() => handleBulkToggleVisibility(true)}
                 disabled={isBulkProcessing}
-                className="px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-bold text-[var(--g700)] hover:bg-[var(--g100)] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Show all selected items"
               >
-                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                <Eye className="w-3.5 h-3.5 text-[var(--g600)]" />
                 <span>Show</span>
               </button>
-              <div className="w-[1px] bg-indigo-100" />
+              <div className="w-[1px] bg-[var(--border)]" />
               <button
                 type="button"
                 onClick={() => handleBulkToggleVisibility(false)}
                 disabled={isBulkProcessing}
-                className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-bold text-[var(--t2)] hover:bg-[var(--bg)] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Hide all selected items"
               >
-                <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                <EyeOff className="w-3.5 h-3.5 text-[var(--t3)]" />
                 <span>Hide</span>
               </button>
             </div>
@@ -1678,10 +1678,10 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
               type="button"
               onClick={() => setIsBulkPriceModalOpen(true)}
               disabled={isBulkProcessing}
-              className="px-3 py-1.5 bg-white hover:bg-indigo-100/70 active:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+              className="px-3 py-1.5 bg-[var(--card)] hover:bg-[var(--bg)] active:bg-[var(--g100)] text-[var(--t1)] border border-[var(--border)] text-xs font-bold rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)] disabled:opacity-50"
               title="Adjust prices of selected products by a percentage"
             >
-              <Percent className="w-3.5 h-3.5 text-indigo-600" />
+              <Percent className="w-3.5 h-3.5 text-[var(--g600)]" />
               <span>Update Price %</span>
             </button>
 
@@ -1690,10 +1690,10 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
               type="button"
               onClick={handleBulkDelete}
               disabled={isBulkProcessing}
-              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 border border-red-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+              className="px-3 py-1.5 bg-[var(--r100)] hover:bg-red-100 active:bg-red-200 text-[var(--r500)] border border-red-200 text-xs font-bold rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)] disabled:opacity-50"
               title="Permanently delete all selected products"
             >
-              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+              <Trash2 className="w-3.5 h-3.5 text-[var(--r500)]" />
               <span>Bulk Delete ({selectedItemIds.size})</span>
             </button>
           </div>
@@ -1702,7 +1702,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
 
       {isLoading ? (
         <div className="flex justify-center p-12">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--t3)]" />
         </div>
       ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1715,12 +1715,12 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.4) }}
-                className={`bg-white rounded-3xl border p-4 flex flex-col justify-between gap-3 relative transition hover:shadow-xs ${
+                className={`bg-[var(--card)] rounded-[var(--r16)] border p-4 flex flex-col justify-between gap-3 relative transition shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow)] ${
                   !item.isActive
-                    ? 'opacity-65 bg-slate-50 border-slate-200'
+                    ? 'opacity-65 bg-[var(--bg)] border-[var(--border)]'
                     : selectedItemIds.has(item.id)
-                    ? 'border-indigo-400 bg-indigo-50/20 shadow-xs'
-                    : 'border-slate-200'
+                    ? 'border-[var(--g400)] bg-[var(--g100)]/40 shadow-[var(--shadow-xs)]'
+                    : 'border-[var(--border)] hover:border-[var(--g300)]'
                 }`}
               >
                 <div>
@@ -1737,7 +1737,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                       {/* High-Resolution Thumbnail with Hover Preview Trigger */}
                       <div
                         onClick={() => item.images?.[0] && setPreviewingProductImage(item)}
-                        className="group/img relative w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer transition hover:border-indigo-400 hover:shadow-xs"
+                        className="group/img relative w-16 h-16 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] overflow-hidden shrink-0 flex items-center justify-center cursor-pointer transition hover:border-[var(--g400)] hover:shadow-[var(--shadow-xs)]"
                         title={item.images?.[0] ? "Click to preview high-resolution image" : "No product image"}
                       >
                         {item.images?.[0] ? (
@@ -1748,24 +1748,24 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                               fallbackType="product"
                               className="w-full h-full object-contain object-center transition-transform duration-200 group-hover/img:scale-105"
                             />
-                            <div className="absolute inset-0 bg-slate-900/35 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <div className="absolute inset-0 bg-black/35 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
                               <ZoomIn className="w-4 h-4 drop-shadow" />
                             </div>
                           </>
                         ) : (
-                          <Package className="w-6 h-6 text-slate-300" />
+                          <Package className="w-6 h-6 text-[var(--t3)]" />
                         )}
                       </div>
                       <div className="space-y-1 min-w-0">
-                        <h3 className="text-xs font-bold text-slate-900 truncate" title={item.name}>{item.name}</h3>
-                        <div className="text-sm font-extrabold text-indigo-700 flex items-center gap-1.5">
+                        <h3 className="text-xs font-bold text-[var(--t1)] truncate font-heading" title={item.name}>{item.name}</h3>
+                        <div className="text-sm font-extrabold text-[var(--g700)] flex items-center gap-1.5">
                           {isItemFree ? (
-                            <span className="text-emerald-600 font-extrabold text-xs px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-md">FREE</span>
+                            <span className="text-[var(--g600)] font-extrabold text-xs px-2 py-0.5 bg-[var(--g100)] border border-[var(--g200)] rounded-[var(--r4)]">FREE</span>
                           ) : (
                             <>
                               <span>{business.currencySymbol || '₹'}{item.price}</span>
                               {item.salePrice && item.salePrice > item.price && (
-                                <span className="text-[11px] text-slate-400 line-through font-normal">
+                                <span className="text-[11px] text-[var(--t3)] line-through font-normal">
                                   {business.currencySymbol || '₹'}{item.salePrice}
                                 </span>
                               )}
@@ -1777,7 +1777,7 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                             {(() => {
                               const colorCfg = getCategoryColorConfig(categoryObj.color);
                               return (
-                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.bg} ${colorCfg.text} ${colorCfg.border}`}>
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-[var(--r8)] border ${colorCfg.bg} ${colorCfg.text} ${colorCfg.border}`}>
                                   <span className={`w-1.5 h-1.5 rounded-full ${colorCfg.dot}`} />
                                   <span className="truncate max-w-[130px]">{categoryObj.name}</span>
                                 </span>
@@ -1790,10 +1790,10 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     <button
                       onClick={() => handleToggleActive(item)}
                       title={item.isActive ? 'Live on Storefront' : 'Hidden'}
-                      className={`p-1.5 rounded-lg border transition ${
+                      className={`p-1.5 rounded-[var(--r8)] border transition ${
                         item.isActive
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'
+                          ? 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)] hover:bg-[var(--g200)]'
+                          : 'bg-[var(--bg)] text-[var(--t3)] border-[var(--border)] hover:bg-slate-200'
                       }`}
                     >
                       {item.isActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -1801,20 +1801,20 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <div className="pt-2 border-t border-[var(--border)] flex justify-between items-center">
+                  <div className="flex items-center gap-1.5 text-[11px] text-[var(--t2)]">
                     {item.productType === 'digital_file' && (
-                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[10px] uppercase">
+                      <span className="px-2 py-0.5 rounded-[var(--r4)] bg-[var(--p100)] text-[var(--p500)] font-bold text-[10px] uppercase">
                         {item.digitalFileType || 'FILE'}
                       </span>
                     )}
                     {item.productType === 'consultation_slot' && (
-                      <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold text-[10px]">
+                      <span className="px-2 py-0.5 rounded-[var(--r4)] bg-[var(--y100)] text-amber-800 font-bold text-[10px]">
                         📅 1:1 Session ({item.consultationDuration || 30}m)
                       </span>
                     )}
                     {(!item.productType || item.productType === 'physical') && (
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
+                      <span className="px-2 py-0.5 rounded-[var(--r4)] bg-[var(--bg)] text-[var(--t2)] font-bold text-[10px]">
                         📦 Physical
                       </span>
                     )}
@@ -1823,28 +1823,28 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
                     <button
                       onClick={() => setSharingProduct(item)}
                       title="Share Direct Product Link & QR"
-                      className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                      className="p-1.5 text-[var(--g600)] hover:bg-[var(--g100)] rounded-[var(--r8)] transition cursor-pointer"
                     >
                       <Share2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDuplicate(item)}
                       title="Duplicate"
-                      className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                      className="p-1.5 text-[var(--t2)] hover:bg-[var(--bg)] rounded-[var(--r8)] transition cursor-pointer"
                     >
                       <Copy className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => openEditModal(item)}
                       title="Edit"
-                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
+                      className="p-1.5 text-[var(--g600)] hover:bg-[var(--g100)] rounded-[var(--r8)] transition cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => setItemToDelete(item)}
                       title="Delete"
-                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                      className="p-1.5 text-[var(--r500)] hover:bg-[var(--r100)] rounded-[var(--r8)] transition cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
