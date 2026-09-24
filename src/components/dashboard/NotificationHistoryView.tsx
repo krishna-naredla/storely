@@ -22,6 +22,7 @@ import {
   markAllNotificationsAsRead,
   createNotification,
 } from '../../services/firebaseService';
+import { auth } from '../../config/firebase';
 
 interface NotificationHistoryViewProps {
   business: BusinessProfile;
@@ -37,13 +38,18 @@ export const NotificationHistoryView: React.FC<NotificationHistoryViewProps> = (
   const [isSendingTest, setIsSendingTest] = useState(false);
 
   useEffect(() => {
+    if (!business?.id || !auth?.currentUser) {
+      setNotifications([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     const unsubscribe = subscribeToNotifications(business.id, (data) => {
       setNotifications(data);
       setIsLoading(false);
     });
     return () => unsubscribe();
-  }, [business.id]);
+  }, [business?.id]);
 
   const handleMarkAllRead = async () => {
     try {

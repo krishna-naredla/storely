@@ -71,10 +71,6 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
   const [orderError, setOrderError] = useState<string | null>(null);
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
 
-  const isDigitalOnly = items.length > 0 && items.every(item => 
-    item.catalogItem.productType === 'digital_file' || item.catalogItem.type === 'service'
-  );
-
   // Pre-fill customer and table details
   useEffect(() => {
     if (isOpen) {
@@ -93,13 +89,9 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
           setTableNumber(savedTable);
           setOrderType('dine_in');
         }
-
-        if (isDigitalOnly) {
-          setOrderType('digital');
-        }
       } catch (e) {}
     }
-  }, [isOpen, business.id, business.modules.table_delivery, isDigitalOnly]);
+  }, [isOpen, business.id, business.modules.table_delivery]);
 
   // Fetch available offers
   useEffect(() => {
@@ -599,51 +591,49 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                   </div>
 
                   {/* Fulfillment Mode */}
-                  {!isDigitalOnly && (
-                    <div className="space-y-4">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Fulfillment</h4>
-                      <div className="grid grid-cols-3 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setOrderType('delivery')}
-                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
-                            orderType === 'delivery'
-                              ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-4 ring-emerald-500/10'
-                              : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                          }`}
-                        >
-                          <Truck className={`w-5 h-5 ${orderType === 'delivery' ? 'text-emerald-600' : ''}`} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Delivery</span>
-                        </button>
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Fulfillment</h4>
+                    <div className="grid grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setOrderType('delivery')}
+                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
+                          orderType === 'delivery'
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-4 ring-emerald-500/10'
+                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                        }`}
+                      >
+                        <Truck className={`w-5 h-5 ${orderType === 'delivery' ? 'text-emerald-600' : ''}`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Delivery</span>
+                      </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setOrderType('pickup')}
-                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
-                            orderType === 'pickup'
-                              ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-4 ring-emerald-500/10'
-                              : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                          }`}
-                        >
-                          <Store className={`w-5 h-5 ${orderType === 'pickup' ? 'text-teal-600' : ''}`} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Pickup</span>
-                        </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderType('pickup')}
+                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
+                          orderType === 'pickup'
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-4 ring-emerald-500/10'
+                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                        }`}
+                      >
+                        <Store className={`w-5 h-5 ${orderType === 'pickup' ? 'text-teal-600' : ''}`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Pickup</span>
+                      </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setOrderType('dine_in')}
-                          className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
-                            orderType === 'dine_in'
-                              ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-4 ring-emerald-500/10'
-                              : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                          }`}
-                        >
-                          <UtensilsCrossed className={`w-5 h-5 ${orderType === 'dine_in' ? 'text-amber-600' : ''}`} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Dine-In</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOrderType('dine_in')}
+                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 cursor-pointer ${
+                          orderType === 'dine_in'
+                            ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-4 ring-emerald-500/10'
+                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                        }`}
+                      >
+                        <UtensilsCrossed className={`w-5 h-5 ${orderType === 'dine_in' ? 'text-amber-600' : ''}`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Dine-In</span>
+                      </button>
                     </div>
-                  )}
+                  </div>
 
                   {/* Customer Form */}
                   <div className="space-y-6 pt-4 border-t border-slate-100">
@@ -663,30 +653,28 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                            {isDigitalOnly ? 'Email Address (For Delivery)' : 'WhatsApp Number'}
+                            WhatsApp / Mobile Number
                           </label>
                           <input
-                            type={isDigitalOnly ? 'email' : 'tel'}
-                            value={isDigitalOnly ? customerEmail : customerPhone}
-                            onChange={(e) => isDigitalOnly ? setCustomerEmail(e.target.value) : setCustomerPhone(e.target.value)}
-                            placeholder={isDigitalOnly ? "Email address" : "Mobile number"}
+                            type="tel"
+                            value={customerPhone}
+                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            placeholder="Mobile number"
                             className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-none transition-all text-sm font-bold text-slate-900"
                           />
                         </div>
                       </div>
 
-                      {isDigitalOnly && (
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">WhatsApp (Optional)</label>
-                          <input
-                            type="tel"
-                            value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
-                            placeholder="e.g. +91 98765 43210"
-                            className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-none transition-all text-sm font-bold text-slate-900"
-                          />
-                        </div>
-                      )}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Email Address (Optional)</label>
+                        <input
+                          type="email"
+                          value={customerEmail}
+                          onChange={(e) => setCustomerEmail(e.target.value)}
+                          placeholder="Email address for receipt"
+                          className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-none transition-all text-sm font-bold text-slate-900"
+                        />
+                      </div>
 
                       {orderType === 'dine_in' && (
                         <div className="space-y-1.5">

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { EventItem, EventTicket, BusinessProfile } from '../../types';
 import { subscribeToEventTickets, checkInTicket } from '../../services/firebaseService';
+import { auth } from '../../config/firebase';
 
 interface EventAttendeesModalProps {
   event: EventItem | null;
@@ -40,8 +41,9 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !event || !business) {
+    if (!isOpen || !event?.id || !business?.id || !auth?.currentUser) {
       setTickets([]);
+      setLoading(false);
       return;
     }
 

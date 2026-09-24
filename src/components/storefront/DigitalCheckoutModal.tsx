@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { BusinessProfile, CatalogItem, Order } from '../../types';
+import { resolveItemAction } from '../../utils/itemActionResolver';
 import { SafeImage } from '../common/SafeImage';
 import { createOrder } from '../../services/firebaseService';
 
@@ -117,6 +118,9 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
   }, [expiresAt]);
 
   if (!isOpen || !item) return null;
+
+  const action = resolveItemAction(item);
+  if (!action.isDigital) return null;
 
   const isFree = item.isFree || item.price === 0;
   const price = item.salePrice || item.price;

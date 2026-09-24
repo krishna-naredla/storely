@@ -21,19 +21,19 @@ service cloud.firestore {
     // Secure Admin Strategy:
     // 1. Firebase Auth Custom Claims (set by Admin SDK / server only)
     // 2. Authoritative admins collection record by UID
-    // 3. Authoritative admins collection record by verified email
-    // 4. Bootstrapped admin email (strictly requiring verified email token)
+    // 3. Authoritative admins collection record by email
+    // 4. Bootstrapped admin email whitelist
     function isAdmin() {
       return isSignedIn() && (
         (request.auth.token.keys().hasAny(['admin', 'masterAdmin']) &&
           (request.auth.token.admin == true || request.auth.token.masterAdmin == true)) ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email != null && isEmailVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email))) ||
-        (request.auth.token.email != null && isEmailVerified() && (
-          request.auth.token.email == 'maninaredla218@gmail.com' ||
-          request.auth.token.email == 'admin@storelly.com' ||
-          request.auth.token.email == 'superadmin@storelly.com' ||
-          request.auth.token.email == 'localride369@gmail.com'
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()))) ||
+        (request.auth.token.email != null && (
+          request.auth.token.email.lower() == 'maninaredla218@gmail.com' ||
+          request.auth.token.email.lower() == 'admin@storelly.com' ||
+          request.auth.token.email.lower() == 'superadmin@storelly.com' ||
+          request.auth.token.email.lower() == 'localride369@gmail.com'
         ))
       );
     }
@@ -42,10 +42,10 @@ service cloud.firestore {
     // Checks if the user is the owner of the specified business or has system admin privilege
     function isBusinessOwner(businessId) {
       return isSignedIn() && (
+        isAdmin() ||
         (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
         (exists(/databases/$(database)/documents/businesses/$(businessId)) &&
-         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid) ||
-        isAdmin()
+         get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid)
       );
     }
 
@@ -85,7 +85,7 @@ service cloud.firestore {
     // Admins Registry
     // =========================================================================
     match /admins/{adminId} {
-      allow read: if isAdmin() || (isSignedIn() && (request.auth.uid == adminId || (isEmailVerified() && request.auth.token.email == adminId)));
+      allow read: if isAdmin() || (isSignedIn() && (request.auth.uid == adminId || (request.auth.token.email != null && request.auth.token.email.lower() == adminId.lower())));
       allow write: if isAdmin();
     }
 

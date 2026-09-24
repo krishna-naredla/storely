@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   Check,
@@ -214,9 +214,13 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
   onBusinessUpdated,
   onNavigateTab,
 }) => {
-  const [modules, setModules] = useState<BusinessModules>(business.modules);
+  const [modules, setModules] = useState<BusinessModules>(business.modules || {});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [moduleToDisable, setModuleToDisable] = useState<ModuleDefinition | null>(null);
+
+  useEffect(() => {
+    setModules(business.modules || {});
+  }, [business.id, business.modules]);
 
   const applyToggle = async (key: keyof BusinessModules, nextValue: boolean) => {
     const updated = {

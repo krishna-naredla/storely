@@ -563,6 +563,10 @@ function MainContent() {
   };
 
   const handleBusinessDeleted = (deletedId: string) => {
+    if (publicBusiness?.id === deletedId) {
+      setPublicBusiness(null);
+      setPublicStoreNotFound(true);
+    }
     setBusinesses((prev) => {
       const remaining = prev.filter((b) => b.id !== deletedId);
       if (remaining.length > 0) {
@@ -808,13 +812,18 @@ function MainContent() {
     }
 
     // 1B. Storefront Found & Active
-    const rawTargetBusiness = publicStoreSlug ? publicBusiness : selectedBusiness;
+    // Public routes must strictly resolve using publicBusiness, never fall back to selectedBusiness!
+    const rawTargetBusiness = (publicRouteInfo.isPublicRoute || publicStoreSlug)
+      ? publicBusiness
+      : (viewMode === 'storefront' ? (publicBusiness || selectedBusiness) : null);
     const targetBusiness = normalizeBusinessData(rawTargetBusiness);
     if (targetBusiness && !publicStoreNotFound) {
       const { targetView } = resolveTargetViewForBusiness(publicRouteInfo, targetBusiness);
 
-      // Explicit owner preview mode: only active if query ?preview=true AND logged in as owner
+      // Public URLs must NEVER use dashboard/auth guards or expose Dashboard/Edit/Manage/Owner controls.
+      // Owner preview is strictly prohibited on clean public routes.
       const isExplicitOwnerPreview =
+        !publicRouteInfo.isPublicRoute &&
         publicRouteInfo.isExplicitPreview &&
         Boolean(currentUser && targetBusiness.ownerId === currentUser.uid);
 

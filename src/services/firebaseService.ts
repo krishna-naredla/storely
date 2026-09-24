@@ -15,9 +15,56 @@ import {
   writeBatch,
   runTransaction
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
 import { firestoreSyncManager } from './firestoreSyncService';
 import { deleteImageFromStorage, uploadToCloudinary } from './cloudinary';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData?.map((provider) => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 import {
   BusinessProfile,
   Category,
@@ -272,6 +319,7 @@ export async function createBusiness(
 }
 
 export async function getBusinessById(businessId: string): Promise<BusinessProfile | null> {
+  if (!businessId) return null;
   try {
     const docRef = doc(db, 'businesses', businessId);
     const snap = await getDoc(docRef);
@@ -283,33 +331,31 @@ export async function getBusinessById(businessId: string): Promise<BusinessProfi
       }
       saveLocalBusiness(data);
       return data;
+    } else {
+      // Document does not exist in Firestore: clear from local cache
+      removeLocalBusiness(businessId);
+      return null;
     }
   } catch (err) {
-    console.warn('Error fetching business by ID from Firestore, checking local cache:', err);
+    console.warn('Error fetching business by ID from Firestore:', err);
+    return null;
   }
-
-  // Fallback to local cache
-  const localList = getLocalBusinesses();
-  return localList.find((b) => b.id === businessId) || null;
 }
 
 export async function forceSyncLocalToFirestore() {
+  // Purge any local business records that do not exist in Firestore or are deleted.
+  // Never restore missing or deleted businesses from localStorage.
   const localList = getLocalBusinesses();
   for (const lb of localList) {
     if (lb && lb.id) {
       try {
         const docRef = doc(db, 'businesses', lb.id);
         const docSnap = await getDoc(docRef);
-        
-        // If the document was hard-deleted (doesn't exist) or soft-deleted (status === 'deleted')
         if (!docSnap.exists() || docSnap.data()?.status === 'deleted') {
           removeLocalBusiness(lb.id);
-          continue;
         }
-        
-        await setDoc(docRef, sanitizeForFirestore(lb), { merge: true });
       } catch (e) {
-        console.warn('Sync warning:', e);
+        console.warn('Sync cleanup note:', e);
       }
     }
   }
@@ -402,21 +448,20 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     console.warn('Firestore fallback scan warning:', err);
   }
 
-  // 5. Fallback to local storage cache (only if we didn't explicitly find out it was deleted or missing)
+  // Clean any stale local cache entry if present
   const localList = getLocalBusinesses();
-  const fallback = localList.find(
+  const stale = localList.find(
     (b) =>
       b.slug?.toLowerCase() === lowerSlug ||
       generateSlug(b.name || '') === lowerSlug ||
       b.id === slug
   );
-  
-  if (fallback) {
-    // We only use the fallback if we actually want to, but if it was missing from Firestore, it shouldn't be valid.
-    // However, to avoid breaking offline support, we'll just return it. 
-    // The forceSyncLocalToFirestore will clean it up in the background if it was deleted.
-    return fallback;
+  if (stale) {
+    removeLocalBusiness(stale.id);
   }
+
+  // Firestore is the ONLY authority for business existence.
+  // Never restore missing or deleted businesses from localStorage/cache.
   return null;
 }
 
@@ -432,20 +477,15 @@ export async function getUserBusinesses(ownerId: string): Promise<BusinessProfil
       .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
       .filter((b) => b.status !== 'deleted');
     
-    // Refresh local cache with latest authority data
-    if (businesses.length > 0) {
-      const localList = getLocalBusinesses();
-      const updatedLocal = localList.filter(b => b.ownerId !== ownerId).concat(businesses);
-      localStorage.setItem(LOCAL_BIZ_KEY, JSON.stringify(updatedLocal));
-    }
+    // Firestore is authoritative: synchronize local cache strictly to existing businesses
+    const localList = getLocalBusinesses();
+    const updatedLocal = localList.filter(b => b.ownerId !== ownerId).concat(businesses);
+    localStorage.setItem(LOCAL_BIZ_KEY, JSON.stringify(updatedLocal));
     
     return businesses;
   } catch (err) {
-    console.warn('Error getting user businesses from Firestore, falling back to local cache:', err);
-    // Fallback to local cache ONLY if Firestore fails (offline)
-    return getLocalBusinesses().filter(
-      (b) => b.ownerId === ownerId && b.status !== 'deleted'
-    );
+    console.warn('Error getting user businesses from Firestore:', err);
+    return [];
   }
 }
 
@@ -456,23 +496,26 @@ export async function updateBusiness(businessId: string, data: Partial<BusinessP
     updatedAt: Date.now(),
   };
 
-  // Update local cache
-  const localList = getLocalBusinesses();
-  const existing = localList.find((b) => b.id === businessId);
-  
-  let dataToWrite = updatedData;
-  if (existing) {
-    const fullUpdated = { ...existing, ...updatedData };
-    saveLocalBusiness(fullUpdated);
-    dataToWrite = fullUpdated; // Upload full document in case it's missing in Firestore
-  }
-
   try {
-    const sanitized = sanitizeForFirestore(dataToWrite);
     const docRef = doc(db, 'businesses', businessId);
-    await setDoc(docRef, sanitized, { merge: true });
+    const snap = await getDoc(docRef);
+    if (!snap.exists() || snap.data()?.status === 'deleted') {
+      removeLocalBusiness(businessId);
+      throw new Error(`Business ${businessId} does not exist in Firestore or has been deleted.`);
+    }
+
+    const sanitized = sanitizeForFirestore(updatedData);
+    await updateDoc(docRef, sanitized);
+
+    // Update local cache only for existing business
+    const localList = getLocalBusinesses();
+    const existing = localList.find((b) => b.id === businessId);
+    if (existing) {
+      saveLocalBusiness({ ...existing, ...updatedData });
+    }
   } catch (err) {
-    console.warn('Firestore updateBusiness warning, preserved in local cache:', err);
+    console.warn('Firestore updateBusiness error:', err);
+    throw err;
   } finally {
     finishSync();
   }
@@ -489,9 +532,12 @@ export async function deleteBusiness(businessId: string): Promise<void> {
       localStorage.removeItem('storelly_active_biz');
     }
     localStorage.removeItem(`storelly_biolinks_${businessId}`);
+    localStorage.removeItem(`storelly_cart_${businessId}`);
     localStorage.removeItem(`storelly_fcm_notifications_${businessId}`);
     localStorage.removeItem(`storelly_razorpay_config_${businessId}`);
     localStorage.removeItem(`storelly_offline_catalog_${businessId}`);
+    localStorage.removeItem(`storelly_offline_reviews_${businessId}`);
+    localStorage.removeItem(`storelly_analytics_${businessId}`);
   } catch (e) {
     console.warn('LocalStorage cleanup warning:', e);
   }
@@ -871,7 +917,10 @@ export async function getOrder(businessId: string, orderId: string): Promise<Ord
 }
 
 export function subscribeToOrders(businessId: string, callback: (orders: Order[]) => void): () => void {
-  if (!businessId) return () => {};
+  if (!businessId || !auth?.currentUser) {
+    callback([]);
+    return () => {};
+  }
   try {
     const colRef = collection(db, 'businesses', businessId, 'orders');
     const q = query(colRef, where('businessId', '==', businessId));
@@ -881,7 +930,8 @@ export function subscribeToOrders(businessId: string, callback: (orders: Order[]
       list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       callback(list);
     }, (err) => {
-      console.warn('Firestore orders subscription notice:', err.message || err);
+      console.warn('Firestore orders subscription notice:', err?.message || err);
+      callback([]);
     });
     
     return unsubscribe;
@@ -1068,7 +1118,10 @@ export async function updateBookingStatus(businessId: string, bookingId: string,
 }
 
 export function subscribeToBookings(businessId: string, callback: (bookings: Booking[]) => void): () => void {
-  if (!businessId) return () => {};
+  if (!businessId || !auth?.currentUser) {
+    callback([]);
+    return () => {};
+  }
   try {
     const colRef = collection(db, 'businesses', businessId, 'bookings');
     const q = query(colRef, where('businessId', '==', businessId));
@@ -1078,7 +1131,8 @@ export function subscribeToBookings(businessId: string, callback: (bookings: Boo
       list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       callback(list);
     }, (err) => {
-      console.warn('Firestore bookings subscription notice:', err.message || err);
+      console.warn('Firestore bookings subscription notice:', err?.message || err);
+      callback([]);
     });
     
     return unsubscribe;
@@ -1273,13 +1327,29 @@ export async function createNotification(
 export function subscribeToNotifications(
   businessId: string,
   callback: (notifications: Notification[]) => void
-) {
-  const colRef = collection(db, 'businesses', businessId, 'notifications');
-  const q = query(colRef, orderBy('createdAt', 'desc'), limit(50));
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => d.data() as Notification);
-    callback(list);
-  });
+): () => void {
+  if (!businessId || !auth?.currentUser) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const colRef = collection(db, 'businesses', businessId, 'notifications');
+    const q = query(colRef, orderBy('createdAt', 'desc'), limit(50));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => d.data() as Notification);
+        callback(list);
+      },
+      (err) => {
+        console.warn('Firestore notifications subscription notice:', err?.message || err);
+        callback([]);
+      }
+    );
+  } catch (e) {
+    console.warn('Could not initialize notifications subscription:', e);
+    return () => {};
+  }
 }
 
 export async function markNotificationAsRead(businessId: string, notificationId: string): Promise<void> {
@@ -2009,22 +2079,31 @@ export function subscribeToEvents(
   businessId: string,
   callback: (events: EventItem[]) => void
 ): () => void {
-  const eventsRef = collection(db, 'businesses', businessId, 'events');
-  const q = query(eventsRef, orderBy('createdAt', 'desc'));
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const items = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as EventItem[];
-      callback(items);
-    },
-    (err) => {
-      console.error('Error in subscribeToEvents:', err);
-      callback([]);
-    }
-  );
+  if (!businessId) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const eventsRef = collection(db, 'businesses', businessId, 'events');
+    const q = query(eventsRef, orderBy('createdAt', 'desc'));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as EventItem[];
+        callback(items);
+      },
+      (err) => {
+        console.warn('Firestore events subscription notice:', err?.message || err);
+        callback([]);
+      }
+    );
+  } catch (e) {
+    console.warn('Could not initialize events subscription:', e);
+    return () => {};
+  }
 }
 
 /**
@@ -2170,22 +2249,31 @@ export function subscribeToEventTickets(
   eventId: string,
   callback: (tickets: EventTicket[]) => void
 ): () => void {
-  const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
-  const q = query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const items = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as EventTicket[];
-      callback(items);
-    },
-    (err) => {
-      console.error('Error in subscribeToEventTickets:', err);
-      callback([]);
-    }
-  );
+  if (!businessId || !eventId || !auth?.currentUser) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
+    const q = query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as EventTicket[];
+        callback(items);
+      },
+      (err) => {
+        console.warn('Firestore tickets subscription notice:', err?.message || err);
+        callback([]);
+      }
+    );
+  } catch (e) {
+    console.warn('Could not initialize tickets subscription:', e);
+    return () => {};
+  }
 }
 
 export async function getBookedSlotsForDate(
@@ -2386,22 +2474,31 @@ export function subscribeToCustomQuoteRequests(
   callback: (requests: CustomQuoteRequest[]) => void,
   includeArchived: boolean = false
 ): () => void {
-  const quotesRef = collection(db, 'businesses', businessId, 'quote_requests');
-  const q = query(quotesRef, orderBy('createdAt', 'desc'));
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const all = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as CustomQuoteRequest[];
-      callback(includeArchived ? all : all.filter((r) => !r.isArchived));
-    },
-    (err) => {
-      console.error('Error in subscribeToCustomQuoteRequests:', err);
-      callback([]);
-    }
-  );
+  if (!businessId || !auth?.currentUser) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const quotesRef = collection(db, 'businesses', businessId, 'quote_requests');
+    const q = query(quotesRef, orderBy('createdAt', 'desc'));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const all = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as CustomQuoteRequest[];
+        callback(includeArchived ? all : all.filter((r) => !r.isArchived));
+      },
+      (err) => {
+        console.warn('Firestore quote_requests subscription notice:', err?.message || err);
+        callback([]);
+      }
+    );
+  } catch (e) {
+    console.warn('Could not initialize quote_requests subscription:', e);
+    return () => {};
+  }
 }
 
 /**

@@ -32,6 +32,7 @@ import {
 import { BusinessProfile } from "../../types";
 import { BUSINESS_TYPES } from "../../services/businessConfig";
 import { subscribeToOrders, getStorefrontUrl } from "../../services/firebaseService";
+import { auth } from "../../config/firebase";
 import { isCreatorProfile, getProfileTypeLabel } from "../../utils/profileHelper";
 import { SafeImage } from "../common/SafeImage";
 import { getBusinessLogo } from "../../utils/branding";
@@ -99,13 +100,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   useEffect(() => {
-    if (!business) return;
+    if (!business?.id || !auth?.currentUser) {
+      setPendingOrdersCount(0);
+      return;
+    }
     const unsubscribe = subscribeToOrders(business.id, (orders) => {
       const pendingCount = orders.filter((o) => o.status === "pending").length;
       setPendingOrdersCount(pendingCount);
     });
     return () => unsubscribe();
-  }, [business]);
+  }, [business?.id]);
 
   const bizMeta = business
     ? BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail

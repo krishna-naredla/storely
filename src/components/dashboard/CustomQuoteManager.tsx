@@ -43,6 +43,7 @@ import {
   getModuleDeepUrl,
   getQuotePayUrl,
 } from '../../services/firebaseService';
+import { auth } from '../../config/firebase';
 import { ModuleQrModal } from '../common/ModuleQrModal';
 
 interface CustomQuoteManagerProps {
@@ -124,7 +125,11 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
   }, [business?.id]);
 
   useEffect(() => {
-    if (!business?.id) return;
+    if (!business?.id || !auth?.currentUser) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const unsubscribe = subscribeToCustomQuoteRequests(
       business.id,

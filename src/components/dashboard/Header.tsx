@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Menu,
   ExternalLink,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, Notification } from '../../types';
 import { getStorefrontUrl, subscribeToNotifications } from '../../services/firebaseService';
+import { auth } from '../../config/firebase';
 import { requestFcmNotificationPermission } from '../../services/fcmPushService';
 import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../context/LanguageContext';
@@ -56,23 +57,28 @@ export const Header: React.FC<HeaderProps> = ({
   const [copiedBizId, setCopiedBizId] = useState<string | null>(null);
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const prevUnreadCountRef = useRef(0);
 
   const isCreator = isCreatorProfile(business);
   const storeUrl = business ? (isCreator ? getPrimaryPublicUrl(business) : getStorefrontUrl(business)) : '';
 
   useEffect(() => {
-    if (!business) return;
+    if (!business?.id || !auth?.currentUser) {
+      setUnreadNotificationsCount(0);
+      return;
+    }
     const unsubscribe = subscribeToNotifications(business.id, (notifications) => {
-      const count = notifications.filter(n => !n.read).length;
-      setUnreadNotificationsCount(count);
+      const count = notifications.filter((n) => !n.read).length;
       
       // Play sound if a new notification arrives
-      if (count > unreadNotificationsCount && unreadNotificationsCount !== 0) {
+      if (count > prevUnreadCountRef.current && prevUnreadCountRef.current !== 0) {
         playNotificationSound();
       }
+      prevUnreadCountRef.current = count;
+      setUnreadNotificationsCount(count);
     });
     return () => unsubscribe();
-  }, [business, unreadNotificationsCount]);
+  }, [business?.id]);
 
   const playNotificationSound = () => {
     try {

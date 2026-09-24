@@ -42,6 +42,7 @@ import {
   getModuleDeepUrl,
 } from '../../services/firebaseService';
 import { uploadToCloudinary } from '../../services/cloudinary';
+import { isCreatorProfile } from '../../utils/profileHelper';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
 import { ModuleQrModal } from '../common/ModuleQrModal';
@@ -60,7 +61,7 @@ const PRESET_EVENT_COVERS = [
 ];
 
 export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStorefront }) => {
-  const isCreator = business.businessCategory === 'creator' || business.modules?.portfolio === true;
+  const isCreator = isCreatorProfile(business);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -110,7 +111,11 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
 
   // Subscribe to Events
   useEffect(() => {
-    if (!business?.id) return;
+    if (!business?.id) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const unsubscribe = subscribeToEvents(business.id, (loadedEvents) => {
       setEvents(loadedEvents);

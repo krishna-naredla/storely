@@ -161,8 +161,8 @@ export const PublicModuleUnavailableView: React.FC<PublicModuleUnavailableViewPr
             </p>
           </div>
 
-          {/* Public Contact Actions (if merchant configured public phone or WhatsApp) */}
-          {whatsappNumber && (
+          {/* Public Contact Actions (if merchant configured public phone or WhatsApp, and not suspended) */}
+          {whatsappNumber && business?.status !== 'suspended' && (
             <div className="pt-2 border-t border-slate-800/80 space-y-2">
               <p className="text-[11px] text-slate-400">Need immediate assistance from this business?</p>
               <div className="flex items-center justify-center gap-2">

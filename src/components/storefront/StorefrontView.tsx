@@ -81,6 +81,7 @@ import { DigitalCheckoutModal } from './DigitalCheckoutModal';
 import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
+import { resolveItemAction } from '../../utils/itemActionResolver';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -883,21 +884,17 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           ) : (
             <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredItems.map((item) => {
-                const isBookable =
-                  item.type === 'service' ||
-                  item.type === 'room' ||
-                  item.type === 'vehicle' ||
-                  item.type === 'package' || 
-                  item.productType === 'consultation_slot';
+                const actionResult = resolveItemAction(item);
+                const isBookable = actionResult.isBooking;
+                const isDigital = actionResult.isDigital;
+                const isCartable = actionResult.isCartable;
 
-                const isDigital =
-                  item.productType === 'digital_file' ||
-                  Boolean(item.digitalFileUrl) ||
-                  Boolean(item.digitalFiles && item.digitalFiles.length > 0) ||
-                  item.type === 'course';
                 const displayPrice = item.salePrice || item.price;
                 const hasDiscount = item.salePrice && item.salePrice < item.price;
                 const inCart = cartItems.find((c) => c.catalogItem.id === item.id);
+                const hasVariants = Boolean(item.variants && item.variants.length > 0);
+                const variantItemsInCart = hasVariants ? cartItems.filter((c) => c.catalogItem.id === item.id) : [];
+                const totalVariantQty = variantItemsInCart.reduce((sum, c) => sum + c.quantity, 0);
 
                 return (
                   <div
@@ -963,15 +960,16 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                         </div>
                       )}
 
-                      {/* Quick Add Hover Button (Desktop only) */}
-                      {!isDigital && !isBookable && item.inStock !== false && !(item.variants && item.variants.length > 0) && (
+                      {/* Quick Add Hover Button (Desktop only, for cartable physical products without variants) */}
+                      {isCartable && item.inStock !== false && !hasVariants && (
                         <div className="absolute bottom-3 right-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hidden md:block">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               addItem(item, 1);
                             }}
-                            className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-xl transition active:scale-95"
+                            className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-xl transition active:scale-95 cursor-pointer"
+                            title="Add to Cart"
                           >
                             <Plus className="w-5 h-5" />
                           </button>
@@ -999,13 +997,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               {item.durationMinutes}m
                             </span>
                           )}
-                          {item.type === 'room_stay' && item.roomCapacity && (
+                          {(item.type === 'room' || item.type === 'room_stay') && item.roomCapacity && (
                             <span className="flex items-center gap-1">
                               <BedDouble className="w-3.5 h-3.5" />
                               {item.roomCapacity}p
                             </span>
                           )}
-                          {item.type === 'rental_vehicle' && item.seatingCapacity && (
+                          {(item.type === 'vehicle' || item.type === 'rental_vehicle') && item.seatingCapacity && (
                             <span className="flex items-center gap-1">
                               <Car className="w-3.5 h-3.5" />
                               {item.seatingCapacity}s
@@ -1038,7 +1036,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                           )}
                         </div>
 
-                        {/* Order / Book / Digital Button */}
+                        {/* Order / Book / Digital / Add to Cart Action */}
                         {isDigital ? (
                           <button
                             type="button"
@@ -1049,7 +1047,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                             className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-600/20 transition active:scale-95 cursor-pointer flex items-center gap-2"
                           >
                             <Download className="w-4 h-4" />
-                            <span className="hidden sm:inline">Get</span>
+                            <span className="hidden sm:inline">{actionResult.buttonText}</span>
                           </button>
                         ) : isBookable ? (
                           <button
@@ -1061,11 +1059,36 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                             className="min-h-[44px] px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-teal-600/20 transition active:scale-95 cursor-pointer flex items-center gap-2"
                           >
                             <CalendarCheck className="w-4 h-4" />
-                            <span className="hidden sm:inline">Book</span>
+                            <span className="hidden sm:inline">{actionResult.buttonText}</span>
                           </button>
                         ) : (
                           <div className="flex items-center">
-                            {inCart ? (
+                            {hasVariants ? (
+                              <button
+                                type="button"
+                                disabled={item.inStock === false}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedItemForDetail(item);
+                                }}
+                                className={`min-h-[44px] px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition active:scale-95 cursor-pointer flex items-center gap-2 ${
+                                  item.inStock === false
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                                    : totalVariantQty > 0
+                                    ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-600 hover:bg-emerald-100'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                }`}
+                              >
+                                {totalVariantQty > 0 ? (
+                                  <span>In Cart ({totalVariantQty})</span>
+                                ) : (
+                                  <>
+                                    <Plus className="w-4 h-4" />
+                                    <span>Add to Cart</span>
+                                  </>
+                                )}
+                              </button>
+                            ) : inCart && inCart.quantity > 0 ? (
                               <div className="flex items-center bg-slate-100 rounded-2xl p-1 gap-2 shadow-inner">
                                 <button
                                   type="button"
@@ -1073,7 +1096,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                     e.stopPropagation();
                                     addItem(item, -1);
                                   }}
-                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black"
+                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black text-sm"
+                                  title="Decrease quantity"
                                 >
                                   -
                                 </button>
@@ -1086,7 +1110,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                     e.stopPropagation();
                                     addItem(item, 1);
                                   }}
-                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black"
+                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black text-sm"
+                                  title="Increase quantity"
                                 >
                                   +
                                 </button>
@@ -1097,20 +1122,16 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                 disabled={item.inStock === false}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (item.variants && item.variants.length > 0) {
-                                    setSelectedItemForDetail(item);
-                                  } else {
-                                    addItem(item, 1);
-                                  }
+                                  addItem(item, 1);
                                 }}
-                                className={`min-h-[44px] px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition active:scale-95 cursor-pointer flex items-center gap-2 ${
+                                className={`min-h-[44px] px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition active:scale-95 cursor-pointer flex items-center gap-2 ${
                                   item.inStock === false
                                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
                                     : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
                                 }`}
                               >
                                 <Plus className="w-4 h-4" />
-                                <span>Add</span>
+                                <span>Add to Cart</span>
                               </button>
                             )}
                           </div>
@@ -1437,34 +1458,36 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       />
 
       {/* Specialized Booking Modals */}
-      {selectedItemForBooking?.productType === 'consultation_slot' ? (
-        <ConsultationBookingModal
-          business={business}
-          item={selectedItemForBooking}
-          isOpen={!!selectedItemForBooking}
-          onClose={() => setSelectedItemForBooking(null)}
-        />
-      ) : selectedItemForBooking?.type === 'room' ? (
-        <StayBookingModal
-          business={business}
-          item={selectedItemForBooking}
-          isOpen={!!selectedItemForBooking}
-          onClose={() => setSelectedItemForBooking(null)}
-        />
-      ) : selectedItemForBooking?.type === 'vehicle' ? (
-        <RentalBookingModal
-          business={business}
-          item={selectedItemForBooking}
-          isOpen={!!selectedItemForBooking}
-          onClose={() => setSelectedItemForBooking(null)}
-        />
-      ) : (
-        <AppointmentBookingModal
-          business={business}
-          item={selectedItemForBooking}
-          isOpen={!!selectedItemForBooking}
-          onClose={() => setSelectedItemForBooking(null)}
-        />
+      {selectedItemForBooking && (
+        resolveItemAction(selectedItemForBooking).isStay ? (
+          <StayBookingModal
+            business={business}
+            item={selectedItemForBooking}
+            isOpen={!!selectedItemForBooking}
+            onClose={() => setSelectedItemForBooking(null)}
+          />
+        ) : resolveItemAction(selectedItemForBooking).isRental ? (
+          <RentalBookingModal
+            business={business}
+            item={selectedItemForBooking}
+            isOpen={!!selectedItemForBooking}
+            onClose={() => setSelectedItemForBooking(null)}
+          />
+        ) : resolveItemAction(selectedItemForBooking).isConsultation ? (
+          <ConsultationBookingModal
+            business={business}
+            item={selectedItemForBooking}
+            isOpen={!!selectedItemForBooking}
+            onClose={() => setSelectedItemForBooking(null)}
+          />
+        ) : (
+          <AppointmentBookingModal
+            business={business}
+            item={selectedItemForBooking}
+            isOpen={!!selectedItemForBooking}
+            onClose={() => setSelectedItemForBooking(null)}
+          />
+        )
       )}
 
       {/* Slide-over Cart Drawer */}

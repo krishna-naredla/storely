@@ -335,8 +335,10 @@ export function verifyModuleAvailability(
   if (business.status === 'deleted' || business.status === 'suspended') {
     return {
       isAvailable: false,
-      title: 'Profile Inactive',
-      message: 'This business or creator profile is currently inactive.',
+      title: business.status === 'suspended' ? 'Store Suspended' : 'Profile Inactive',
+      message: business.status === 'suspended'
+        ? 'This business or creator account has been suspended by the platform administrator.'
+        : 'This business or creator profile is currently inactive.',
     };
   }
 

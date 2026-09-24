@@ -171,12 +171,18 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             booking_appointments: Boolean(creatorModules.booking_appointments),
             custom_quotes: Boolean(creatorModules.custom_quotes),
             events_tickets: Boolean(creatorModules.events_tickets),
-            // Digital products now have their own checkout flow, no need to force physical store modules
-            products: Boolean(creatorModules.products),
-            cart_ordering: Boolean(creatorModules.cart_ordering),
+            reviews: true,
+            products: false,
+            cart_ordering: false,
             table_delivery: false,
           }
-        : vendorModules;
+        : {
+            ...vendorModules,
+            work_portfolio: false,
+            portfolio: false,
+            universal_links: false,
+            custom_quotes: false,
+          };
 
       const businessData: Omit<BusinessProfile, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'> = {
         name: name.trim(),

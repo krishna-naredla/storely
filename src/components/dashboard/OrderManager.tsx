@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, Order, OrderStatus } from '../../types';
 import { getOrders, updateOrderStatus, subscribeToOrders, deleteOrder } from '../../services/firebaseService';
+import { auth } from '../../config/firebase';
 import { SwipeToDelete } from '../common/SwipeToDelete';
 import { exportToCSV } from '../../utils/export';
 import { isCreatorProfile } from '../../utils/profileHelper';
@@ -46,6 +47,11 @@ export const OrderManager: React.FC<any> = ({ business }) => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
+    if (!business?.id || !auth?.currentUser) {
+      setOrders([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     const unsubscribe = subscribeToOrders(business.id, (realTimeOrders) => {
       setOrders(realTimeOrders);
@@ -54,7 +60,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
       setIsLoading(false);
     });
     return () => unsubscribe();
-  }, [business.id]);
+  }, [business?.id]);
 
   const handleStatusChange = async (order: Order, newStatus: OrderStatus) => {
     // If attempting to confirm an online payment order, check if UTR exists in notes or order

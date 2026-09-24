@@ -17,8 +17,10 @@ import {
 import { SafeImage } from '../common/SafeImage';
 import { CatalogItem, CatalogItemVariant, CatalogItemAddon, BusinessProfile } from '../../types';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
+import { resolveItemAction } from '../../utils/itemActionResolver';
 
 interface ItemDetailModalProps {
+
   item: CatalogItem | null;
   business: BusinessProfile;
   isOpen: boolean;
@@ -51,14 +53,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   const unitPrice = currentPrice + addonsTotal;
   const totalPrice = unitPrice * quantity;
 
-  const isBookable =
-    item.type === 'service' ||
-    item.type === 'room' ||
-    item.type === 'vehicle' ||
-    item.type === 'package' ||
-    item.productType === 'consultation_slot';
-
-  const isDigital = item.productType === 'digital_file';
+  // Authoritative Canonical Action Resolver
+  const actionResult = resolveItemAction(item);
+  const isBookable = actionResult.isBooking;
+  const isDigital = actionResult.isDigital;
+  const isCartable = actionResult.isCartable;
 
   const handleAddonToggle = (addon: CatalogItemAddon) => {
     setSelectedAddons((prev) => {
@@ -204,8 +203,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
               {(
                 (item.type === 'service' && item.durationMinutes) ||
                 (item.type === 'menu_item' && (item.prepTimeMinutes || item.spiceLevel)) ||
-                (item.type === 'room_stay' && (item.bedType || item.roomCapacity)) ||
-                (item.type === 'rental_vehicle' && (item.vehicleModel || item.transmission || item.fuelType))
+                ((item.type === 'room' || item.type === 'room_stay') && (item.bedType || item.roomCapacity)) ||
+                ((item.type === 'vehicle' || item.type === 'rental_vehicle') && (item.vehicleModel || item.transmission || item.fuelType))
               ) && (
                 <div className="grid grid-cols-2 gap-3">
                   {item.type === 'service' && item.durationMinutes && (
@@ -230,7 +229,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                       </div>
                     </div>
                   )}
-                  {item.type === 'room_stay' && (item.bedType || item.roomCapacity) && (
+                  {(item.type === 'room' || item.type === 'room_stay') && (item.bedType || item.roomCapacity) && (
                     <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                         <BedDouble className="w-4 h-4" />
@@ -243,7 +242,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                       </div>
                     </div>
                   )}
-                  {item.type === 'rental_vehicle' && (item.vehicleModel || item.transmission) && (
+                  {(item.type === 'vehicle' || item.type === 'rental_vehicle') && (item.vehicleModel || item.transmission) && (
                     <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center shrink-0">
                         <Car className="w-4 h-4" />
@@ -358,8 +357,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
         {/* Sticky Footer Actions */}
         <div className="p-6 sm:p-8 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center gap-4">
-          {/* Quantity selector */}
-          {!isBookable && (
+          {/* Quantity selector - for physical and cartable items */}
+          {isCartable && (
             <div className="flex items-center bg-slate-100 rounded-2xl p-1 shrink-0 w-full sm:w-auto">
               <button
                 type="button"
@@ -389,7 +388,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 onClick={() => onBuyDigitalItem && onBuyDigitalItem(item)}
                 className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-3 cursor-pointer group"
               >
-                <span>{item.price === 0 ? 'Get Access' : 'Purchase Now'}</span>
+                <span>{item.price === 0 ? 'Get Access' : 'Purchase Access'}</span>
                 <div className="h-6 w-px bg-white/20 mx-1" />
                 <span className="font-mono bg-white/10 px-3 py-1 rounded-lg text-xs group-hover:bg-white/20">
                   {business.currencySymbol}{totalPrice}
@@ -401,7 +400,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 onClick={handleBookNow}
                 className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-black active:bg-slate-800 text-white font-black text-sm shadow-xl shadow-slate-900/20 transition-all flex items-center justify-center gap-3 cursor-pointer group"
               >
-                <span>Reserve Now</span>
+                <span>{actionResult.label}</span>
                 <div className="h-6 w-px bg-white/20 mx-1" />
                 <span className="font-mono bg-white/10 px-3 py-1 rounded-lg text-xs group-hover:bg-white/20">
                   {business.currencySymbol}{totalPrice}
@@ -421,12 +420,12 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                 {addedSuccess ? (
                   <>
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>Added Successfully</span>
+                    <span>Added to Cart</span>
                   </>
                 ) : (
                   <>
                     <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    <span>Add to Order</span>
+                    <span>Add to Cart</span>
                     <div className="h-6 w-px bg-white/20 mx-1" />
                     <span className="font-mono bg-white/10 px-3 py-1 rounded-lg text-xs group-hover:bg-white/20">
                       {business.currencySymbol}{totalPrice}
