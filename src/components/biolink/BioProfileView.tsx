@@ -54,11 +54,21 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   const businessTagline = business?.tagline || '';
   const rawTheme = business?.bioTheme || {};
 
-  const presetKey = rawTheme?.presetId || 'classic_green';
+  const presetKey = rawTheme?.themePreset || rawTheme?.presetId || 'classic_green';
   const preset = (BIO_THEME_PRESETS && BIO_THEME_PRESETS[presetKey]) ? BIO_THEME_PRESETS[presetKey] : (BIO_THEME_PRESETS?.['classic_green'] || DEFAULT_BIO_THEME);
 
+  const resolvedBackground =
+    (rawTheme?.backgroundGradient && rawTheme.backgroundGradient.trim() !== '')
+      ? rawTheme.backgroundGradient
+      : (rawTheme?.backgroundColor && rawTheme.backgroundColor.trim() !== '')
+      ? rawTheme.backgroundColor
+      : rawTheme?.background || preset?.backgroundGradient || preset?.backgroundColor || DEFAULT_BIO_THEME.backgroundColor;
+
   const theme = {
-    background: rawTheme?.background || preset?.backgroundGradient || preset?.backgroundColor || DEFAULT_BIO_THEME.backgroundColor,
+    themePreset: presetKey,
+    background: resolvedBackground,
+    backgroundColor: rawTheme?.backgroundColor || preset?.backgroundColor || DEFAULT_BIO_THEME.backgroundColor,
+    backgroundGradient: rawTheme?.backgroundGradient || preset?.backgroundGradient,
     textColor: rawTheme?.textColor || preset?.textColor || DEFAULT_BIO_THEME.textColor,
     subtitleColor: rawTheme?.subtitleColor || preset?.subtitleColor || DEFAULT_BIO_THEME.subtitleColor,
     buttonStyle: (rawTheme?.buttonStyle as string) || preset?.buttonStyle || DEFAULT_BIO_THEME.buttonStyle,
@@ -71,7 +81,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     avatarShape: rawTheme?.avatarShape || DEFAULT_BIO_THEME.avatarShape,
     avatarBorder: rawTheme?.avatarBorder !== false,
     showVerifiedBadge: rawTheme?.showVerifiedBadge !== false,
-    profession: rawTheme?.profession || businessTagline || DEFAULT_BIO_THEME.profession,
+    profession: rawTheme?.profession || business?.tagline || businessTagline || DEFAULT_BIO_THEME.profession,
     showSocialIconsBar: rawTheme?.showSocialIconsBar !== false,
   };
 

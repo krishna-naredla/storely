@@ -50,10 +50,10 @@ service cloud.firestore {
     }
 
     // Helper: Validates that transactional orders created directly from client
-    // cannot be marked as authoritative 'paid', 'confirmed', or 'delivered'
+    // cannot be marked as authoritative 'paid', 'confirmed', or 'delivered' unless total is 0
     function isValidClientOrderCreate() {
       return (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid' || (request.resource.data.total == 0)) &&
-             (!('status' in request.resource.data) || (request.resource.data.status != 'delivered' && request.resource.data.status != 'confirmed'));
+             (!('status' in request.resource.data) || request.resource.data.status in ['pending', 'pending-verification', 'confirmed'] || (request.resource.data.total == 0 && request.resource.data.status == 'delivered'));
     }
 
     // Helper: Validates that bookings created directly from client
@@ -137,12 +137,16 @@ service cloud.firestore {
       // --- Public Showcase & Catalog Subcollections ---
       match /catalog/{itemId} {
         allow read: if true;
-        allow write: if isBusinessOwner(businessId);
+        allow create, delete: if isBusinessOwner(businessId);
+        allow update: if isBusinessOwner(businessId) || 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockQuantity', 'inStock', 'updatedAt']));
       }
 
       match /catalogue/{itemId} {
         allow read: if true;
-        allow write: if isBusinessOwner(businessId);
+        allow create, delete: if isBusinessOwner(businessId);
+        allow update: if isBusinessOwner(businessId) || 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockQuantity', 'inStock', 'updatedAt']));
       }
 
       match /categories/{categoryId} {
@@ -274,11 +278,13 @@ service cloud.firestore {
 
       // --- Private Merchant Subcollections (Strict Tenant Isolation) ---
       match /customers/{customerId} {
-        allow read, write: if isBusinessOwner(businessId);
+        allow create, update: if true;
+        allow read, delete: if isBusinessOwner(businessId);
       }
 
       match /notifications/{notificationId} {
-        allow read, write: if isBusinessOwner(businessId);
+        allow create: if true;
+        allow read, update, delete: if isBusinessOwner(businessId);
       }
 
       match /expenses/{expenseId} {

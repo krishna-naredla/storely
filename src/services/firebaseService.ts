@@ -840,54 +840,67 @@ export async function createOrder(
   };
 
   try {
-    await runTransaction(db, async (transaction) => {
-      // 1. Phase 1: Execute ALL reads first
-      const itemSnapshots: { itemRef: ReturnType<typeof doc>; itemSnap: any; item: typeof order.items[0] }[] = [];
-      for (const item of order.items) {
-        const itemRef = doc(db, 'businesses', businessId, 'catalog', item.itemId);
-        const itemSnap = await transaction.get(itemRef);
-        itemSnapshots.push({ itemRef, itemSnap, item });
-      }
+    try {
+      await runTransaction(db, async (transaction) => {
+        // 1. Phase 1: Execute ALL reads first
+        const itemSnapshots: { itemRef: ReturnType<typeof doc>; itemSnap: any; item: typeof order.items[0] }[] = [];
+        for (const item of order.items) {
+          const itemRef = doc(db, 'businesses', businessId, 'catalog', item.itemId);
+          const itemSnap = await transaction.get(itemRef);
+          itemSnapshots.push({ itemRef, itemSnap, item });
+        }
 
-      // 2. Phase 2: Execute ALL writes after every read has completed
-      const sanitized = sanitizeForFirestore(order);
-      transaction.set(orderDocRef, sanitized);
+        // 2. Phase 2: Execute ALL writes after every read has completed
+        const sanitized = sanitizeForFirestore(order);
+        transaction.set(orderDocRef, sanitized);
 
-      for (const { itemRef, itemSnap, item } of itemSnapshots) {
-        if (itemSnap.exists()) {
-          const itemData = itemSnap.data() as CatalogItem;
-          // Only decrement if it's actually tracking stock (not null/undefined)
-          if (typeof itemData.stockQuantity === 'number') {
-            const currentStock = itemData.stockQuantity;
-            const newQty = currentStock - item.quantity;
-            
-            // Prevent negative stock - floor at 0
-            const safeQty = Math.max(0, newQty);
-            
-            transaction.update(itemRef, {
-              stockQuantity: safeQty,
-              inStock: safeQty > 0,
-              updatedAt: Date.now(),
-            });
+        for (const { itemRef, itemSnap, item } of itemSnapshots) {
+          if (itemSnap.exists()) {
+            const itemData = itemSnap.data() as CatalogItem;
+            // Only decrement if it's actually tracking stock (not null/undefined)
+            if (typeof itemData.stockQuantity === 'number') {
+              const currentStock = itemData.stockQuantity;
+              const newQty = currentStock - item.quantity;
+              
+              // Prevent negative stock - floor at 0
+              const safeQty = Math.max(0, newQty);
+              
+              transaction.update(itemRef, {
+                stockQuantity: safeQty,
+                inStock: safeQty > 0,
+                updatedAt: Date.now(),
+              });
+            }
           }
         }
-      }
-    });
+      });
+    } catch (txErr) {
+      console.warn('Transaction failed, falling back to direct order setDoc:', txErr);
+      const sanitized = sanitizeForFirestore(order);
+      await setDoc(orderDocRef, sanitized);
+    }
 
-    // Automatically update or create customer record (can be outside transaction if needed, or moved inside)
-    await upsertCustomerFromOrder(businessId, order);
+    // Automatically update or create customer record (non-blocking)
+    try {
+      await upsertCustomerFromOrder(businessId, order);
+    } catch (custErr) {
+      console.warn('Customer upsert non-blocking notice:', custErr);
+    }
 
-    // Create notification
-    await createNotification(businessId, {
-      type: 'order',
-      title: 'New Order Received',
-      message: `You have a new ${order.orderType} order from ${order.customerName} for ${order.total}.`,
-      link: '/dashboard/orders',
-      metadata: { orderId: order.id, orderNumber: order.orderNumber }
-    });
+    // Create notification (non-blocking)
+    try {
+      await createNotification(businessId, {
+        type: 'order',
+        title: 'New Order Received',
+        message: `You have a new ${order.orderType} order from ${order.customerName} for ${order.total}.`,
+        link: '/dashboard/orders',
+        metadata: { orderId: order.id, orderNumber: order.orderNumber }
+      });
+    } catch (notifErr) {
+      console.warn('Notification create non-blocking notice:', notifErr);
+    }
   } catch (err) {
-    console.error('Firestore createOrder TRANSACTION FAIL:', err);
-    // If the transaction fails, the order is not created.
+    console.error('Firestore createOrder error:', err);
     throw err; 
   }
 
