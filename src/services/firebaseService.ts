@@ -1052,33 +1052,38 @@ export async function createBooking(
     updatedAt: now,
   };
 
+  const slotKey = (data.itemId && data.bookingDate && data.bookingTimeSlot)
+    ? `${data.itemId}_${data.bookingDate}_${data.bookingTimeSlot.replace(/[^a-zA-Z0-9]/g, '_')}`
+    : null;
+
   try {
     await runTransaction(db, async (transaction) => {
-      // 1. Double Booking Prevention for Appointments/Consultations
-      if (data.bookingType === 'appointment' && data.bookingDate && data.bookingTimeSlot) {
-        const colRef = collection(db, 'businesses', businessId, 'bookings');
-        const q = query(
-          colRef,
-          where('itemId', '==', data.itemId),
-          where('bookingDate', '==', data.bookingDate),
-          where('bookingTimeSlot', '==', data.bookingTimeSlot),
-          where('status', 'in', ['pending', 'confirmed'])
-        );
-        
-        // Note: Transactions require get() on doc refs, but we can check collection snapshots
-        // within the same context for simplicity here as long as it's safe.
-        // Actually, for a strict transaction we should check a counter or a dedicated slot doc.
-        // But for now, using getDocs is the current pattern.
-        const existingSnap = await getDocs(q);
-        if (!existingSnap.empty) {
-          throw new Error('This time slot is already booked. Please choose another time.');
+      // 1. Phase 1: Reads first - Deterministic atomic slot lock
+      let slotRef: ReturnType<typeof doc> | null = null;
+      if (slotKey) {
+        slotRef = doc(db, 'businesses', businessId, 'slot_reservations', slotKey);
+        const slotSnap = await transaction.get(slotRef);
+        if (slotSnap.exists()) {
+          const slotData = slotSnap.data();
+          if (slotData && (slotData.status === 'pending' || slotData.status === 'confirmed' || slotData.status === 'active')) {
+            throw new Error('This time slot is already booked. Please choose another time.');
+          }
         }
       }
 
-      // 2. Availability Check for Stays (Simple version)
-      if (data.bookingType === 'room_stay' && data.checkInDate && data.checkOutDate) {
-        // In a real stay system, we'd check overlapping dates.
-        // For Phase 6, we'll keep it simple: just record the booking.
+      // 2. Phase 2: Writes only after all reads
+      if (slotRef && slotKey) {
+        transaction.set(slotRef, sanitizeForFirestore({
+          id: slotKey,
+          bookingId,
+          businessId,
+          itemId: data.itemId,
+          bookingDate: data.bookingDate,
+          bookingTimeSlot: data.bookingTimeSlot,
+          status: 'pending',
+          createdAt: now,
+          updatedAt: now,
+        }));
       }
 
       const sanitized = sanitizeForFirestore(booking);
@@ -1125,6 +1130,16 @@ export async function getBookings(businessId: string, status?: BookingStatus): P
 export async function updateBookingStatus(businessId: string, bookingId: string, status: BookingStatus): Promise<void> {
   try {
     const docRef = doc(db, 'businesses', businessId, 'bookings', bookingId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const bookingData = snap.data() as Booking;
+      if (status === 'cancelled' && bookingData.itemId && bookingData.bookingDate && bookingData.bookingTimeSlot) {
+        const slotKey = `${bookingData.itemId}_${bookingData.bookingDate}_${bookingData.bookingTimeSlot.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const slotRef = doc(db, 'businesses', businessId, 'slot_reservations', slotKey);
+        await updateDoc(slotRef, { status: 'cancelled', updatedAt: Date.now() }).catch(() => {});
+      }
+    }
+
     await updateDoc(docRef, {
       status,
       updatedAt: Date.now(),

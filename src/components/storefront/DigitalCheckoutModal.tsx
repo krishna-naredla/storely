@@ -294,7 +294,7 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
 
       if (RazorpayClass) {
         const options = {
-          key: (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || orderData.keyId,
+          key: (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || orderData.keyId || "rzp_live_SuHwJ97Z4EyRhJ",
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: business.name,

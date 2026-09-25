@@ -218,6 +218,18 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [initialItemName, setInitialItemName] = useState('');
   const [initialItemPrice, setInitialItemPrice] = useState<number>(199);
   const [initialItemImage, setInitialItemImage] = useState('');
+  // Vertical-specific initial item fields
+  const [initialItemDuration, setInitialItemDuration] = useState<number>(30);
+  const [initialItemIsVeg, setInitialItemIsVeg] = useState<boolean>(true);
+  const [initialItemSpice, setInitialItemSpice] = useState<'mild' | 'medium' | 'hot'>('mild');
+  const [initialItemPrepTime, setInitialItemPrepTime] = useState<number>(20);
+  const [initialItemRoomCapacity, setInitialItemRoomCapacity] = useState<number>(2);
+  const [initialItemBedType, setInitialItemBedType] = useState<string>('King Bed');
+  const [initialItemVehicleModel, setInitialItemVehicleModel] = useState<string>('');
+  const [initialItemFuelType, setInitialItemFuelType] = useState<'petrol' | 'diesel' | 'electric' | 'cng'>('petrol');
+  const [initialItemTransmission, setInitialItemTransmission] = useState<'manual' | 'automatic'>('manual');
+  const [initialItemStock, setInitialItemStock] = useState<number>(50);
+  const [initialItemUnit, setInitialItemUnit] = useState<string>('pcs');
 
   // Creator-Specific Module Toggles
   const [creatorModules, setCreatorModules] = useState<BusinessModuleConfig>({
@@ -228,6 +240,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     booking_appointments: false,
     custom_quotes: false,
     events_tickets: false,
+    reviews: true,
     products: false,
     cart_ordering: false,
     table_delivery: false,
@@ -412,27 +425,41 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           });
 
           if (initialItemName.trim()) {
+            const isFood = vendorType === 'restaurant' || vendorType === 'bakery';
+            const isHotel = vendorType === 'hotel';
+            const isRental = vendorType === 'rental';
+            const isService = vendorType === 'salon' || vendorType === 'clinic' || vendorType === 'services' || vendorType === 'agency';
+
             await createCatalogItem(newBiz.id, {
               slug: generateSlug(initialItemName),
               name: initialItemName.trim(),
-              type:
-                vendorType === 'restaurant' || vendorType === 'bakery'
-                  ? 'menu_item'
-                  : vendorType === 'hotel'
-                  ? 'room'
-                  : vendorType === 'rental'
-                  ? 'vehicle'
-                  : vendorType === 'salon' || vendorType === 'clinic' || vendorType === 'services'
-                  ? 'service'
-                  : 'product',
+              type: isFood
+                ? 'menu_item'
+                : isHotel
+                ? 'room'
+                : isRental
+                ? 'vehicle'
+                : isService
+                ? 'service'
+                : 'product',
               categoryId: cat.id,
               shortDescription: `Freshly listed offering for ${name.trim()}`,
               detailedDescription: '',
               price: initialItemPrice || 199,
               salePrice: initialItemPrice || 199,
-              unit: currentVerticalMeta.itemLabel.toLowerCase(),
+              unit: isHotel ? 'night' : isRental ? 'day' : isFood ? 'portion' : isService ? 'session' : initialItemUnit || currentVerticalMeta.itemLabel.toLowerCase(),
               images: initialItemImage ? [initialItemImage] : [],
               inStock: true,
+              stockQuantity: !isService && !isHotel && !isFood ? initialItemStock : undefined,
+              durationMinutes: isService ? initialItemDuration : undefined,
+              isVeg: isFood ? initialItemIsVeg : undefined,
+              spiceLevel: isFood ? initialItemSpice : undefined,
+              prepTimeMinutes: isFood ? initialItemPrepTime : undefined,
+              roomCapacity: isHotel ? initialItemRoomCapacity : undefined,
+              bedType: isHotel ? initialItemBedType : undefined,
+              vehicleModel: isRental ? initialItemVehicleModel || undefined : undefined,
+              fuelType: isRental ? initialItemFuelType : undefined,
+              transmission: isRental ? initialItemTransmission : undefined,
               isFeatured: true,
               isOffer: false,
               isActive: true,

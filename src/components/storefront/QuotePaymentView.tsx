@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, CustomQuoteRequest } from '../../types';
 import { getCustomQuoteRequest, acceptQuotePayment } from '../../services/firebaseService';
+import { loadRazorpayScript } from '../../services/razorpayService';
 
 interface QuotePaymentViewProps {
   business: BusinessProfile;
@@ -61,12 +62,8 @@ export const QuotePaymentView: React.FC<QuotePaymentViewProps> = ({
     try {
       setPaying(true);
 
-      const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
+      await loadRazorpayScript();
       const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
-
-      if (!razorpayKey || !hasRazorpayScript) {
-        throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
-      }
 
       // 1. Create Razorpay Order on Server
       const rzpOrderRes = await fetch('/api/quotes/create-rzp', {
@@ -83,7 +80,12 @@ export const QuotePaymentView: React.FC<QuotePaymentViewProps> = ({
         throw new Error(errData.error || 'Failed to initialize payment on server');
       }
 
-      const { rzpOrderId, amount, currency } = await rzpOrderRes.json();
+      const { rzpOrderId, amount, currency, keyId } = await rzpOrderRes.json();
+      const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID || keyId || "rzp_live_SuHwJ97Z4EyRhJ";
+
+      if (!hasRazorpayScript) {
+        throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
+      }
 
       // 2. Open Razorpay Checkout
       const options = {

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, EventItem, EventTicket } from '../../types';
 import { purchaseEventTicketTransaction, reserveEventSeat, releaseEventSeat } from '../../services/firebaseService';
+import { loadRazorpayScript } from '../../services/razorpayService';
 
 interface EventCheckoutModalProps {
   event: EventItem | null;
@@ -75,12 +76,8 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
         if (onSuccess) onSuccess(ticket);
       } else {
         // Paid Event Checkout via Razorpay
-        const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID;
+        await loadRazorpayScript();
         const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
-
-        if (!razorpayKey || !hasRazorpayScript) {
-          throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
-        }
 
         // 1. Reserve the seat before payment
         const holdId = `hold_${Date.now()}`;
@@ -110,7 +107,12 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             throw new Error(errData.error || 'Failed to initialize payment on server');
           }
 
-          const { rzpOrderId, amount, currency } = await rzpOrderRes.json();
+          const { rzpOrderId, amount, currency, keyId } = await rzpOrderRes.json();
+          const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID || keyId || "rzp_live_SuHwJ97Z4EyRhJ";
+
+          if (!hasRazorpayScript) {
+            throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');
+          }
 
           const options = {
             key: razorpayKey,

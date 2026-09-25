@@ -14,10 +14,10 @@ declare global {
 }
 
 export const DEFAULT_RAZORPAY_CONFIG: PlatformRazorpayConfig = {
-  keyId: "rzp_test_StorellyDemo369",
-  keySecret: "",
+  keyId: "rzp_live_SuHwJ97Z4EyRhJ",
+  keySecret: "vsKq2To1kZFHJu9v1S1Od9RM",
   isEnabled: true,
-  isTestMode: true,
+  isTestMode: false,
   merchantName: "Storelly Business OS",
   merchantThemeColor: "#155330",
   autoUpgradePlan: true,
@@ -247,7 +247,7 @@ export async function initiateRazorpaySubscription(
     key:
       config.keyId ||
       (import.meta as any).env?.VITE_RAZORPAY_KEY_ID ||
-      "rzp_test_StorellyDemo369",
+      "rzp_live_SuHwJ97Z4EyRhJ",
     amount: amountInPaise,
     currency: config.currency || "INR",
     order_id: orderId, // Critical for signature verification
@@ -369,7 +369,7 @@ export async function initiateRazorpayCheckout(options: {
 
     // 2. Configure checkout
     const rzpOptions = {
-      key: config.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID,
+      key: config.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || "rzp_live_SuHwJ97Z4EyRhJ",
       amount: Math.round(amount * 100),
       currency: currency || "INR",
       order_id: rzpOrderId,

@@ -44,8 +44,8 @@ const serverDb =
     : getFirestore(firebaseApp);
 
 // Initialize Razorpay
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SuHwJ97Z4EyRhJ";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "vsKq2To1kZFHJu9v1S1Od9RM";
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 const razorpay = (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) 
@@ -715,6 +715,7 @@ app.post("/api/digital/create-order", paymentLimiter, async (req, res) => {
       orderId: rzpOrder.id,
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
+      keyId: RAZORPAY_KEY_ID,
     });
   } catch (err: any) {
     console.error("[Razorpay] Digital order creation failed:", err);
@@ -845,7 +846,8 @@ app.post("/api/orders/create-rzp", async (req, res) => {
       success: true,
       rzpOrderId: rzpOrder.id,
       amount: rzpOrder.amount,
-      currency: rzpOrder.currency
+      currency: rzpOrder.currency,
+      keyId: RAZORPAY_KEY_ID,
     });
   } catch (err: any) {
     console.error("[Razorpay] Physical order creation failed:", err);
@@ -1334,7 +1336,8 @@ app.post("/api/quotes/create-rzp", async (req, res) => {
       success: true,
       rzpOrderId: rzpOrder.id,
       amount: rzpOrder.amount,
-      currency: rzpOrder.currency
+      currency: rzpOrder.currency,
+      keyId: RAZORPAY_KEY_ID,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1403,7 +1406,8 @@ app.post("/api/events/create-rzp", async (req, res) => {
       success: true,
       rzpOrderId: rzpOrder.id,
       amount: rzpOrder.amount,
-      currency: rzpOrder.currency
+      currency: rzpOrder.currency,
+      keyId: RAZORPAY_KEY_ID,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

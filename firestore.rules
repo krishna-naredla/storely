@@ -244,6 +244,13 @@ service cloud.firestore {
         allow update, delete: if isBusinessOwner(businessId);
       }
 
+      match /slot_reservations/{slotId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if isBusinessOwner(businessId) || 
+                      (resource.data.status in ['pending', 'active'] && request.resource.data.status in ['cancelled', 'released']);
+      }
+
       match /quote_requests/{quoteId} {
         allow create: if (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid') &&
                          (!('status' in request.resource.data) || request.resource.data.status == 'new');
