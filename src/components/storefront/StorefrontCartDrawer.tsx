@@ -111,14 +111,19 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
   let discount = 0;
   if (appliedOffer) {
     if (appliedOffer.discountType === 'percentage') {
-      discount = Math.round((subtotal * appliedOffer.discountValue) / 100);
+      discount = Math.round((subtotal * Number(appliedOffer.discountValue || 0)) / 100);
+      if (appliedOffer.maxDiscount && discount > appliedOffer.maxDiscount) {
+        discount = appliedOffer.maxDiscount;
+      }
     } else {
-      discount = Math.min(subtotal, appliedOffer.discountValue);
+      discount = Math.min(subtotal, Number(appliedOffer.discountValue || 0));
     }
   }
+  discount = Math.max(0, Math.min(subtotal, discount));
 
-  const taxRate = business.taxRate || business.taxPercent || 0;
-  const tax = taxRate > 0 ? Math.round(((subtotal - discount) * taxRate) / 100) : 0;
+  const taxRate = Number(business.taxRate || business.taxPercent || 0);
+  const taxableAmount = Math.max(0, subtotal - discount);
+  const tax = taxRate > 0 ? Math.round((taxableAmount * taxRate) / 100) : 0;
   const total = Math.max(0, subtotal - discount + deliveryFee + tax);
 
   const handleApplyCoupon = (codeToApply?: string) => {
@@ -195,13 +200,19 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
         orderType,
         tableNumber: tableNumber.trim() || undefined,
         items: items.map((cartItem) => {
-          const unitPrice =
-            cartItem.selectedVariant?.price ??
-            (cartItem.catalogItem.salePrice || cartItem.catalogItem.price);
+          const basePrice =
+            typeof cartItem.selectedVariant?.price === 'number'
+              ? cartItem.selectedVariant.price
+              : (typeof cartItem.catalogItem.salePrice === 'number' && cartItem.catalogItem.salePrice >= 0 && cartItem.catalogItem.salePrice < cartItem.catalogItem.price
+                  ? cartItem.catalogItem.salePrice
+                  : (cartItem.catalogItem.price ?? 0));
           const addons = cartItem.selectedAddons?.map((a) => ({
             name: a.name,
-            price: a.price,
-          }));
+            price: Number(a.price) || 0,
+          })) || [];
+          const addonsTotal = addons.reduce((sum, a) => sum + a.price, 0);
+          const unitPrice = basePrice + addonsTotal;
+
           return {
             itemId: cartItem.catalogItem.id,
             name: cartItem.catalogItem.name,

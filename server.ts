@@ -572,7 +572,13 @@ app.post("/api/digital/free", downloadLimiter, async (req, res) => {
       return res.status(404).json({ success: false, error: "Product not found in official catalog." });
     }
 
-    const price = Number(canonicalProduct.salePrice ?? canonicalProduct.price ?? 0);
+    const canonicalSalePrice =
+      typeof canonicalProduct.salePrice === "number" &&
+      canonicalProduct.salePrice >= 0 &&
+      canonicalProduct.salePrice < Number(canonicalProduct.price)
+        ? canonicalProduct.salePrice
+        : undefined;
+    const price = Number(canonicalSalePrice ?? canonicalProduct.price ?? 0);
     const isFree = canonicalProduct.isFree === true || price === 0;
 
     if (!isFree) {
@@ -685,7 +691,13 @@ app.post("/api/digital/create-order", paymentLimiter, async (req, res) => {
       return res.status(404).json({ success: false, error: "Product not found in catalog." });
     }
 
-    const orderAmount = Number(canonicalProduct.salePrice ?? canonicalProduct.price ?? 0);
+    const canonicalSalePrice =
+      typeof canonicalProduct.salePrice === "number" &&
+      canonicalProduct.salePrice >= 0 &&
+      canonicalProduct.salePrice < Number(canonicalProduct.price)
+        ? canonicalProduct.salePrice
+        : undefined;
+    const orderAmount = Number(canonicalSalePrice ?? canonicalProduct.price ?? 0);
     if (orderAmount <= 0) {
       return res.status(400).json({ success: false, error: "Product is free. Use free checkout flow." });
     }
@@ -805,6 +817,125 @@ app.post("/api/digital/verify-payment", paymentLimiter, async (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3b-3. Public Order Creation Endpoint (Bypasses external referral Webview restrictions)
+app.post("/api/orders/create-public", async (req, res) => {
+  try {
+    const { businessId, orderData } = req.body;
+    if (!businessId || !orderData) {
+      return res.status(400).json({ success: false, error: "Missing required businessId or orderData" });
+    }
+
+    // Verify business exists
+    const bizSnap = await getDoc(doc(serverDb, "businesses", businessId));
+    if (!bizSnap.exists()) {
+      return res.status(404).json({ success: false, error: "Business not found" });
+    }
+
+    const orderDocRef = doc(collection(serverDb, "businesses", businessId, "orders"));
+    const orderId = orderDocRef.id;
+    const orderNumber = "ORD-" + orderId.slice(-6).toUpperCase();
+    const now = Date.now();
+
+    const order = {
+      ...orderData,
+      id: orderId,
+      businessId,
+      orderNumber,
+      status: orderData.paymentMethod === "online" ? "pending-verification" : (orderData.status || "pending"),
+      paymentStatus: orderData.paymentStatus || "pending",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Save order authoritatively
+    await setDoc(orderDocRef, order);
+
+    // Decrement stock for physical items if tracked
+    if (Array.isArray(order.items)) {
+      for (const item of order.items) {
+        if (item.itemId) {
+          try {
+            const itemRef = doc(serverDb, "businesses", businessId, "catalog", item.itemId);
+            const itemSnap = await getDoc(itemRef);
+            if (itemSnap.exists()) {
+              const itemData = itemSnap.data();
+              if (typeof itemData.stockQuantity === "number") {
+                const currentStock = itemData.stockQuantity;
+                const newQty = Math.max(0, currentStock - (Number(item.quantity) || 1));
+                await updateDoc(itemRef, {
+                  stockQuantity: newQty,
+                  inStock: newQty > 0,
+                  updatedAt: now,
+                });
+              }
+            }
+          } catch (stkErr) {
+            console.warn("[Server Public Order] Stock decrement note:", stkErr);
+          }
+        }
+      }
+    }
+
+    // Upsert Customer Record
+    if (order.customerPhone) {
+      try {
+        const cleanPhone = String(order.customerPhone).replace(/\D/g, "");
+        if (cleanPhone) {
+          const custId = "cust_" + cleanPhone;
+          const custRef = doc(serverDb, "businesses", businessId, "customers", custId);
+          const custSnap = await getDoc(custRef);
+          if (custSnap.exists()) {
+            const existing = custSnap.data();
+            await updateDoc(custRef, {
+              name: order.customerName || existing.name,
+              whatsapp: order.customerWhatsApp || existing.whatsapp || order.customerPhone,
+              email: order.customerEmail || existing.email,
+              address: order.customerAddress || existing.address,
+              totalOrders: (Number(existing.totalOrders) || 0) + 1,
+              totalSpent: (Number(existing.totalSpent) || 0) + (Number(order.total) || 0),
+              lastInteractionAt: now,
+            });
+          } else {
+            await setDoc(custRef, {
+              id: custId,
+              businessId,
+              name: order.customerName,
+              phone: order.customerPhone,
+              whatsapp: order.customerWhatsApp || order.customerPhone,
+              email: order.customerEmail,
+              address: order.customerAddress,
+              totalOrders: 1,
+              totalBookings: 0,
+              totalSpent: Number(order.total) || 0,
+              firstInteractionAt: now,
+              lastInteractionAt: now,
+            });
+          }
+        }
+      } catch (cErr) {
+        console.warn("[Server Public Order] Customer upsert notice:", cErr);
+      }
+    }
+
+    // Send Server Notification to Merchant
+    await createServerNotification(businessId, {
+      type: "order",
+      title: "New Order Received",
+      message: `You have a new ${order.orderType || "delivery"} order from ${order.customerName || "Customer"} for ₹${order.total || 0}.`,
+      link: "/dashboard/orders",
+      metadata: { orderId: order.id, orderNumber: order.orderNumber },
+    });
+
+    res.json({
+      success: true,
+      order,
+    });
+  } catch (err: any) {
+    console.error("[Server Public Order Error]:", err);
+    res.status(500).json({ success: false, error: err.message || "Failed to create public order." });
   }
 });
 

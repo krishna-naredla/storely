@@ -50,7 +50,11 @@ export const StayBookingModal: React.FC<StayBookingModalProps> = ({
   const d1 = new Date(checkInDate);
   const d2 = new Date(checkOutDate);
   const diffNights = Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)));
-  const totalAmount = (item.salePrice || item.price) * diffNights;
+  const unitPrice =
+    typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+      ? item.salePrice
+      : (item.price ?? 0);
+  const totalAmount = unitPrice * diffNights;
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

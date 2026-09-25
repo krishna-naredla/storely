@@ -122,8 +122,11 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
   const action = resolveItemAction(item);
   if (!action.isDigital) return null;
 
-  const isFree = item.isFree || item.price === 0;
-  const price = item.salePrice || item.price;
+  const price =
+    typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+      ? item.salePrice
+      : (item.price ?? 0);
+  const isFree = item.isFree === true || price === 0;
   const currencySymbol = business.currencySymbol || '₹';
 
   const formatTime = (seconds: number) => {

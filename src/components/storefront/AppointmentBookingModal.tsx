@@ -41,7 +41,10 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
   if (!isOpen || !item) return null;
 
-  const totalAmount = item.salePrice || item.price;
+  const totalAmount =
+    typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+      ? item.salePrice
+      : (item.price ?? 0);
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

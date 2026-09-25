@@ -46,7 +46,11 @@ export const RentalBookingModal: React.FC<RentalBookingModalProps> = ({
   const d1 = new Date(startDate);
   const d2 = new Date(endDate);
   const diffDays = Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24)));
-  const totalAmount = (item.salePrice || item.price) * diffDays * vehicleQuantity;
+  const unitPrice =
+    typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+      ? item.salePrice
+      : (item.price ?? 0);
+  const totalAmount = unitPrice * diffDays * vehicleQuantity;
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

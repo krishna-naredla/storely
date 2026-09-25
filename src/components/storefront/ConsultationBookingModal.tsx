@@ -99,7 +99,10 @@ export const ConsultationBookingModal: React.FC<ConsultationBookingModalProps> =
         bookingDate,
         bookingTimeSlot,
         timezone,
-        totalAmount: item.salePrice || item.price,
+        totalAmount:
+          typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+            ? item.salePrice
+            : (item.price ?? 0),
         status: 'pending' as const,
         notes: notes.trim() || undefined,
         meetingMethod: item.meetingPlatform || 'google_meet',

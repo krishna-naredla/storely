@@ -48,8 +48,14 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   if (!isOpen || !item) return null;
 
   const images = item.images && item.images.length > 0 ? item.images : [];
-  const currentPrice = selectedVariant?.price ?? (item.salePrice || item.price);
-  const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
+  const basePrice =
+    typeof selectedVariant?.price === 'number'
+      ? selectedVariant.price
+      : (typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+          ? item.salePrice
+          : (item.price ?? 0));
+  const currentPrice = basePrice;
+  const addonsTotal = selectedAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   const unitPrice = currentPrice + addonsTotal;
   const totalPrice = unitPrice * quantity;
 

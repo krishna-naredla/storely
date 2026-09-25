@@ -889,8 +889,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 const isDigital = actionResult.isDigital;
                 const isCartable = actionResult.isCartable;
 
-                const displayPrice = item.salePrice || item.price;
-                const hasDiscount = item.salePrice && item.salePrice < item.price;
+                const displayPrice =
+                  typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
+                    ? item.salePrice
+                    : (item.price ?? 0);
+                const hasDiscount =
+                  typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price;
                 const inCart = cartItems.find((c) => c.catalogItem.id === item.id);
                 const hasVariants = Boolean(item.variants && item.variants.length > 0);
                 const variantItemsInCart = hasVariants ? cartItems.filter((c) => c.catalogItem.id === item.id) : [];

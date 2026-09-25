@@ -159,11 +159,14 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
   const subtotal = items
     .filter((item) => resolveItemAction(item.catalogItem).isCartable)
     .reduce((sum, item) => {
-      let unitPrice = item.selectedVariant?.price ?? (item.catalogItem.salePrice || item.catalogItem.price);
-      if (item.selectedAddons && item.selectedAddons.length > 0) {
-        const addonsPrice = item.selectedAddons.reduce((aSum, a) => aSum + a.price, 0);
-        unitPrice += addonsPrice;
-      }
+      const basePrice =
+        typeof item.selectedVariant?.price === 'number'
+          ? item.selectedVariant.price
+          : (typeof item.catalogItem.salePrice === 'number' && item.catalogItem.salePrice >= 0 && item.catalogItem.salePrice < item.catalogItem.price
+              ? item.catalogItem.salePrice
+              : (item.catalogItem.price ?? 0));
+      const addonsPrice = item.selectedAddons?.reduce((aSum, a) => aSum + (Number(a.price) || 0), 0) || 0;
+      const unitPrice = basePrice + addonsPrice;
       return sum + unitPrice * item.quantity;
     }, 0);
 

@@ -821,10 +821,29 @@ export async function duplicateCatalogItem(businessId: string, originalItem: Cat
 /**
  * Orders Management
  */
-export async function createOrder(
+export async function createPublicOrder(
   businessId: string,
   data: Omit<Order, 'id' | 'businessId' | 'orderNumber' | 'createdAt' | 'updatedAt'>
 ): Promise<Order> {
+  // First attempt authoritative server endpoint (ideal for Instagram bio / in-app browsers)
+  try {
+    const res = await fetch('/api/orders/create-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId, orderData: data }),
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      if (result.success && result.order) {
+        return result.order as Order;
+      }
+    }
+  } catch (apiErr) {
+    console.warn('[Public Order] Server endpoint unreachable, falling back to direct client write:', apiErr);
+  }
+
+  // Fallback to client-side Firestore execution
   const orderDocRef = doc(collection(db, 'businesses', businessId, 'orders'));
   const orderId = orderDocRef.id;
   const orderNumber = 'ORD-' + orderId.slice(-6).toUpperCase();
@@ -906,6 +925,8 @@ export async function createOrder(
 
   return order;
 }
+
+export const createOrder = createPublicOrder;
 
 export async function getOrders(businessId: string, status?: OrderStatus): Promise<Order[]> {
   try {
