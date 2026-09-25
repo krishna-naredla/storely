@@ -6,16 +6,16 @@ export const DashboardSkeleton = ({ count = 3, type = 'card' }: { count?: number
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-white rounded-3xl border border-slate-200 p-4 flex flex-col gap-3 relative animate-pulse shadow-xs"
+          className="bg-[var(--card)] rounded-[var(--r16)] border border-[var(--border)] p-4 flex flex-col gap-3 relative animate-pulse shadow-[var(--shadow-xs)]"
         >
-          {type === 'card' && <div className="h-40 sm:h-48 bg-slate-100 rounded-2xl w-full" />}
+          {type === 'card' && <div className="h-40 sm:h-48 bg-[var(--bg)] rounded-[var(--r12)] w-full" />}
           <div className="space-y-2 pt-2">
-            <div className="h-5 bg-slate-100 rounded-md w-3/4" />
-            <div className="h-3 bg-slate-100 rounded-md w-1/2" />
+            <div className="h-5 bg-[var(--bg)] rounded-[var(--r8)] w-3/4" />
+            <div className="h-3 bg-[var(--bg)] rounded-[var(--r8)] w-1/2" />
           </div>
-          <div className="flex items-center justify-between pt-4 mt-auto border-t border-slate-50">
-            <div className="h-6 bg-slate-100 rounded-lg w-1/3" />
-            <div className="h-8 bg-slate-100 rounded-xl w-1/4" />
+          <div className="flex items-center justify-between pt-4 mt-auto border-t border-[var(--border)]">
+            <div className="h-6 bg-[var(--bg)] rounded-[var(--r8)] w-1/3" />
+            <div className="h-8 bg-[var(--bg)] rounded-[var(--r8)] w-1/4" />
           </div>
         </div>
       ))}

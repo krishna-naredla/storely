@@ -582,6 +582,17 @@ function MainContent() {
   };
 
   useEffect(() => {
+    const handleBizDeleted = (e: any) => {
+      const deletedId = e.detail?.businessId;
+      if (deletedId) {
+        handleBusinessDeleted(deletedId);
+      }
+    };
+    window.addEventListener('storelly_business_deleted', handleBizDeleted);
+    return () => window.removeEventListener('storelly_business_deleted', handleBizDeleted);
+  }, []);
+
+  useEffect(() => {
     if (!authLoading) {
       loadUserBusinesses();
     }
@@ -821,11 +832,13 @@ function MainContent() {
       const { targetView } = resolveTargetViewForBusiness(publicRouteInfo, targetBusiness);
 
       // Public URLs must NEVER use dashboard/auth guards or expose Dashboard/Edit/Manage/Owner controls.
-      // Owner preview is strictly prohibited on clean public routes.
+      // Owner preview is strictly prohibited on clean public routes or when business is suspended.
       const isExplicitOwnerPreview =
         !publicRouteInfo.isPublicRoute &&
         publicRouteInfo.isExplicitPreview &&
-        Boolean(currentUser && targetBusiness.ownerId === currentUser.uid);
+        Boolean(currentUser && targetBusiness.ownerId === currentUser.uid) &&
+        targetBusiness.status !== 'suspended' &&
+        targetBusiness.status !== 'deleted';
 
       return (
         <ViewRouter
@@ -854,28 +867,28 @@ function MainContent() {
     const notFoundTitle = isBioRoute ? 'Bio Link Not Found' : isPortfolioRoute ? 'Portfolio Not Found' : 'Store Not Found';
 
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center selection:bg-emerald-500 selection:text-slate-950">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
-          <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-[var(--card)] border border-[var(--border)] rounded-[var(--r24)] p-8 shadow-[var(--shadow-md)] space-y-6">
+          <div className="w-16 h-16 rounded-[var(--r16)] bg-[var(--g100)] border border-[var(--g200)] flex items-center justify-center mx-auto text-[var(--g600)]">
             {isBioRoute ? <Sparkles className="w-8 h-8" /> : isPortfolioRoute ? <Briefcase className="w-8 h-8" /> : <Store className="w-8 h-8" />}
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white font-heading">
+            <h1 className="text-2xl font-bold text-[var(--t1)] font-heading">
               {notFoundTitle}
             </h1>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[var(--t2)] leading-relaxed">
               We couldn't find an active {notFoundTypeLabel} matching the handle{' '}
-              <span className="font-mono font-bold text-emerald-400">"{publicStoreSlug}"</span>.
+              <span className="font-mono font-bold text-[var(--g700)]">"{publicStoreSlug}"</span>.
             </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-400 text-left space-y-1.5">
-            <div className="font-bold text-slate-300 flex items-center gap-1.5">
-              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+          <div className="p-3.5 rounded-[var(--r12)] bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--t2)] text-left space-y-1.5">
+            <div className="font-bold text-[var(--t1)] flex items-center gap-1.5">
+              <HelpCircle className="w-3.5 h-3.5 text-[var(--g600)]" />
               <span>Possible Reasons:</span>
             </div>
-            <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-slate-400">
+            <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-[var(--t2)]">
               <li>The link may contain a spelling mistake.</li>
               <li>The owner may have updated their handle.</li>
               <li>This page has not been published yet.</li>
@@ -887,7 +900,7 @@ function MainContent() {
               <button
                 type="button"
                 onClick={() => resolvePublicStore(publicStoreSlug)}
-                className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 px-4 ds-btn-secondary font-bold text-xs rounded-[var(--r12)] transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Retry Loading Page</span>
@@ -897,7 +910,7 @@ function MainContent() {
             <button
               type="button"
               onClick={navigateToDashboard}
-              className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3 px-4 ds-btn-primary font-bold text-xs rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Home className="w-4 h-4" />
               <span>Visit Storelly Homepage</span>
@@ -950,54 +963,29 @@ function MainContent() {
     );
   }
 
-  // If user is Logged In, but has NO businesses yet -> Prompt Onboarding as Full Page
-  if (!selectedBusiness && businesses.length === 0) {
+  // Full-page SaaS Setup Experience for creating a new business or when user has no businesses yet
+  if (isOnboardingOpen || (!selectedBusiness && businesses.length === 0)) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-        {/* Top Header */}
-        <header className="bg-white border-b border-slate-200 py-4 px-6 sm:px-10 flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-white">
-              <img src={getAppLogo()} alt="Storelly Logo" className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <span className="font-extrabold text-lg tracking-tight text-slate-900">Storelly</span>
-              <span className="block text-[10px] text-slate-500 uppercase font-bold tracking-wider">Merchant Onboarding Portal</span>
-            </div>
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+            <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
+            <p className="mt-3 text-sm font-semibold text-slate-500">Loading Store Setup...</p>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
-          >
-            Sign Out
-          </button>
-        </header>
-
-        {/* Full Page Content Container */}
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 max-w-6xl mx-auto w-full my-6">
-          <div className="w-full bg-white rounded-3xl shadow-xl border border-slate-200/80 p-5 sm:p-8 md:p-10 space-y-6">
-            <div className="pb-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
-                  Welcome to Storelly, {currentUser.displayName || currentUser.email || 'Partner'}!
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                  Choose between a Vendor Storefront or Creator Workspace to start.
-                </p>
-              </div>
-              <div className="px-3.5 py-1.5 rounded-full bg-slate-100 text-slate-700 font-bold text-xs self-start sm:self-auto border border-slate-200">
-                Setup Wizard
-              </div>
-            </div>
-
-            <OnboardingWizard
-              onComplete={handleOnboardingComplete}
-              createBusinessFn={handleCreateBusiness}
-            />
-          </div>
-        </main>
-      </div>
+        }
+      >
+        <OnboardingWizard
+          onComplete={(newBiz) => {
+            setIsOnboardingOpen(false);
+            handleOnboardingComplete(newBiz);
+          }}
+          onCancel={businesses.length > 0 ? () => setIsOnboardingOpen(false) : undefined}
+          createBusinessFn={handleCreateBusiness}
+          currentUserEmail={currentUser?.email || undefined}
+          currentUserName={currentUser?.displayName || undefined}
+          onSignOut={logout}
+        />
+      </Suspense>
     );
   }
 
@@ -1206,28 +1194,6 @@ function MainContent() {
                   setIsShareModalOpen(false);
                   navigateToStorefront(biz.slug);
                 }}
-              />
-            </Suspense>
-          </div>
-        </div>
-      )}
-
-      {/* Onboarding / Create New Store Modal */}
-      {isOnboardingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-5xl lg:max-w-6xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl p-5 sm:p-8 md:p-10 shadow-2xl border border-slate-200 my-auto">
-            <button
-              type="button"
-              onClick={() => setIsOnboardingOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-            >
-              ✕
-            </button>
-            <Suspense fallback={<div className="h-64 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-600 animate-spin" /></div>}>
-              <OnboardingWizard
-                onComplete={handleOnboardingComplete}
-                onCancel={() => setIsOnboardingOpen(false)}
-                createBusinessFn={handleCreateBusiness}
               />
             </Suspense>
           </div>

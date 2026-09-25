@@ -333,12 +333,13 @@ export function verifyModuleAvailability(
 
   // 1. Account status checks
   if (business.status === 'deleted' || business.status === 'suspended') {
+    const typeLabel = targetView === 'bio' ? 'Bio Link' : targetView === 'portfolio' ? 'Portfolio' : targetView === 'card' ? 'Visiting Card' : 'Store';
     return {
       isAvailable: false,
-      title: business.status === 'suspended' ? 'Store Suspended' : 'Profile Inactive',
+      title: business.status === 'suspended' ? `${typeLabel} Suspended` : `${typeLabel} Inactive`,
       message: business.status === 'suspended'
-        ? 'This business or creator account has been suspended by the platform administrator.'
-        : 'This business or creator profile is currently inactive.',
+        ? `This ${typeLabel.toLowerCase()} has been suspended by the platform administrator.`
+        : `This ${typeLabel.toLowerCase()} is currently inactive.`,
     };
   }
 

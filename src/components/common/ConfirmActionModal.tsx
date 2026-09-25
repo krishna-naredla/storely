@@ -72,12 +72,12 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2.5 mt-6 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2.5 mt-6 pt-4 border-t border-[var(--border)]">
           <button
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl transition cursor-pointer"
+            className="px-4 py-2.5 text-xs font-bold text-[var(--t2)] hover:text-[var(--t1)] bg-[var(--bg)] hover:bg-[var(--g100)] rounded-[var(--r8)] border border-[var(--border)] transition cursor-pointer"
           >
             {cancelText}
           </button>
@@ -85,10 +85,10 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-5 py-2.5 text-xs font-bold text-white rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer ${
+            className={`px-5 py-2.5 text-xs font-bold text-white rounded-[var(--r8)] shadow-[var(--shadow-xs)] transition flex items-center gap-2 cursor-pointer ${
               isDestructive
-                ? 'bg-red-600 hover:bg-red-700 active:bg-red-800 shadow-red-600/20'
-                : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-indigo-600/20'
+                ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                : 'bg-[var(--g600)] hover:bg-[var(--g700)] active:bg-[var(--g800)]'
             }`}
           >
             {isLoading && (

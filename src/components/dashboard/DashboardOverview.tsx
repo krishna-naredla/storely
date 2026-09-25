@@ -312,11 +312,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <button
                 type="button"
                 onClick={() => handleOpenExternal(activeUrl)}
-                className={`min-h-[44px] px-3.5 py-2 rounded-[var(--r8)] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-[var(--shadow-xs)] cursor-pointer ${
-                  isCreator
-                    ? 'bg-[var(--p500)] hover:bg-purple-700'
-                    : 'bg-[var(--g600)] hover:bg-[var(--g700)]'
-                }`}
+                className="ds-btn-primary min-h-[44px] px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-[var(--shadow-xs)] cursor-pointer"
                 title="Open live public store in a new browser tab"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -326,17 +322,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsTrustCardModalOpen(true)}
-                className="min-h-[44px] px-3.5 py-2 rounded-[var(--r8)] bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white text-xs font-black shadow-[var(--shadow-xs)] transition flex items-center gap-1.5 cursor-pointer"
+                className="ds-btn-secondary min-h-[44px] px-3.5 py-2 text-xs font-bold shadow-[var(--shadow-xs)] flex items-center gap-1.5 cursor-pointer"
                 title="Open and share high-trust WhatsApp card (Sri Lakshmi style)"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                <span>WhatsApp Rich Card</span>
+                <Sparkles className="w-3.5 h-3.5 text-[var(--g600)]" />
+                <span>WhatsApp Card</span>
               </button>
 
               <button
                 type="button"
                 onClick={onOpenShareModal}
-                className="min-h-[44px] px-3.5 py-2 rounded-[var(--r8)] bg-[var(--card)] hover:bg-[var(--bg)] border border-[var(--border)] text-[var(--t1)] text-xs font-bold shadow-[var(--shadow-xs)] transition flex items-center gap-1.5 cursor-pointer"
+                className="ds-btn-secondary min-h-[44px] px-3.5 py-2 text-xs font-bold shadow-[var(--shadow-xs)] flex items-center gap-1.5 cursor-pointer"
                 title="View and print QR code poster"
               >
                 <QrCode className="w-3.5 h-3.5 text-[var(--g600)]" />
@@ -346,7 +342,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsTrustCardModalOpen(true)}
-                className="min-h-[44px] px-3.5 py-2 rounded-[var(--r8)] bg-[var(--g600)] hover:bg-[var(--g700)] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-[var(--shadow-xs)] cursor-pointer"
+                className="ds-btn-primary min-h-[44px] px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-[var(--shadow-xs)] cursor-pointer"
                 title="Share rich store card directly on WhatsApp"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
@@ -367,7 +363,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     onClick={() => setSelectedDestinationKey(dest.id)}
                     className={`min-h-[38px] px-2.5 py-1 rounded-[var(--r8)] text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
                       selectedDestinationKey === dest.id
-                        ? 'bg-[var(--p500)] text-white shadow-[var(--shadow-xs)]'
+                        ? 'bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]'
                         : 'bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)]'
                     }`}
                   >
@@ -384,7 +380,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
             {/* URL Display & 1-Click Copy */}
             <div className="flex items-center gap-1.5 bg-[var(--card)] rounded-[var(--r12)] border border-[var(--border)] p-1 shadow-[var(--shadow-xs)] max-w-full sm:max-w-md min-h-[44px]">
-              <span className={`w-2 h-2 rounded-full inline-block shrink-0 ml-1.5 ${isCreator ? 'bg-[var(--p500)] animate-pulse' : 'bg-[var(--g500)] animate-pulse'}`} />
+              <span className="w-2 h-2 rounded-full inline-block shrink-0 ml-1.5 bg-[var(--g500)] animate-pulse" />
               <input
                 type="text"
                 readOnly
@@ -432,7 +428,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
             <div>
               <h2 className="text-sm sm:text-base font-black text-[var(--t1)] font-heading flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[var(--p500)]" />
+                <Sparkles className="w-4 h-4 text-[var(--g600)]" />
                 <span>Your Independent Public Module URLs</span>
               </h2>
               <p className="text-xs text-[var(--t2)] mt-0.5">
@@ -455,7 +451,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-heading font-black text-[var(--t1)]">{dest.title}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-[var(--r4)] bg-[var(--p100)] text-[var(--p500)]">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-[var(--r4)] bg-[var(--g100)] text-[var(--g700)]">
                         {dest.badgeLabel}
                       </span>
                     </div>
@@ -487,7 +483,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenExternal(dest.url)}
-                        className="min-h-[36px] px-3 py-1.5 bg-[var(--p500)] hover:bg-purple-700 text-white rounded-[var(--r8)] text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-[var(--shadow-xs)]"
+                        className="ds-btn-primary min-h-[36px] px-3 py-1.5 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer shadow-[var(--shadow-xs)]"
                         title={`Open ${dest.title} in new tab`}
                       >
                         <span>Open</span>
@@ -512,12 +508,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
               {isCreator ? 'Profile Views' : t('dashboard.totalOrders')}
             </span>
-            <div className={`w-8 h-8 rounded-[var(--r8)] flex items-center justify-center ${isCreator ? 'bg-[var(--p100)] text-[var(--p500)]' : 'bg-[var(--g100)] text-[var(--g600)]'}`}>
+            <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-[var(--g100)] text-[var(--g600)]">
               {isCreator ? <Eye className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
               {isLoading ? '...' : isCreator ? (summary?.bioLinkViews ?? 0) + (summary?.totalCustomers ?? 0) + 12 : summary?.totalOrders ?? 0}
             </span>
             <span className="text-[11px] text-[var(--t2)] font-medium">{isCreator ? 'views' : 'processed'}</span>
@@ -530,12 +526,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
               {isCreator ? 'Link Clicks' : 'Customers'}
             </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
               {isCreator ? <LinkIcon className="w-4 h-4" /> : <Users className="w-4 h-4" />}
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
               {isLoading ? '...' : isCreator ? summary?.bioLinkClicks ?? 0 : summary?.totalCustomers ?? 0}
             </span>
             <span className="text-[11px] text-[var(--t2)] font-medium">interactions</span>
@@ -548,12 +544,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
               {isCreator ? '1:1 Bookings' : 'Bookings'}
             </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
               <CalendarCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
               {isLoading ? '...' : summary?.totalBookings ?? 0}
             </span>
             <span className="text-[11px] text-[var(--t2)] font-medium">scheduled</span>
@@ -566,12 +562,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
               {isCreator ? 'Listed Items' : bizMeta.itemPlural}
             </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
               {isCreator ? <Briefcase className="w-4 h-4" /> : <Package className="w-4 h-4" />}
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
               {isLoading ? '...' : summary?.totalProducts ?? 0}
             </span>
             <span className="text-[11px] text-[var(--t2)] font-medium">published</span>
@@ -586,7 +582,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <div className={`p-2 rounded-[var(--r8)] ${isCreator ? 'bg-[var(--p100)] text-[var(--p500)]' : 'bg-[var(--g100)] text-[var(--g600)]'}`}>
+              <div className="p-2 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)]">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <h3 className="text-sm sm:text-base font-bold text-[var(--t1)] font-heading">
@@ -604,9 +600,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">Weekly Volume</span>
               <span className="text-xs font-extrabold text-[var(--t1)]">{weeklyTotalOrders} orders</span>
             </div>
-            <div className={`px-3 py-1.5 rounded-[var(--r8)] border text-center ${
-              isCreator ? 'bg-[var(--p100)] border-purple-200 text-[var(--p500)]' : 'bg-[var(--g100)] border-[var(--g200)] text-[var(--g700)]'
-            }`}>
+            <div className="px-3 py-1.5 rounded-[var(--r8)] border text-center bg-[var(--g100)] border-[var(--g200)] text-[var(--g700)]">
               <span className="text-[10px] font-bold uppercase block opacity-75">Avg Completion</span>
               <span className="text-xs font-extrabold flex items-center justify-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-[var(--g600)]" />
@@ -757,13 +751,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('portfolio')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-purple-50 hover:border-purple-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--p100)] text-[var(--p500)] flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <Briefcase className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--p500)]">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Portfolio
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">Case studies &amp; art</div>
@@ -773,13 +767,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('biolink')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-purple-50 hover:border-purple-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-purple-100/80 text-purple-700 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <LinkIcon className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-purple-800">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Bio Link
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">Links &amp; socials</div>
@@ -789,13 +783,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('catalog')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-teal-50 hover:border-teal-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-teal-100/80 text-teal-700 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <ShoppingBag className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-teal-800">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Digital Store
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">PDFs, code &amp; kits</div>
@@ -805,13 +799,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('modules')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-amber-50 hover:border-amber-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-amber-100/80 text-amber-700 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-amber-800">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Modules
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">Toggle features</div>
@@ -839,13 +833,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('categories')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-teal-50 hover:border-teal-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-teal-100/80 text-teal-700 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <Layers className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-teal-800">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Categories
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">Sections &amp; order</div>
@@ -855,13 +849,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('orders')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-blue-50 hover:border-blue-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-blue-100/80 text-blue-700 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <ShoppingBag className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-blue-800">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Manage Orders
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">Status &amp; dispatch</div>
@@ -871,13 +865,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('modules')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-purple-50 hover:border-purple-200 border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-purple-100/80 text-purple-700 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-purple-800">
+                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
                       Modules
                     </div>
                     <div className="text-[10px] text-[var(--t3)]">Toggle features</div>
@@ -1042,19 +1036,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsTrustCardModalOpen(true)}
-                className="w-full py-2.5 px-3 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black text-xs rounded-[var(--r8)] shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-1.5 cursor-pointer mb-2"
+                className="w-full ds-btn-primary py-2.5 px-3 text-xs font-bold shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-1.5 cursor-pointer mb-2"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <Sparkles className="w-3.5 h-3.5" />
                 <span>WhatsApp Rich Card</span>
               </button>
 
               <button
                 type="button"
                 onClick={onOpenShareModal}
-                className="w-full py-2 px-3 bg-[var(--g900)] hover:bg-[var(--g800)] text-white font-bold text-xs rounded-[var(--r8)] shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full ds-btn-secondary py-2 px-3 font-bold text-xs shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Share2 className="w-3.5 h-3.5 text-[var(--g300)]" />
-                <span>Full Digital Card & Poster</span>
+                <Share2 className="w-3.5 h-3.5 text-[var(--g600)]" />
+                <span>Full Digital Card &amp; Poster</span>
               </button>
             </div>
 

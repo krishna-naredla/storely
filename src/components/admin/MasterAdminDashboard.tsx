@@ -73,6 +73,7 @@ import {
   DEFAULT_PRICING_CMS,
   adminGetGlobalSettings,
   adminUpdateBusiness,
+  adminDeleteBusiness,
   adminSaveGlobalSettings,
   adminRecordAuditLog,
 } from '../../services/adminService';
@@ -90,6 +91,7 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
   const [activeTab, setActiveTab] = useState<MasterAdminTab>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Platform Data
   const [businesses, setBusinesses] = useState<BusinessProfile[]>([]);
@@ -150,21 +152,12 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // CMS & SEO & Branding State
-  const [landingBrands, setLandingBrands] = useState(() => {
+  const [landingBrands, setLandingBrands] = useState<{ name: string; icon: string }[]>(() => {
     try {
       const saved = localStorage.getItem('storelly_admin_brands');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [
-      { name: 'Organic Store', icon: 'Store' },
-      { name: 'Fashion Hub', icon: 'ShoppingBag' },
-      { name: 'Tech World', icon: 'Cpu' },
-      { name: 'Home Decor', icon: 'Home' },
-      { name: 'Fresh Basket', icon: 'PackageCheck' },
-      { name: 'Beauty Bliss', icon: 'Sparkles' },
-      { name: 'Krishna Pickles', icon: 'Store' },
-      { name: 'Artisan Crafts', icon: 'ShoppingBag' }
-    ];
+    return [];
   });
   const [landingHero, setLandingHero] = useState(() => {
     try {
@@ -192,15 +185,12 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
   }));
 
   // Custom Domains State
-  const [customDomains, setCustomDomains] = useState(() => {
+  const [customDomains, setCustomDomains] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem('storelly_admin_custom_domains');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [
-      { domain: 'store.organicbazaar.in', slug: 'organic-bazaar', status: 'Active' },
-      { domain: 'shop.fashionhub.com', slug: 'fashion-hub', status: 'Pending DNS' },
-    ];
+    return [];
   });
   const [domainInput, setDomainInput] = useState('');
   const [domainSlugInput, setDomainSlugInput] = useState('');
@@ -264,14 +254,17 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     }
   };
 
-  const notifications = [
-    { id: 'n1', title: 'New Business Registration', desc: `${businesses[0]?.name || 'New Merchant'} joined the platform`, time: '10m ago', type: 'info' },
-    { id: 'n2', title: 'Payment Gateway Sync', desc: `Razorpay / Stripe webhook verified successfully`, time: '1h ago', type: 'success' },
-    { id: 'n3', title: 'System Security Check', desc: `Cloud Firestore security rules audited and deployed`, time: '3h ago', type: 'security' },
-  ];
+  const notifications = auditLogs.slice(0, 5).map((log) => ({
+    id: log.id,
+    title: log.action.replace(/_/g, ' '),
+    desc: `${log.target}: ${log.details}`,
+    time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    type: log.action.includes('SUSPEND') || log.action.includes('DELETE') ? 'security' : 'info',
+  }));
 
   const loadPlatformData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [bizData, ordData, bookData, revData, custData, plansData, cmsData, settingsData, auditData] = await Promise.all([
         adminGetAllBusinesses(),
@@ -295,8 +288,9 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
       setCmsForm(cmsData);
       setGlobalSettings(settingsData);
       setAuditLogs(auditData);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading Master Admin data:', err);
+      setError(err?.message || 'Failed to connect to Firestore server. Stale cached data is not displayed.');
     } finally {
       setIsLoading(false);
     }
@@ -876,19 +870,19 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                     <div className="h-72 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={[
-                          { day: 'Mon', vendors: Math.max(1, totalVendors - 5), orders: Math.max(2, totalOrdersCount - 12), logins: 45 },
-                          { day: 'Tue', vendors: Math.max(1, totalVendors - 4), orders: Math.max(3, totalOrdersCount - 9), logins: 62 },
-                          { day: 'Wed', vendors: Math.max(1, totalVendors - 3), orders: Math.max(4, totalOrdersCount - 7), logins: 78 },
-                          { day: 'Thu', vendors: Math.max(1, totalVendors - 2), orders: Math.max(5, totalOrdersCount - 4), logins: 91 },
-                          { day: 'Fri', vendors: Math.max(1, totalVendors - 1), orders: Math.max(6, totalOrdersCount - 2), logins: 115 },
-                          { day: 'Sat', vendors: totalVendors, orders: totalOrdersCount, logins: 140 },
-                          { day: 'Sun', vendors: totalVendors, orders: totalOrdersCount + 2, logins: 125 },
+                          { day: 'Mon', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
+                          { day: 'Tue', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
+                          { day: 'Wed', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
+                          { day: 'Thu', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
+                          { day: 'Fri', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
+                          { day: 'Sat', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
+                          { day: 'Sun', vendors: totalVendors, orders: totalOrdersCount, customers: totalCustomersCount },
                         ]}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                           <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} />
                           <YAxis stroke="#94a3b8" fontSize={12} />
                           <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }} />
-                          <Area type="monotone" dataKey="logins" name="User Logins" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
+                          <Area type="monotone" dataKey="customers" name="Customers" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
                           <Area type="monotone" dataKey="orders" name="Platform Orders" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} />
                           <Area type="monotone" dataKey="vendors" name="Active Vendors" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} strokeWidth={2} />
                         </AreaChart>
@@ -936,6 +930,25 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
               {/* VENDORS MANAGEMENT TAB */}
               {activeTab === 'vendors' && (
                 <div className="space-y-6 animate-in fade-in duration-200">
+                  {error && (
+                    <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 flex items-center justify-between gap-4 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+                        <div>
+                          <p className="font-bold">Firestore Server Error</p>
+                          <p className="text-[11px] text-red-600">{error}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => loadPlatformData()}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition cursor-pointer shrink-0 shadow-xs"
+                      >
+                        Retry Connection
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="relative w-full sm:w-96">
                       <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
@@ -1001,9 +1014,36 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                               },
                             });
                           }}
-                          className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition cursor-pointer"
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition cursor-pointer"
                         >
                           Bulk Suspend
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: `Permanently Delete ${selectedVendorIds.length} Accounts?`,
+                              message: `Are you sure you want to permanently delete ${selectedVendorIds.length} businesses from Firestore? All associated storefronts, catalog items, and records will be deleted forever. This cannot be undone.`,
+                              onConfirm: async () => {
+                                for (const id of selectedVendorIds) {
+                                  await adminDeleteBusiness(id);
+                                }
+                                await adminRecordAuditLog({
+                                  adminEmail,
+                                  action: 'BULK_DELETE_VENDORS',
+                                  target: `${selectedVendorIds.length} Vendors`,
+                                  details: `Permanently deleted IDs: ${selectedVendorIds.join(', ')}`,
+                                });
+                                await loadPlatformData();
+                                setSelectedVendorIds([]);
+                              },
+                            });
+                          }}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Bulk Delete
                         </button>
                       </div>
                     </div>
@@ -1036,63 +1076,99 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {businesses
-                            .filter((b) => b.name.toLowerCase().includes(searchQuery.toLowerCase()) || b.slug.toLowerCase().includes(searchQuery.toLowerCase()))
-                            .map((biz) => {
-                              const isSelected = selectedVendorIds.includes(biz.id);
-                              return (
-                                <tr key={biz.id} className="hover:bg-slate-50">
-                                  <td className="p-4">
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setSelectedVendorIds([...selectedVendorIds, biz.id]);
-                                        } else {
-                                          setSelectedVendorIds(selectedVendorIds.filter((id) => id !== biz.id));
-                                        }
-                                      }}
-                                      className="rounded text-emerald-600 focus:ring-emerald-500"
-                                    />
-                                  </td>
-                                  <td className="p-4">
-                                    <div className="font-bold text-slate-900">{biz.name}</div>
-                                    <div className="text-[11px] text-slate-400 font-mono">{biz.id}</div>
-                                  </td>
-                                  <td className="p-4 capitalize font-semibold text-slate-700">{biz.type}</td>
-                                  <td className="p-4 font-mono text-emerald-700">/store/{biz.slug}</td>
-                                  <td className="p-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                      biz.status === 'suspended' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
-                                    }`}>
-                                      {biz.status || 'Active'}
-                                    </span>
-                                  </td>
-                                  <td className="p-4 text-right space-x-2">
-                                    <button
-                                      type="button"
-                                      onClick={async () => {
-                                        const newStatus = biz.status === 'suspended' ? 'active' : 'suspended';
-                                        await adminUpdateBusiness(biz.id, { status: newStatus });
-                                        await adminRecordAuditLog({
-                                          adminEmail,
-                                          action: newStatus === 'suspended' ? 'SUSPEND_VENDOR' : 'ACTIVATE_VENDOR',
-                                          target: biz.name,
-                                          details: `Vendor status changed to ${newStatus}`,
-                                        });
-                                        loadPlatformData();
-                                      }}
-                                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                        biz.status === 'suspended' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                      }`}
-                                    >
-                                      {biz.status === 'suspended' ? 'Restore' : 'Suspend'}
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                          {businesses.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-slate-500">
+                                <Store className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                <p className="font-bold text-slate-700">No businesses found on Firestore</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">Authoritative server database has no active or registered vendor documents.</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            businesses
+                              .filter((b) => b.name.toLowerCase().includes(searchQuery.toLowerCase()) || b.slug.toLowerCase().includes(searchQuery.toLowerCase()))
+                              .map((biz) => {
+                                const isSelected = selectedVendorIds.includes(biz.id);
+                                return (
+                                  <tr key={biz.id} className="hover:bg-slate-50">
+                                    <td className="p-4">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setSelectedVendorIds([...selectedVendorIds, biz.id]);
+                                          } else {
+                                            setSelectedVendorIds(selectedVendorIds.filter((id) => id !== biz.id));
+                                          }
+                                        }}
+                                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                                      />
+                                    </td>
+                                    <td className="p-4">
+                                      <div className="font-bold text-slate-900">{biz.name}</div>
+                                      <div className="text-[11px] text-slate-400 font-mono">{biz.id}</div>
+                                    </td>
+                                    <td className="p-4 capitalize font-semibold text-slate-700">{biz.type}</td>
+                                    <td className="p-4 font-mono text-emerald-700">/store/{biz.slug}</td>
+                                    <td className="p-4">
+                                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                        biz.status === 'suspended' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                                      }`}>
+                                        {biz.status || 'Active'}
+                                      </span>
+                                    </td>
+                                    <td className="p-4 text-right space-x-2">
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          const newStatus = biz.status === 'suspended' ? 'active' : 'suspended';
+                                          await adminUpdateBusiness(biz.id, { status: newStatus });
+                                          await adminRecordAuditLog({
+                                            adminEmail,
+                                            action: newStatus === 'suspended' ? 'SUSPEND_VENDOR' : 'ACTIVATE_VENDOR',
+                                            target: biz.name,
+                                            details: `Vendor status changed to ${newStatus}`,
+                                          });
+                                          loadPlatformData();
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                          biz.status === 'suspended' ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                        }`}
+                                      >
+                                        {biz.status === 'suspended' ? 'Restore' : 'Suspend'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setConfirmModal({
+                                            isOpen: true,
+                                            title: `Delete "${biz.name}"?`,
+                                            message: `Permanently delete "${biz.name}" (${biz.id}) from Firestore? Its public storefront will permanently resolve to Store Not Found, and it will be removed from all admin and dashboard views. This cannot be undone.`,
+                                            onConfirm: async () => {
+                                              await adminDeleteBusiness(biz.id);
+                                              await adminRecordAuditLog({
+                                                adminEmail,
+                                                action: 'DELETE_VENDOR',
+                                                target: biz.name,
+                                                details: `Permanently deleted vendor ${biz.name} (${biz.id})`,
+                                              });
+                                              setBusinesses((prev) => prev.filter((b) => b.id !== biz.id));
+                                              setSelectedVendorIds((prev) => prev.filter((id) => id !== biz.id));
+                                              await loadPlatformData();
+                                            },
+                                          });
+                                        }}
+                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 transition cursor-pointer inline-flex items-center gap-1"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                          )}
                         </tbody>
                       </table>
                     </div>

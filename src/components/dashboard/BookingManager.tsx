@@ -100,10 +100,10 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--t1)] font-heading">
             {isCreator ? 'Consultations & 1:1 Bookings' : 'Appointments & Bookings'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--t2)] mt-0.5">
             {isCreator 
               ? 'Manage your scheduled mentorship sessions, consultations, and event bookings.'
               : 'Manage scheduled customer appointments, stay reservations, and vehicle rentals.'
@@ -115,17 +115,17 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
           <button
             type="button"
             onClick={() => setIsQrModalOpen(true)}
-            className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            className="ds-btn-secondary min-h-[44px] px-3.5 text-xs font-bold shadow-[var(--shadow-xs)] flex items-center gap-1.5 cursor-pointer"
             title={isCreator ? 'QR code for 1:1 Consultations' : 'QR code for Bookings'}
           >
-            <QrCode className="w-4 h-4 text-amber-600" />
+            <QrCode className="w-4 h-4 text-[var(--g600)]" />
             <span>{isCreator ? 'Consultation QR' : 'Booking Page QR'}</span>
           </button>
 
           <button
             type="button"
             onClick={loadData}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl shadow-2xs transition cursor-pointer"
+            className="ds-btn-secondary min-h-[44px] px-3 text-xs font-semibold shadow-[var(--shadow-xs)] cursor-pointer"
           >
             Refresh Bookings
           </button>
@@ -133,22 +133,22 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[var(--card)] p-3 rounded-[var(--r12)] border border-[var(--border)] shadow-[var(--shadow-xs)]">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t3)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search bookings by customer, item name, booking #..."
-            className="w-full pl-10 pr-4 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
+            className="w-full pl-10 pr-4 py-2 text-xs border border-[var(--border)] rounded-[var(--r8)] focus:outline-[var(--g400)] bg-[var(--bg)] text-[var(--t1)]"
           />
         </div>
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full sm:w-48 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 bg-white"
+          className="w-full sm:w-48 px-3 py-2 text-xs border border-[var(--border)] rounded-[var(--r8)] focus:outline-[var(--g400)] bg-[var(--card)] text-[var(--t1)] font-medium"
         >
           <option value="all">All Statuses ({bookings.length})</option>
           <option value="pending">Pending</option>
@@ -162,54 +162,54 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+            <div key={i} className="h-20 bg-[var(--card)] rounded-[var(--r16)] border border-[var(--border)] animate-pulse" />
           ))}
         </div>
       ) : filteredBookings.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+        <div className="bg-[var(--card)] rounded-[var(--r16)] border border-[var(--border)] shadow-[var(--shadow-xs)] divide-y divide-[var(--border)] overflow-hidden">
           {filteredBookings.map((bk) => (
             <div
               key={bk.id}
-              className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition"
+              className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[var(--bg)] transition"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-heading font-extrabold text-sm text-slate-900">
+                  <span className="font-heading font-extrabold text-sm text-[var(--t1)]">
                     {bk.bookingNumber}
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                    className={`px-2.5 py-0.5 rounded-[var(--r8)] text-[10px] font-bold uppercase tracking-wider border ${
                       bk.status === 'confirmed'
-                        ? 'bg-blue-50 text-blue-800 border-blue-200'
+                        ? 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]'
                         : bk.status === 'completed'
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        ? 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]'
                         : bk.status === 'cancelled'
-                        ? 'bg-red-50 text-red-700 border-red-200'
-                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                        ? 'bg-[var(--r100)] text-[var(--r500)] border-rose-200'
+                        : 'bg-[var(--y100)] text-amber-800 border-amber-200'
                     }`}
                   >
                     {bk.status}
                   </span>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="text-xs font-bold text-[var(--g700)] bg-[var(--g100)] px-2 py-0.5 rounded-[var(--r4)] border border-[var(--g200)]">
                     {bk.itemName}
                   </span>
                 </div>
 
-                <div className="text-xs text-slate-600 flex items-center gap-2 flex-wrap pt-0.5">
-                  <span className="font-bold text-slate-800">{bk.customerName}</span>
+                <div className="text-xs text-[var(--t2)] flex items-center gap-2 flex-wrap pt-0.5">
+                  <span className="font-bold text-[var(--t1)]">{bk.customerName}</span>
                   <span>•</span>
                   <span>{bk.customerPhone}</span>
                   <span>•</span>
-                  <span className="text-slate-500 font-medium">
+                  <span className="text-[var(--t3)] font-medium">
                     📅 {bk.bookingDate || bk.checkInDate || bk.startDate}
                     {bk.bookingTimeSlot ? ` (${bk.bookingTimeSlot})` : ''}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+              <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border)]">
                 <div className="text-left sm:text-right">
-                  <div className="font-extrabold text-base text-slate-900">
+                  <div className="font-extrabold text-base text-[var(--t1)]">
                     {business.currencySymbol}{bk.totalAmount}
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
                   <button
                     type="button"
                     onClick={() => handleSendWhatsAppUpdate(bk)}
-                    className="p-2 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-xl transition"
+                    className="p-2 text-[var(--g600)] hover:bg-[var(--g100)] border border-[var(--g200)] rounded-[var(--r8)] transition cursor-pointer"
                     title="Send WhatsApp Update"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -227,7 +227,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
                   <button
                     type="button"
                     onClick={() => setSelectedBooking(bk)}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition flex items-center gap-1"
+                    className="px-3 py-2 bg-[var(--g900)] hover:bg-[var(--g800)] text-white text-xs font-bold rounded-[var(--r8)] transition flex items-center gap-1 cursor-pointer shadow-[var(--shadow-xs)]"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     <span>Details</span>
@@ -238,12 +238,12 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
           ))}
         </div>
       ) : (
-        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+        <div className="p-12 text-center bg-[var(--card)] rounded-[var(--r16)] border border-dashed border-[var(--border)] space-y-3">
+          <div className="w-12 h-12 rounded-[var(--r12)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center mx-auto">
             <CalendarCheck className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-900">No {isCreator ? 'Consultations' : 'Bookings'} Yet</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <h3 className="text-base font-bold text-[var(--t1)] font-heading">No {isCreator ? 'Consultations' : 'Bookings'} Yet</h3>
+          <p className="text-xs text-[var(--t2)] max-w-sm mx-auto">
             {isCreator 
               ? 'Clients can book 1:1 sessions or event tickets directly from your profile.'
               : 'Customers can book appointments, hotel stays, or vehicles directly from your public storefront.'
@@ -255,18 +255,18 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="relative w-full max-w-md bg-[var(--card)] rounded-[var(--r16)] shadow-[var(--shadow-xl)] border border-[var(--border)] p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <div>
-                <h3 className="text-base font-bold text-slate-900 font-heading">
+                <h3 className="text-base font-bold text-[var(--t1)] font-heading">
                   Booking #{selectedBooking.bookingNumber}
                 </h3>
-                <p className="text-xs text-emerald-700 font-semibold">{selectedBooking.itemName}</p>
+                <p className="text-xs text-[var(--g700)] font-semibold">{selectedBooking.itemName}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedBooking(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1.5 text-[var(--t3)] hover:text-[var(--t1)] rounded-[var(--r8)] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -274,7 +274,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
 
             {/* Status switcher */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              <label className="block text-[11px] font-bold text-[var(--t1)] uppercase tracking-wider font-heading">
                 Booking Status
               </label>
               <div className="grid grid-cols-4 gap-1.5">
@@ -284,10 +284,10 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
                     type="button"
                     disabled={isUpdating}
                     onClick={() => handleStatusChange(selectedBooking.id, st)}
-                    className={`py-1.5 px-2 rounded-xl text-xs font-bold capitalize transition ${
+                    className={`py-1.5 px-2 rounded-[var(--r8)] text-xs font-bold capitalize transition cursor-pointer ${
                       selectedBooking.status === st
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        ? 'bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]'
+                        : 'bg-[var(--card)] text-[var(--t2)] hover:bg-[var(--bg)] border border-[var(--border)]'
                     }`}
                   >
                     {st}
@@ -297,30 +297,30 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
             </div>
 
             {/* Details */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs text-slate-700">
+            <div className="p-4 bg-[var(--bg)] rounded-[var(--r12)] border border-[var(--border)] space-y-2 text-xs text-[var(--t2)]">
               <div className="flex justify-between">
-                <span className="text-slate-500">Customer:</span>
-                <span className="font-bold text-slate-900">{selectedBooking.customerName}</span>
+                <span className="text-[var(--t3)]">Customer:</span>
+                <span className="font-bold text-[var(--t1)]">{selectedBooking.customerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Phone:</span>
-                <span className="font-medium">{selectedBooking.customerPhone}</span>
+                <span className="text-[var(--t3)]">Phone:</span>
+                <span className="font-medium text-[var(--t1)]">{selectedBooking.customerPhone}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Date:</span>
-                <span className="font-bold text-slate-900">
+                <span className="text-[var(--t3)]">Date:</span>
+                <span className="font-bold text-[var(--t1)]">
                   {selectedBooking.bookingDate || selectedBooking.checkInDate || selectedBooking.startDate}
                 </span>
               </div>
               {selectedBooking.bookingTimeSlot && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Time Slot:</span>
-                  <span className="font-semibold text-emerald-800">{selectedBooking.bookingTimeSlot}</span>
+                  <span className="text-[var(--t3)]">Time Slot:</span>
+                  <span className="font-semibold text-[var(--g700)]">{selectedBooking.bookingTimeSlot}</span>
                 </div>
               )}
               {selectedBooking.notes && (
-                <div className="pt-2 border-t border-slate-200 text-slate-600">
-                  <span className="font-bold block text-slate-800">Special Notes:</span>
+                <div className="pt-2 border-t border-[var(--border)] text-[var(--t2)]">
+                  <span className="font-bold block text-[var(--t1)]">Special Notes:</span>
                   {selectedBooking.notes}
                 </div>
               )}
@@ -330,7 +330,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
               <button
                 type="button"
                 onClick={() => handleSendWhatsAppUpdate(selectedBooking)}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5"
+                className="w-full ds-btn-primary py-2.5 font-bold text-xs shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>WhatsApp Customer</span>
@@ -351,7 +351,7 @@ export const BookingManager: React.FC<BookingManagerProps> = ({ business }) => {
           url={getModuleDeepUrl(business, 'services')}
           businessName={business.name}
           logoUrl={business.logo || business.profileImage}
-          accentColor="amber"
+          accentColor="emerald"
         />
       )}
     </div>

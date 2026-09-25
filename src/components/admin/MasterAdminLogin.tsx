@@ -10,7 +10,7 @@ interface MasterAdminLoginProps {
 }
 
 export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSuccess, onBackToApp }) => {
-  const [email, setEmail] = useState('localride369@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

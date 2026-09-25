@@ -772,4 +772,36 @@ export function isModuleApplicableForBusiness(moduleKey: string, business?: Busi
   return whitelist.has(moduleKey);
 }
 
+/**
+ * Relevant modules specifically tailored for each business vertical.
+ * Irrelevant modules are excluded from the setup experience and disabled by default.
+ */
+export const VERTICAL_RELEVANT_MODULES: Record<BusinessType, (keyof BusinessModuleConfig)[]> = {
+  retail: ['products', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  restaurant: ['menu', 'cart_ordering', 'table_delivery', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  grocery: ['products', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  bakery: ['products', 'menu', 'cart_ordering', 'table_delivery', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  salon: ['services', 'booking_appointments', 'products', 'cart_ordering', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  clinic: ['services', 'booking_appointments', 'inquiries', 'reviews', 'digital_card'],
+  hotel: ['rooms', 'stay_booking', 'services', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  rental: ['vehicles', 'rental_booking', 'services', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  real_estate: ['services', 'booking_appointments', 'inquiries', 'reviews', 'digital_card'],
+  fashion: ['products', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  jewellery: ['products', 'cart_ordering', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  electronics: ['products', 'services', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  furniture: ['products', 'services', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  education: ['services', 'booking_appointments', 'digital_products', 'cart_ordering', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  services: ['services', 'booking_appointments', 'cart_ordering', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  agency: ['services', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
+  custom: ['products', 'services', 'cart_ordering', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  digital_creator: ['work_portfolio', 'portfolio', 'universal_links', 'digital_products', 'booking_appointments', 'custom_quotes', 'events_tickets', 'reviews'],
+};
+
+/**
+ * Returns the relevant module keys for a specific vertical
+ */
+export function getRelevantModulesForVertical(vertical: BusinessType): (keyof BusinessModuleConfig)[] {
+  return VERTICAL_RELEVANT_MODULES[vertical] || VERTICAL_RELEVANT_MODULES.retail;
+}
+
 

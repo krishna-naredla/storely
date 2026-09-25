@@ -26,8 +26,13 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   onOpenStorefront,
   onOpenDigitalCard,
 }) => {
-  // Enforce preview separation: owner preview controls ONLY show when isExplicitPreview is true
-  const activePreview = Boolean(isExplicitPreview && isOwner);
+  // Enforce preview separation: owner preview controls ONLY show when isExplicitPreview is true and business is active
+  const activePreview = Boolean(
+    isExplicitPreview &&
+    isOwner &&
+    targetBusiness.status !== 'suspended' &&
+    targetBusiness.status !== 'deleted'
+  );
 
   // 1. Universal Bio Link View
   if (viewMode === 'biolink' || viewMode === 'bio') {

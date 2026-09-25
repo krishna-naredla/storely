@@ -104,8 +104,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'portfolio',
       tabLabel: 'Manage Showcase',
       icon: Briefcase,
-      badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      activeBg: 'bg-indigo-50 text-indigo-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getPortfolioUrl(handleSlug),
       enabled: !!business.modules?.work_portfolio || !!business.modules?.portfolio,
     },
@@ -117,8 +117,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'biolink',
       tabLabel: 'Configure Bio Links',
       icon: LinkIcon,
-      badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
-      activeBg: 'bg-purple-50 text-purple-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getBioLinkUrl(handleSlug),
       enabled: !!business.modules?.universal_links,
     },
@@ -130,8 +130,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'catalog',
       tabLabel: 'Add Digital Products',
       icon: ShoppingBag,
-      badgeColor: 'bg-teal-50 text-teal-700 border-teal-200',
-      activeBg: 'bg-teal-50 text-teal-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.digital_products || !!business.modules?.digitalProducts,
     },
@@ -143,8 +143,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'bookings',
       tabLabel: 'Manage Appointments',
       icon: CalendarCheck,
-      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-      activeBg: 'bg-blue-50 text-blue-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.booking_appointments,
     },
@@ -156,8 +156,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'quotes',
       tabLabel: 'Review Quotes',
       icon: FileText,
-      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
-      activeBg: 'bg-amber-50 text-amber-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.custom_quotes,
     },
@@ -169,8 +169,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'events',
       tabLabel: 'Manage Events',
       icon: Ticket,
-      badgeColor: 'bg-pink-50 text-pink-700 border-pink-200',
-      activeBg: 'bg-pink-50 text-pink-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getDigitalStoreUrl(handleSlug),
       enabled: !!business.modules?.events_tickets || !!business.modules?.events_ticketing,
     },
@@ -182,8 +182,8 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
       tabId: 'reviews',
       tabLabel: 'Manage Testimonials',
       icon: Star,
-      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
-      activeBg: 'bg-amber-50 text-amber-600',
+      badgeColor: 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)]',
+      activeBg: 'bg-[var(--g100)] text-[var(--g600)]',
       url: getPortfolioUrl(handleSlug),
       enabled: business.modules?.reviews !== false,
     },
@@ -201,16 +201,16 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
   if (!isCreator) {
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="p-6 sm:p-8 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
-              <Store className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[var(--r8)] bg-[var(--g100)] border border-[var(--g200)] text-[var(--g700)] text-xs font-bold uppercase tracking-wider">
+              <Store className="w-3.5 h-3.5 text-[var(--g600)]" />
               Vendor Store Account Detected
             </span>
-            <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
+            <h2 className="text-xl sm:text-2xl font-black font-heading text-[var(--t1)]">
               Vendor Storefront Configuration
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-[var(--t2)] leading-relaxed">
               <strong>{business.name}</strong> is currently set up as a Commerce Vendor storefront. Irrelevant creator-only tools (case study portfolios, biolink hubs) are hidden to keep your dashboard focused on physical products, table ordering, menu items, and bookings.
             </p>
           </div>
@@ -218,7 +218,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
             <button
               type="button"
               onClick={() => onNavigateTab('modules')}
-              className="py-3.5 px-6 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              className="ds-btn-primary min-h-[44px] px-6 text-xs sm:text-sm shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
               <span>Manage Store Modules</span>
               <ArrowRight className="w-4 h-4" />
@@ -228,20 +228,20 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
 
         {/* Quick Info Grid for Vendor Mode */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Store Type</div>
-            <div className="text-base font-black text-slate-900 capitalize">{business.type.replace('_', ' ')}</div>
-            <div className="text-xs text-slate-500">Retail, Catalog &amp; Cart Checkout</div>
+          <div className="p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-1">
+            <div className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Store Type</div>
+            <div className="text-base font-black text-[var(--t1)] capitalize">{business.type.replace('_', ' ')}</div>
+            <div className="text-xs text-[var(--t2)]">Retail, Catalog &amp; Cart Checkout</div>
           </div>
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ordering Flow</div>
-            <div className="text-base font-black text-emerald-600">WhatsApp &amp; UPI Live</div>
-            <div className="text-xs text-slate-500">Zero Commission on Direct Orders</div>
+          <div className="p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-1">
+            <div className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Ordering Flow</div>
+            <div className="text-base font-black text-[var(--g600)]">WhatsApp &amp; UPI Live</div>
+            <div className="text-xs text-[var(--t2)]">Zero Commission on Direct Orders</div>
           </div>
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Public Storefront</div>
-            <div className="text-base font-black text-slate-900 font-mono text-xs truncate">/store/{business.slug}</div>
-            <div className="text-xs text-slate-500">Live Customer Storefront URL</div>
+          <div className="p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-1">
+            <div className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Public Storefront</div>
+            <div className="text-base font-black text-[var(--t1)] font-mono text-xs truncate">/store/{business.slug}</div>
+            <div className="text-xs text-[var(--t2)]">Live Customer Storefront URL</div>
           </div>
         </div>
       </div>
@@ -251,23 +251,22 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="p-6 sm:p-7 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1 max-w-xl">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span className="px-3 py-1 rounded-[var(--r8)] bg-[var(--g100)] border border-[var(--g200)] text-[var(--g700)] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[var(--g600)]" />
                 Creator Modular Architecture
               </span>
-              <span className="px-2.5 py-1 rounded-full bg-white/10 text-white text-xs font-semibold">
+              <span className="px-2.5 py-1 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-[var(--t2)] text-xs font-semibold">
                 {activeCount} of {visibleModules.length} Active
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black font-heading mt-1 text-white">
+            <h2 className="text-xl sm:text-2xl font-black font-heading mt-1 text-[var(--t1)]">
               Creator Modules &amp; Public Destinations
             </h2>
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+            <p className="text-[var(--t2)] text-xs sm:text-sm leading-relaxed">
               Enable or disable capabilities on the fly. Your navigation sidebar, public portfolio page, bio link, and digital store update instantly.
             </p>
           </div>
@@ -279,10 +278,10 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                 const primaryMod = visibleModules.find((m) => m.enabled) || visibleModules[0];
                 if (primaryMod) setSelectedQrModule(primaryMod);
               }}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer border border-white/15"
+              className="ds-btn-secondary min-h-[44px] px-4 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-[var(--shadow-xs)]"
               title="Open module QR code generator"
             >
-              <QrCode className="w-4 h-4 text-emerald-400" />
+              <QrCode className="w-4 h-4 text-[var(--g600)]" />
               <span>Module QR Codes</span>
             </button>
 
@@ -290,7 +289,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
               href={getPrimaryPublicDisplayPath(business)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 transition shadow-md shadow-indigo-950/40"
+              className="ds-btn-primary min-h-[44px] px-4 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-[var(--shadow-xs)]"
             >
               <ExternalLink className="w-4 h-4" />
               <span>Preview Live Profile</span>
@@ -301,7 +300,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
 
       {/* Error message banner if any */}
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2.5">
+        <div className="p-4 rounded-[var(--r12)] bg-[var(--r100)] border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2.5">
           <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -312,37 +311,37 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
         {visibleModules.map((mod) => (
           <div
             key={mod.id}
-            className={`bg-white rounded-3xl p-5 sm:p-6 shadow-xs border transition-all flex flex-col justify-between relative overflow-hidden hover:shadow-md ${
-              mod.enabled ? 'border-indigo-200/90 ring-1 ring-indigo-500/10' : 'border-slate-200/90 opacity-90'
+            className={`bg-[var(--card)] rounded-[var(--r16)] p-5 sm:p-6 shadow-[var(--shadow-xs)] border transition-all flex flex-col justify-between relative overflow-hidden ${
+              mod.enabled ? 'border-[var(--g500)]/40 ring-1 ring-[var(--g500)]/10' : 'border-[var(--border)] opacity-90'
             }`}
           >
             {mod.enabled && (
-              <div className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-bl-2xl border-l border-b shadow-2xs ${mod.badgeColor}`}>
+              <div className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-bl-[var(--r12)] border-l border-b ${mod.badgeColor}`}>
                 Active
               </div>
             )}
 
             <div>
               <div className="flex items-center gap-3 mb-3 mt-1">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition shadow-2xs ${
-                  mod.enabled ? mod.activeBg : 'bg-slate-100 text-slate-400'
+                <div className={`w-12 h-12 rounded-[var(--r12)] flex items-center justify-center transition ${
+                  mod.enabled ? mod.activeBg : 'bg-[var(--bg)] text-[var(--t3)]'
                 }`}>
                   <mod.icon className="w-6 h-6" />
                 </div>
                 <div className="min-w-0 pr-12">
-                  <h3 className="font-bold text-sm text-slate-900 leading-snug">{mod.title}</h3>
-                  <span className="text-[11px] font-medium text-slate-400">
+                  <h3 className="font-bold text-sm text-[var(--t1)] leading-snug">{mod.title}</h3>
+                  <span className="text-[11px] font-medium text-[var(--t3)]">
                     {mod.enabled ? 'Live on Profile' : 'Inactive'}
                   </span>
                 </div>
               </div>
 
-              <p className="text-xs text-slate-500 mb-5 leading-relaxed min-h-[36px]">
+              <p className="text-xs text-[var(--t2)] mb-5 leading-relaxed min-h-[36px]">
                 {mod.description}
               </p>
             </div>
 
-            <div className="space-y-2.5 pt-3 border-t border-slate-100">
+            <div className="space-y-2.5 pt-3 border-t border-[var(--border)]">
               {mod.enabled ? (
                 <>
                   <div className="grid grid-cols-3 gap-2">
@@ -350,7 +349,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                       <button
                         type="button"
                         onClick={() => onNavigateTab(mod.tabId)}
-                        className="py-2 px-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl font-bold text-xs flex justify-center items-center gap-1 transition cursor-pointer"
+                        className="py-2 px-2 bg-[var(--g50)] hover:bg-[var(--g100)] text-[var(--g700)] border border-[var(--g200)] rounded-[var(--r8)] font-bold text-xs flex justify-center items-center gap-1 transition cursor-pointer"
                         title={mod.tabLabel}
                       >
                         <span className="truncate">Manage</span>
@@ -362,17 +361,17 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                     <button
                       type="button"
                       onClick={() => setSelectedQrModule(mod)}
-                      className="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-xl font-bold text-xs flex justify-center items-center gap-1 transition cursor-pointer shadow-2xs"
+                      className="py-2 px-2 bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)] rounded-[var(--r8)] font-bold text-xs flex justify-center items-center gap-1 transition cursor-pointer shadow-[var(--shadow-xs)]"
                       title="View, download, and print QR code for this module"
                     >
-                      <QrCode className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <QrCode className="w-3.5 h-3.5 text-[var(--g600)] shrink-0" />
                       <span>QR Code</span>
                     </button>
                     <a
                       href={mod.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-2 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex justify-center items-center gap-1 transition truncate"
+                      className="py-2 px-2 ds-btn-primary rounded-[var(--r8)] font-bold text-xs flex justify-center items-center gap-1 transition truncate"
                     >
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                       <span>Live</span>
@@ -383,16 +382,16 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                     <button
                       type="button"
                       onClick={() => copyUrl(mod.id, mod.url)}
-                      className="text-[11px] font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-1 transition cursor-pointer"
+                      className="text-[11px] font-semibold text-[var(--t2)] hover:text-[var(--g600)] flex items-center gap-1 transition cursor-pointer"
                     >
                       {copiedKey === mod.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-emerald-700">Link Copied!</span>
+                          <Check className="w-3.5 h-3.5 text-[var(--g600)]" />
+                          <span className="text-[var(--g700)]">Link Copied!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          <Copy className="w-3.5 h-3.5 text-[var(--t3)]" />
                           <span>Copy Link</span>
                         </>
                       )}
@@ -401,7 +400,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                     <button
                       type="button"
                       onClick={() => setSelectedQrModule(mod)}
-                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition cursor-pointer"
+                      className="text-[11px] font-semibold text-[var(--g600)] hover:text-[var(--g700)] flex items-center gap-1 transition cursor-pointer"
                     >
                       <QrCode className="w-3.5 h-3.5" />
                       <span>Show QR</span>
@@ -411,10 +410,10 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                       type="button"
                       onClick={() => handleToggleModule(mod)}
                       disabled={updating === mod.keys[0]}
-                      className="text-slate-400 hover:text-rose-600 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                      className="text-[var(--t3)] hover:text-[var(--r500)] text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
                     >
                       {updating === mod.keys[0] ? (
-                        <Loader2 className="w-3 h-3 animate-spin text-slate-500" />
+                        <Loader2 className="w-3 h-3 animate-spin text-[var(--t3)]" />
                       ) : (
                         'Disable'
                       )}
@@ -426,13 +425,13 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
                   type="button"
                   onClick={() => handleToggleModule(mod)}
                   disabled={updating === mod.keys[0]}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition shadow-sm cursor-pointer"
+                  className="w-full ds-btn-primary py-2.5 rounded-[var(--r8)] font-bold text-xs flex justify-center items-center gap-1.5 transition shadow-[var(--shadow-xs)] cursor-pointer"
                 >
                   {updating === mod.keys[0] ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <Sparkles className="w-3.5 h-3.5" />
                       <span>Enable &amp; Add to Navigation</span>
                     </>
                   )}
@@ -466,7 +465,7 @@ export const CreatorModulesManager: React.FC<Props> = ({ business, onBusinessUpd
           url={selectedQrModule.url}
           businessName={business.name}
           logoUrl={business.logo || business.profileImage}
-          accentColor="indigo"
+          accentColor="emerald"
         />
       )}
     </div>

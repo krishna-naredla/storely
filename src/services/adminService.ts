@@ -11,6 +11,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
+import { deleteBusiness } from './firebaseService';
 import { BusinessProfile, Order, Booking, Review, Customer, CatalogItem } from '../types';
 import {
   PlatformPricingPlan,
@@ -161,45 +162,69 @@ export async function verifyAdminInFirestore(email: string | null | undefined, u
   return false;
 }
 
-// Fetch all businesses across platform
+// Fetch all businesses across platform - Firestore is authoritative
 export async function adminGetAllBusinesses(): Promise<BusinessProfile[]> {
-  try {
-    const snap = await getDocs(collection(db, 'businesses'));
-    const list = snap.docs
-      .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
-      .filter((b) => b.status !== 'deleted');
-    if (list.length > 0) {
-      localStorage.setItem('storelly_admin_all_biz', JSON.stringify(list));
-      return list;
-    }
-  } catch (err) {
-    console.warn('Admin fetch businesses error, falling back to cache:', err);
-  }
-  
-  try {
-    const cached = localStorage.getItem('storelly_admin_all_biz');
-    if (cached) {
-      const parsed: BusinessProfile[] = JSON.parse(cached);
-      return parsed.filter((b) => b.status !== 'deleted');
-    }
-  } catch {}
-
-  // Fallback to cached local businesses
-  try {
-    const localRaw = localStorage.getItem('storelly_cached_businesses');
-    if (localRaw) {
-      const parsed: BusinessProfile[] = JSON.parse(localRaw);
-      return parsed.filter((b) => b.status !== 'deleted');
-    }
-  } catch {}
-
-  return [];
+  const snap = await getDocs(collection(db, 'businesses'));
+  const list = snap.docs
+    .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
+    .filter((b) => b.status !== 'deleted');
+  localStorage.setItem('storelly_admin_all_biz', JSON.stringify(list));
+  return list;
 }
 
 // Admin update business status / plan / verification
 export async function adminUpdateBusiness(businessId: string, updates: Partial<BusinessProfile>): Promise<void> {
   const docRef = doc(db, 'businesses', businessId);
-  await updateDoc(docRef, { ...updates, updatedAt: Date.now() });
+  const updatedAt = Date.now();
+  await updateDoc(docRef, { ...updates, updatedAt });
+
+  // Synchronize admin cache with updated business
+  try {
+    const cached = localStorage.getItem('storelly_admin_all_biz');
+    if (cached) {
+      const parsed: BusinessProfile[] = JSON.parse(cached);
+      const updatedList = parsed.map((b) => (b.id === businessId ? { ...b, ...updates, updatedAt } : b));
+      localStorage.setItem('storelly_admin_all_biz', JSON.stringify(updatedList));
+    }
+  } catch {}
+
+  // Synchronize local businesses cache
+  try {
+    const localRaw = localStorage.getItem('storelly_cached_businesses');
+    if (localRaw) {
+      const parsed: BusinessProfile[] = JSON.parse(localRaw);
+      const updatedList = parsed.map((b) => (b.id === businessId ? { ...b, ...updates, updatedAt } : b));
+      localStorage.setItem('storelly_cached_businesses', JSON.stringify(updatedList));
+    }
+  } catch {}
+}
+
+// Admin permanently delete business from Firestore and all caches
+export async function adminDeleteBusiness(businessId: string): Promise<void> {
+  // Execute thorough deletion across Firestore documents and subcollections
+  await deleteBusiness(businessId);
+
+  // Clean all admin and local caches
+  try {
+    const cached = localStorage.getItem('storelly_admin_all_biz');
+    if (cached) {
+      const parsed: BusinessProfile[] = JSON.parse(cached);
+      const filtered = parsed.filter((b) => b.id !== businessId);
+      localStorage.setItem('storelly_admin_all_biz', JSON.stringify(filtered));
+    }
+  } catch {}
+
+  try {
+    const localRaw = localStorage.getItem('storelly_cached_businesses');
+    if (localRaw) {
+      const parsed: BusinessProfile[] = JSON.parse(localRaw);
+      const filtered = parsed.filter((b) => b.id !== businessId);
+      localStorage.setItem('storelly_cached_businesses', JSON.stringify(filtered));
+    }
+  } catch {}
+
+  // Notify components across window
+  window.dispatchEvent(new CustomEvent('storelly_business_deleted', { detail: { businessId } }));
 }
 
 // Fetch all platform orders across all businesses
@@ -279,16 +304,7 @@ export async function adminGetAuditLogs(): Promise<PlatformAuditLog[]> {
     if (cached) return JSON.parse(cached);
   } catch {}
 
-  return [
-    {
-      id: 'log_1',
-      adminEmail: 'maninaredla218@gmail.com',
-      action: 'SYSTEM_INIT',
-      target: 'Platform',
-      details: 'Master Admin Control Center initialized successfully.',
-      timestamp: Date.now() - 3600000,
-    },
-  ];
+  return [];
 }
 
 export async function adminRecordAuditLog(log: Omit<PlatformAuditLog, 'id' | 'timestamp'>): Promise<void> {

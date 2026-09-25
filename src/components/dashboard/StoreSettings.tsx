@@ -374,31 +374,31 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-heading">
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--t1)] font-heading">
             Store Settings
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--t2)] mt-0.5">
             Configure branding, photos, contact numbers, and SEO.
           </p>
         </div>
 
-        <div className="flex p-1 bg-slate-100 rounded-xl">
+        <div className="flex p-1 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r12)]">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition ${
+            className={`px-4 py-1.5 text-xs font-bold rounded-[var(--r8)] transition cursor-pointer ${
               activeTab === 'profile'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-[var(--card)] text-[var(--t1)] shadow-[var(--shadow-xs)]'
+                : 'text-[var(--t2)] hover:text-[var(--t1)]'
             }`}
           >
             Store Profile
           </button>
           <button
             onClick={() => setActiveTab('seo')}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition ${
+            className={`px-4 py-1.5 text-xs font-bold rounded-[var(--r8)] transition cursor-pointer ${
               activeTab === 'seo'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-[var(--card)] text-[var(--t1)] shadow-[var(--shadow-xs)]'
+                : 'text-[var(--t2)] hover:text-[var(--t1)]'
             }`}
           >
             SEO Manager

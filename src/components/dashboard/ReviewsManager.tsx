@@ -118,10 +118,10 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
       {/* Header & Rating Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+          <h2 className="text-xl sm:text-2xl font-black text-[var(--t1)] font-heading">
             {isCreatorProfile(business) ? 'Client Testimonials' : 'Customer Reviews & Ratings'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--t2)] mt-0.5">
             {isCreatorProfile(business) 
               ? 'Manage feedback from your clients. You can choose which testimonials to display publicly.'
               : 'View real feedback submitted by customers on your public storefront and reply publicly.'}
@@ -132,7 +132,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 text-xs font-black text-white bg-slate-900 hover:bg-slate-800 rounded-2xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            className="ds-btn-primary min-h-[44px] px-4 text-xs font-bold shadow-[var(--shadow-xs)] flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Manual</span>
@@ -141,19 +141,19 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
           <button
             type="button"
             onClick={() => setIsQrModalOpen(true)}
-            className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            className="ds-btn-secondary min-h-[44px] px-3.5 text-xs font-bold shadow-[var(--shadow-xs)] flex items-center gap-1.5 cursor-pointer"
             title="Generate and download QR code to collect client reviews"
           >
-            <QrCode className="w-4 h-4 text-amber-600" />
+            <QrCode className="w-4 h-4 text-[var(--g600)]" />
             <span>Reviews QR</span>
           </button>
 
-          <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-3 bg-[var(--card)] p-3 rounded-[var(--r12)] border border-[var(--border)] shadow-[var(--shadow-xs)] min-h-[44px]">
             <div className="flex items-center gap-1 text-amber-500">
               <Star className="w-5 h-5 fill-amber-400" />
-              <span className="font-heading font-extrabold text-lg text-slate-900">{avgRating}</span>
+              <span className="font-heading font-extrabold text-lg text-[var(--t1)]">{avgRating}</span>
             </div>
-            <span className="text-xs text-slate-400">({reviews.length} reviews)</span>
+            <span className="text-xs text-[var(--t3)]">({reviews.length} reviews)</span>
           </div>
         </div>
       </div>
@@ -162,7 +162,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-white rounded-2xl border border-slate-200 animate-pulse" />
+            <div key={i} className="h-24 bg-[var(--card)] rounded-[var(--r16)] border border-[var(--border)] animate-pulse" />
           ))}
         </div>
       ) : reviews.length > 0 ? (
@@ -170,16 +170,16 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
           {reviews.map((rev) => (
             <div
               key={rev.id}
-              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3"
+              className="p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g700)] font-bold text-xs flex items-center justify-center">
                     {rev.customerName.slice(0, 1).toUpperCase()}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900">{rev.customerName}</h4>
-                    <span className="text-[10px] text-slate-400">
+                    <h4 className="text-xs font-bold text-[var(--t1)]">{rev.customerName}</h4>
+                    <span className="text-[10px] text-[var(--t3)]">
                       {new Date(rev.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -190,10 +190,10 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                   <button
                     type="button"
                     onClick={() => toggleReviewVisibility(rev)}
-                    className={`p-2 rounded-xl border transition flex items-center gap-1.5 text-[10px] font-bold ${
+                    className={`p-2 rounded-[var(--r8)] border transition flex items-center gap-1.5 text-[10px] font-bold cursor-pointer ${
                       rev.status === 'published'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
-                        : 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100'
+                        ? 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g200)] hover:bg-[var(--g200)]'
+                        : 'bg-[var(--y100)] text-amber-800 border-amber-200 hover:bg-amber-100'
                     }`}
                   >
                     {rev.status === 'published' ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -206,7 +206,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                       <Star
                         key={s}
                         className={`w-3.5 h-3.5 ${
-                          s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+                          s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-[var(--border)]'
                         }`}
                       />
                     ))}
@@ -215,16 +215,16 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
               </div>
 
               {/* Comment */}
-              <p className="text-xs text-slate-700 leading-relaxed pl-12">{rev.comment}</p>
+              <p className="text-xs text-[var(--t2)] leading-relaxed pl-12">{rev.comment}</p>
 
               {/* Vendor Reply if exists */}
               {rev.reply && (
-                <div className="ml-12 p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-950 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5 text-emerald-900">
-                    <CornerDownRight className="w-3.5 h-3.5 text-emerald-600" />
+                <div className="ml-12 p-3 rounded-[var(--r12)] bg-[var(--g50)] border border-[var(--g200)] text-xs text-[var(--t1)] space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-[var(--g700)]">
+                    <CornerDownRight className="w-3.5 h-3.5 text-[var(--g600)]" />
                     <span>Response from {business.name}:</span>
                   </div>
-                  <p className="pl-5 text-slate-700">{rev.reply}</p>
+                  <p className="pl-5 text-[var(--t2)]">{rev.reply}</p>
                 </div>
               )}
 
@@ -237,7 +237,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                       setReplyingReviewId(rev.id);
                       setReplyText('');
                     }}
-                    className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5"
+                    className="text-xs font-bold text-[var(--g600)] hover:text-[var(--g700)] flex items-center gap-1.5 cursor-pointer"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Reply to Customer</span>
@@ -246,19 +246,19 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
               )}
 
               {replyingReviewId === rev.id && (
-                <div className="ml-12 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="ml-12 p-3 bg-[var(--bg)] rounded-[var(--r12)] border border-[var(--border)] space-y-2">
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder="Write a polite public response..."
                     rows={2}
-                    className="w-full p-2.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full p-2.5 text-xs bg-[var(--card)] border border-[var(--border)] rounded-[var(--r8)] text-[var(--t1)] focus:outline-[var(--g400)]"
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setReplyingReviewId(null)}
-                      className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800"
+                      className="px-3 py-1.5 text-xs font-bold text-[var(--t3)] hover:text-[var(--t1)] cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -266,7 +266,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                       type="button"
                       disabled={isSubmittingReply || !replyText.trim()}
                       onClick={() => handleSendReply(rev.id)}
-                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-lg transition flex items-center gap-1.5"
+                      className="ds-btn-primary px-4 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
                     >
                       {isSubmittingReply ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -282,12 +282,12 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
           ))}
         </div>
       ) : (
-        <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+        <div className="p-12 text-center bg-[var(--card)] rounded-[var(--r16)] border border-dashed border-[var(--border)] space-y-3">
+          <div className="w-12 h-12 rounded-[var(--r12)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center mx-auto">
             <Star className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-slate-900">No Reviews Yet</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <h3 className="text-base font-bold text-[var(--t1)] font-heading">No Reviews Yet</h3>
+          <p className="text-xs text-[var(--t2)] max-w-sm mx-auto">
             Customers can leave ratings and comments directly on your public storefront.
           </p>
         </div>
@@ -304,22 +304,22 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
           url={getModuleDeepUrl(business, 'reviews')}
           businessName={business.name}
           logoUrl={business.logo || business.profileImage}
-          accentColor="amber"
+          accentColor="emerald"
         />
       )}
 
       {/* Add Manual Review Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 className="text-sm font-black text-slate-900 font-heading">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md bg-[var(--card)] rounded-[var(--r16)] p-6 shadow-[var(--shadow-xl)] border border-[var(--border)] space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <h4 className="text-sm font-black text-[var(--t1)] font-heading">
                 Add Client Testimonial / Review
               </h4>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-700"
+                className="p-1 rounded-[var(--r8)] text-[var(--t3)] hover:text-[var(--t1)] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -327,7 +327,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
 
             <form onSubmit={handleAddManual} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-[var(--t1)] block mb-1 font-heading">
                   Customer / Client Name *
                 </label>
                 <input
@@ -336,12 +336,12 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                   placeholder="Enter name"
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-2.5 text-xs bg-[var(--bg)] border border-[var(--border)] text-[var(--t1)] rounded-[var(--r8)] focus:bg-[var(--card)] focus:outline-[var(--g400)]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-[var(--t1)] block mb-1 font-heading">
                   Rating
                 </label>
                 <div className="flex items-center gap-2">
@@ -356,7 +356,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                         className={`w-6 h-6 ${
                           star <= manualRating
                             ? 'text-amber-400 fill-amber-400'
-                            : 'text-slate-200'
+                            : 'text-[var(--border)]'
                         }`}
                       />
                     </button>
@@ -365,7 +365,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-bold text-[var(--t1)] block mb-1 font-heading">
                   Feedback / Quote *
                 </label>
                 <textarea
@@ -374,7 +374,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                   placeholder="Paste the feedback or testimonial here..."
                   value={manualComment}
                   onChange={(e) => setManualComment(e.target.value)}
-                  className="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500 leading-relaxed"
+                  className="w-full px-4 py-2.5 text-xs bg-[var(--bg)] border border-[var(--border)] text-[var(--t1)] rounded-[var(--r8)] focus:bg-[var(--card)] focus:outline-[var(--g400)] leading-relaxed"
                 />
               </div>
 
@@ -382,14 +382,14 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 text-xs font-bold rounded-xl"
+                  className="px-4 py-2 text-[var(--t2)] text-xs font-bold rounded-[var(--r8)] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingManual}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  className="ds-btn-primary px-6 py-2 text-xs font-bold rounded-[var(--r8)] shadow-[var(--shadow-xs)] cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSavingManual && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Save Review</span>

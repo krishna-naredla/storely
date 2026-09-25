@@ -307,9 +307,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={isCreator ? "Click to view live creator portfolio" : "Click to view live storefront"}
               className="touch-target-accessible min-h-[44px] flex items-center gap-2.5 text-left group cursor-pointer"
             >
-              <div className={`w-9 h-9 rounded-[var(--r8)] bg-[var(--card)] border overflow-hidden flex items-center justify-center shadow-[var(--shadow-xs)] transition ${
-                isCreator ? 'border-[var(--border)] group-hover:border-[var(--p500)]' : 'border-[var(--border)] group-hover:border-[var(--g500)]'
-              }`}>
+              <div className="w-9 h-9 rounded-[var(--r8)] bg-[var(--card)] border border-[var(--border)] group-hover:border-[var(--g500)] overflow-hidden flex items-center justify-center shadow-[var(--shadow-xs)] transition">
                 {getBusinessLogo(business) ? (
                   <img
                     src={getBusinessLogo(business)!}
@@ -321,21 +319,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className="w-full h-full object-contain object-center group-hover:scale-105 transition"
                   />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center font-black text-xs text-white ${
-                    isCreator ? 'bg-gradient-to-tr from-[var(--p500)] to-purple-600' : 'bg-gradient-to-tr from-[var(--g600)] to-[var(--g400)]'
-                  }`}>
+                  <div className="w-full h-full flex items-center justify-center font-black text-xs text-white bg-[var(--g600)]">
                     {(business?.name || 'S').slice(0, 2).toUpperCase()}
                   </div>
                 )}
               </div>
               <div>
-                <span className={`font-heading font-extrabold text-lg text-[var(--t1)] tracking-tight flex items-center gap-1 transition ${
-                  isCreator ? 'group-hover:text-[var(--p500)]' : 'group-hover:text-[var(--g700)]'
-                }`}>
+                <span className="font-heading font-extrabold text-lg text-[var(--t1)] tracking-tight flex items-center gap-1 transition group-hover:text-[var(--g700)]">
                   Storelly
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] border ${
-                    isCreator ? 'text-[var(--p500)] bg-[var(--p100)] border-[var(--p100)]' : 'text-[var(--g600)] bg-[var(--g100)] border-[var(--g200)]'
-                  }`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] border text-[var(--g600)] bg-[var(--g100)] border-[var(--g200)]">
                     {isCreator ? 'CREATOR' : 'OS'}
                   </span>
                 </span>
@@ -360,15 +352,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClose();
                 }}
                 title={isCreator ? "Click to view your live portfolio / public page" : "Click to open your live public storefront"}
-                className={`w-full text-left p-2.5 rounded-[var(--r12)] border flex items-center gap-2.5 transition group cursor-pointer shadow-[var(--shadow-xs)] touch-target-accessible min-h-[48px] ${
-                  isCreator
-                    ? "bg-[var(--bg)] hover:bg-[var(--p100)] active:bg-[var(--p100)] border-[var(--border)] hover:border-[var(--p500)]"
-                    : "bg-[var(--bg)] hover:bg-[var(--g100)] active:bg-[var(--g100)] border-[var(--border)] hover:border-[var(--g400)]"
-                }`}
+                className="w-full text-left p-2.5 rounded-[var(--r12)] border border-[var(--border)] hover:border-[var(--g400)] bg-[var(--bg)] hover:bg-[var(--g100)] active:bg-[var(--g100)] flex items-center gap-2.5 transition group cursor-pointer shadow-[var(--shadow-xs)] touch-target-accessible min-h-[48px]"
               >
-                <div className={`w-9 h-9 rounded-[var(--r8)] bg-[var(--card)] border overflow-hidden shrink-0 transition ${
-                  isCreator ? "border-[var(--border)] group-hover:border-[var(--p500)]" : "border-[var(--border)] group-hover:border-[var(--g500)]"
-                }`}>
+                <div className="w-9 h-9 rounded-[var(--r8)] bg-[var(--card)] border border-[var(--border)] group-hover:border-[var(--g500)] overflow-hidden shrink-0 transition">
                   {getBusinessLogo(business) ? (
                     <SafeImage
                       src={getBusinessLogo(business)!}
@@ -378,36 +364,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="w-full h-full object-contain object-center group-hover:scale-110 transition duration-300"
                     />
                   ) : (
-                    <div className={`w-full h-full flex items-center justify-center font-black text-xs text-white ${
-                      isCreator ? 'bg-gradient-to-tr from-[var(--p500)] to-purple-600' : 'bg-gradient-to-tr from-[var(--g600)] to-[var(--g400)]'
-                    }`}>
+                    <div className="w-full h-full flex items-center justify-center font-black text-xs text-white bg-[var(--g600)]">
                       {business.name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1">
-                    <h4 className={`text-xs font-heading font-bold truncate ${
-                      isCreator ? "text-[var(--t1)] group-hover:text-[var(--p500)]" : "text-[var(--t1)] group-hover:text-[var(--g700)]"
-                    }`}>
+                    <h4 className="text-xs font-heading font-bold truncate text-[var(--t1)] group-hover:text-[var(--g700)]">
                       {business.name}
                     </h4>
-                    <ExternalLink className={`w-3 h-3 text-[var(--t3)] shrink-0 ${
-                      isCreator ? "group-hover:text-[var(--p500)]" : "group-hover:text-[var(--g600)]"
-                    }`} />
+                    <ExternalLink className="w-3 h-3 text-[var(--t3)] shrink-0 group-hover:text-[var(--g600)]" />
                   </div>
-                  <p className={`text-[10px] font-medium truncate flex items-center justify-between gap-1 ${
-                    isCreator ? "text-[var(--p500)]" : "text-[var(--g600)]"
-                  }`}>
+                  <p className="text-[10px] font-medium truncate flex items-center justify-between gap-1 text-[var(--g600)]">
                     <span className="flex items-center gap-1 truncate">
-                      <span className={`w-1.5 h-1.5 rounded-full inline-block animate-pulse shrink-0 ${
-                        isCreator ? "bg-[var(--p500)]" : "bg-[var(--g500)]"
-                      }`} />
+                      <span className="w-1.5 h-1.5 rounded-full inline-block animate-pulse shrink-0 bg-[var(--g500)]" />
                       <span className="truncate">{isCreator ? 'Creator Studio' : bizMeta.label}</span>
                     </span>
-                    <span className={`text-[9px] font-semibold shrink-0 ${
-                      isCreator ? "text-[var(--t3)] group-hover:text-[var(--p500)]" : "text-[var(--t3)] group-hover:text-[var(--g700)]"
-                    }`}>
+                    <span className="text-[9px] font-semibold shrink-0 text-[var(--t3)] group-hover:text-[var(--g700)]">
                       {isCreator ? "Live Profile →" : "Open Store →"}
                     </span>
                   </p>
@@ -477,9 +451,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-[var(--r8)] transition-all cursor-pointer ${
                       isActive
-                        ? isCreator
-                          ? "bg-[var(--p100)] text-[var(--p500)] font-bold shadow-[var(--shadow-xs)]"
-                          : "bg-[var(--g100)] text-[var(--g700)] font-bold shadow-[var(--shadow-xs)]"
+                        ? "bg-[var(--g100)] text-[var(--g700)] font-bold shadow-[var(--shadow-xs)]"
                         : "text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--bg)]"
                     }`}
                   >
@@ -487,9 +459,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <div
                         className={`w-7 h-7 rounded-[var(--r8)] flex items-center justify-center transition-colors ${
                           isActive
-                            ? isCreator
-                              ? "bg-[var(--p500)] text-white shadow-[var(--shadow-xs)]"
-                              : "bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]"
+                            ? "bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]"
                             : "bg-[var(--bg)] text-[var(--t3)] group-hover:bg-[var(--card)]"
                         }`}
                       >
@@ -498,9 +468,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] ${
-                        isCreator ? "bg-[var(--p100)] text-[var(--p500)]" : "bg-[var(--g100)] text-[var(--g700)]"
-                      }`}>
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] bg-[var(--g100)] text-[var(--g700)]">
                         {item.badge}
                       </span>
                     )}
@@ -526,11 +494,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onOpenStorefront}
-            className={`w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-[var(--card)] hover:bg-[var(--bg)] border border-[var(--border)] text-[var(--t1)] rounded-[var(--r8)] text-xs font-semibold shadow-[var(--shadow-xs)] transition cursor-pointer ${
-              isCreator ? "hover:text-[var(--p500)]" : "hover:text-[var(--g700)]"
-            }`}
+            className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-2 py-2 px-3 bg-[var(--card)] hover:bg-[var(--g100)] hover:text-[var(--g700)] border border-[var(--border)] text-[var(--t1)] rounded-[var(--r8)] text-xs font-semibold shadow-[var(--shadow-xs)] transition cursor-pointer"
           >
-            {isCreator ? <Sparkles className="w-3.5 h-3.5 text-[var(--p500)]" /> : <Store className="w-3.5 h-3.5 text-[var(--g600)]" />}
+            {isCreator ? <Sparkles className="w-3.5 h-3.5 text-[var(--g600)]" /> : <Store className="w-3.5 h-3.5 text-[var(--g600)]" />}
             <span>{isCreator ? 'View Public Profile' : 'View Public Store'}</span>
             <ExternalLink className="w-3 h-3 text-[var(--t3)]" />
           </button>

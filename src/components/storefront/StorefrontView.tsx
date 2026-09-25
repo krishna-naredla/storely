@@ -1044,7 +1044,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                e.stopPropagation();
                                handleDigitalPurchase(item);
                             }}
-                            className="min-h-[44px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-600/20 transition active:scale-95 cursor-pointer flex items-center gap-2"
+                            className="min-h-[44px] px-4 py-2.5 ds-btn-primary text-xs font-bold rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2"
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">{actionResult.buttonText}</span>
@@ -1056,7 +1056,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               e.stopPropagation();
                               setSelectedItemForBooking(item);
                             }}
-                            className="min-h-[44px] px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-teal-600/20 transition active:scale-95 cursor-pointer flex items-center gap-2"
+                            className="min-h-[44px] px-4 py-2.5 ds-btn-primary text-xs font-bold rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2"
                           >
                             <CalendarCheck className="w-4 h-4" />
                             <span className="hidden sm:inline">{actionResult.buttonText}</span>
@@ -1071,12 +1071,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                   e.stopPropagation();
                                   setSelectedItemForDetail(item);
                                 }}
-                                className={`min-h-[44px] px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition active:scale-95 cursor-pointer flex items-center gap-2 ${
+                                className={`min-h-[44px] px-4 py-2.5 rounded-[var(--r12)] font-bold text-xs shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2 ${
                                   item.inStock === false
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                                    ? 'bg-[var(--g100)] text-[var(--t3)] cursor-not-allowed shadow-none'
                                     : totalVariantQty > 0
-                                    ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-600 hover:bg-emerald-100'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                    ? 'bg-[var(--g100)] text-[var(--g700)] border-2 border-[var(--g600)] hover:bg-[var(--g200)]'
+                                    : 'ds-btn-primary'
                                 }`}
                               >
                                 {totalVariantQty > 0 ? (
@@ -1089,19 +1089,19 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                 )}
                               </button>
                             ) : inCart && inCart.quantity > 0 ? (
-                              <div className="flex items-center bg-slate-100 rounded-2xl p-1 gap-2 shadow-inner">
+                              <div className="flex items-center bg-[var(--g100)] rounded-[var(--r12)] p-1 gap-2 border border-[var(--border)]">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     addItem(item, -1);
                                   }}
-                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black text-sm"
+                                  className="w-8 h-8 flex items-center justify-center text-[var(--t1)] hover:bg-[var(--card)] rounded-[var(--r8)] transition cursor-pointer font-bold text-sm"
                                   title="Decrease quantity"
                                 >
                                   -
                                 </button>
-                                <span className="w-6 text-center text-xs font-black text-slate-900">
+                                <span className="w-6 text-center text-xs font-bold text-[var(--t1)]">
                                   {inCart.quantity}
                                 </span>
                                 <button
@@ -1110,7 +1110,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                     e.stopPropagation();
                                     addItem(item, 1);
                                   }}
-                                  className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-white rounded-xl transition cursor-pointer font-black text-sm"
+                                  className="w-8 h-8 flex items-center justify-center text-[var(--t1)] hover:bg-[var(--card)] rounded-[var(--r8)] transition cursor-pointer font-bold text-sm"
                                   title="Increase quantity"
                                 >
                                   +
@@ -1124,10 +1124,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                   e.stopPropagation();
                                   addItem(item, 1);
                                 }}
-                                className={`min-h-[44px] px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition active:scale-95 cursor-pointer flex items-center gap-2 ${
+                                className={`min-h-[44px] px-4 py-2.5 rounded-[var(--r12)] font-bold text-xs shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2 ${
                                   item.inStock === false
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                    ? 'bg-[var(--g100)] text-[var(--t3)] cursor-not-allowed shadow-none'
+                                    : 'ds-btn-primary'
                                 }`}
                               >
                                 <Plus className="w-4 h-4" />
@@ -1146,28 +1146,28 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         </div>
 
         {/* Customer Reviews & Trust Section */}
-        <section id="reviews-section" className="rounded-3xl bg-linear-to-b from-white to-slate-50/80 border border-slate-200/70 p-6 sm:p-8 shadow-xs space-y-6">
+        <section id="reviews-section" className="rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] p-6 sm:p-8 shadow-[var(--shadow-xs)] space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shadow-xs">
+                <div className="w-9 h-9 rounded-[var(--r12)] bg-amber-50 text-amber-500 flex items-center justify-center shadow-xs">
                   <Star className="w-5 h-5 fill-current" />
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
-                  Customer Stories & Trust
+                <h3 className="text-lg sm:text-xl font-bold text-[var(--t1)] font-heading">
+                  Customer Stories &amp; Trust
                 </h3>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              <p className="text-xs sm:text-sm text-[var(--t2)] font-medium">
                 Verified experiences from real customers of {business.name}.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="px-3.5 py-1.5 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center gap-2">
-                <span className="text-base font-black text-amber-700 leading-none">{averageRating}</span>
+              <div className="px-3.5 py-1.5 bg-amber-500/10 rounded-[var(--r12)] border border-amber-500/20 flex items-center gap-2">
+                <span className="text-base font-bold text-amber-700 leading-none">{averageRating}</span>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`w-3 h-3 ${i < Math.round(Number(averageRating)) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
+                    <Star key={i} className={`w-3 h-3 ${i < Math.round(Number(averageRating)) ? 'fill-amber-400 text-amber-400' : 'fill-[var(--g200)] text-[var(--g200)]'}`} />
                   ))}
                 </div>
                 <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider ml-1">
@@ -1178,7 +1178,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsReviewModalOpen(true)}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                className="min-h-[44px] px-5 py-2.5 rounded-[var(--r12)] ds-btn-primary text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Write Review</span>
@@ -1187,25 +1187,25 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           </div>
 
           {/* Verified Guarantee Strip */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-white border border-slate-200/60 shadow-xs text-xs">
-            <div className="flex items-center gap-2 text-slate-700">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-[var(--r16)] bg-[var(--bg)] border border-[var(--border)] shadow-[var(--shadow-xs)] text-xs">
+            <div className="flex items-center gap-2 text-[var(--t1)]">
+              <ShieldCheck className="w-4 h-4 text-[var(--g600)] shrink-0" />
               <span className="font-semibold">Storelly Verified Partner</span>
             </div>
-            <div className="flex items-center gap-2 text-slate-700">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2 text-[var(--t1)]">
+              <CheckCircle2 className="w-4 h-4 text-[var(--g600)] shrink-0" />
               <span className="font-semibold">Direct WhatsApp Orders</span>
             </div>
-            <div className="flex items-center gap-2 text-slate-700">
-              <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2 text-[var(--t1)]">
+              <Clock className="w-4 h-4 text-[var(--g600)] shrink-0" />
               <span className="font-semibold">Live Merchant Confirmation</span>
             </div>
           </div>
 
           {reviews.length === 0 ? (
-            <div className="py-8 px-4 text-center bg-white rounded-2xl border border-slate-100 space-y-2">
-              <p className="text-xs font-bold text-slate-700">No customer reviews yet</p>
-              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+            <div className="py-8 px-4 text-center bg-[var(--bg)] rounded-[var(--r16)] border border-[var(--border)] space-y-2">
+              <p className="text-xs font-bold text-[var(--t1)]">No customer reviews yet</p>
+              <p className="text-[11px] text-[var(--t2)] max-w-sm mx-auto">
                 Be the first to share your experience with {business.name}!
               </p>
             </div>
@@ -1214,16 +1214,16 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               {reviews.map((rev) => (
                 <div
                   key={rev.id}
-                  className="p-5 rounded-2xl bg-white border border-slate-100 space-y-3 shadow-xs hover:shadow-md transition-shadow"
+                  className="p-5 rounded-[var(--r16)] bg-[var(--bg)] border border-[var(--border)] space-y-3 shadow-[var(--shadow-xs)] hover:border-[var(--g500)] transition"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs uppercase">
+                      <div className="w-8 h-8 rounded-full bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center font-bold text-xs uppercase">
                         {rev.customerName.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">{rev.customerName}</h4>
-                        <span className="text-[10px] text-slate-400 font-bold block">
+                        <h4 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wide">{rev.customerName}</h4>
+                        <span className="text-[10px] text-[var(--t3)] font-medium block">
                           {new Date(rev.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </div>
@@ -1231,19 +1231,19 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
                     <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className={`w-3 h-3 ${i < rev.rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'}`} />
+                        <Star key={i} className={`w-3 h-3 ${i < rev.rating ? 'fill-amber-400 text-amber-400' : 'fill-[var(--g200)] text-[var(--g200)]'}`} />
                       ))}
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 font-medium leading-relaxed italic">"{rev.comment}"</p>
+                  <p className="text-xs text-[var(--t2)] font-medium leading-relaxed italic">"{rev.comment}"</p>
 
                   {rev.reply && (
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] space-y-1 relative">
-                      <div className="text-emerald-700 font-black text-[9px] uppercase tracking-wider">
+                    <div className="p-3 rounded-[var(--r8)] bg-[var(--card)] border border-[var(--border)] text-[11px] space-y-1 relative">
+                      <div className="text-[var(--g700)] font-bold text-[9px] uppercase tracking-wider">
                         Merchant Reply
                       </div>
-                      <p className="text-slate-600 font-medium">{rev.reply}</p>
+                      <p className="text-[var(--t2)] font-medium">{rev.reply}</p>
                     </div>
                   )}
                 </div>
@@ -1255,53 +1255,53 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         {/* Store Information & Location Section */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
           {/* About Section */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-slate-900 text-white shadow-md space-y-5 flex flex-col justify-between">
+          <div className="p-6 sm:p-7 rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-5 flex flex-col justify-between">
             <div className="space-y-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-white/10 text-emerald-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                   <Briefcase className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-black uppercase tracking-[0.15em] text-slate-200">
+                <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-[var(--t1)]">
                   Our Story
                 </h4>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
+              <p className="text-xs sm:text-sm text-[var(--t2)] font-normal leading-relaxed">
                 {business.description || business.bio || `${business.name} is a verified partner committed to providing high-quality offerings and exceptional customer service.`}
               </p>
             </div>
-            <div className="flex items-center gap-2.5 pt-2 border-t border-white/10">
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2.5 pt-2 border-t border-[var(--border)]">
+              <div className="w-8 h-8 rounded-full bg-[var(--g100)] flex items-center justify-center text-[var(--t2)] hover:text-[var(--g600)] transition-colors cursor-pointer">
                 <Globe className="w-3.5 h-3.5" />
               </div>
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-[var(--g100)] flex items-center justify-center text-[var(--t2)] hover:text-[var(--g600)] transition-colors cursor-pointer">
                 <Instagram className="w-3.5 h-3.5" />
               </div>
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-[var(--g100)] flex items-center justify-center text-[var(--t2)] hover:text-[var(--g600)] transition-colors cursor-pointer">
                 <Facebook className="w-3.5 h-3.5" />
               </div>
             </div>
           </div>
 
           {/* Contact & Location */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="p-6 sm:p-7 rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-5 flex flex-col justify-between">
             <div className="space-y-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                   <MapPin className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-black text-slate-900 uppercase tracking-[0.15em]">
+                <h4 className="text-xs font-bold text-[var(--t1)] uppercase tracking-[0.15em]">
                   Find Us
                 </h4>
               </div>
               
               <div className="space-y-3 text-xs">
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--bg)] flex items-center justify-center text-[var(--t3)] shrink-0">
                     <Map className="w-3.5 h-3.5" />
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-xs text-slate-900 font-bold">Address</p>
-                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                    <p className="text-xs text-[var(--t1)] font-bold">Address</p>
+                    <p className="text-[11px] text-[var(--t2)] font-medium leading-relaxed">
                       {business.address || 'Contact merchant for exact location details.'}
                       {business.city ? `, ${business.city}` : ''}
                       {business.state ? `, ${business.state}` : ''}
@@ -1310,13 +1310,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 </div>
 
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--bg)] flex items-center justify-center text-[var(--t3)] shrink-0">
                     <Mail className="w-3.5 h-3.5" />
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-xs text-slate-900 font-bold">Contact Info</p>
-                    <p className="text-[11px] text-slate-500">{business.email || 'Email not provided'}</p>
-                    <p className="text-[11px] text-slate-700 font-bold">{business.whatsapp || business.phone}</p>
+                    <p className="text-xs text-[var(--t1)] font-bold">Contact Info</p>
+                    <p className="text-[11px] text-[var(--t2)]">{business.email || 'Email not provided'}</p>
+                    <p className="text-[11px] text-[var(--t1)] font-bold">{business.whatsapp || business.phone}</p>
                   </div>
                 </div>
               </div>
@@ -1327,7 +1327,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${business.address} ${business.city || ''} ${business.state || ''}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full min-h-[44px] py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center justify-center gap-1.5"
+                className="w-full min-h-[44px] py-2.5 ds-btn-secondary text-xs font-bold rounded-[var(--r12)] transition flex items-center justify-center gap-1.5"
               >
                 <ArrowUpRight className="w-3.5 h-3.5" />
                 <span>Get Directions</span>
@@ -1336,13 +1336,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           </div>
 
           {/* Business Hours */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-emerald-50/50 border border-emerald-100 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="p-6 sm:p-7 rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-5 flex flex-col justify-between">
             <div className="space-y-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
                   <Clock className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-black text-emerald-950 uppercase tracking-[0.15em]">
+                <h4 className="text-xs font-bold text-[var(--t1)] uppercase tracking-[0.15em]">
                   Business Hours
                 </h4>
               </div>

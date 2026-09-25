@@ -201,15 +201,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setBizDropdownOpen(!bizDropdownOpen)}
-            className={`touch-target-accessible min-h-[44px] flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-[var(--r8)] border text-xs font-bold transition shadow-[var(--shadow-xs)] cursor-pointer ${
-              isCreator
-                ? 'bg-[var(--p100)] hover:bg-purple-100 border-purple-200 text-[var(--t1)]'
-                : 'bg-[var(--g100)] hover:bg-[var(--g200)] border-[var(--border)] text-[var(--t1)]'
-            }`}
+            className="touch-target-accessible min-h-[44px] flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-[var(--r8)] border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--g100)] text-[var(--t1)] text-xs font-bold transition shadow-[var(--shadow-xs)] cursor-pointer"
           >
-            <div className={`w-7 h-7 rounded-[var(--r8)] overflow-hidden shrink-0 border shadow-[var(--shadow-xs)] ${
-              isCreator ? 'border-purple-300 bg-[var(--p100)] text-[var(--p500)]' : 'border-[var(--g200)] bg-[var(--g100)] text-[var(--g700)]'
-            } flex items-center justify-center font-black text-[10px]`}>
+            <div className="w-7 h-7 rounded-[var(--r8)] overflow-hidden shrink-0 border border-[var(--border)] bg-[var(--g100)] text-[var(--g700)] shadow-[var(--shadow-xs)] flex items-center justify-center font-black text-[10px]">
               {getBusinessLogo(business) ? (
                 <SafeImage
                   src={getBusinessLogo(business)!}
@@ -225,11 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="max-w-[100px] sm:max-w-[160px] md:max-w-[200px] truncate">
               {business ? business.name : t("header.selectStore")}
             </span>
-            <span className={`hidden md:inline-flex items-center text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] ${
-              isCreator
-                ? 'bg-[var(--p100)] text-[var(--p500)] border border-purple-200'
-                : 'bg-[var(--g100)] text-[var(--g700)] border border-[var(--g200)]'
-            }`}>
+            <span className="hidden md:inline-flex items-center text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--r4)] bg-[var(--g100)] text-[var(--g700)] border border-[var(--g200)]">
               {isCreator ? 'Creator' : 'Merchant'}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-[var(--t3)] shrink-0" />
@@ -258,18 +248,14 @@ export const Header: React.FC<HeaderProps> = ({
                         onSelectBusiness(b);
                         setBizDropdownOpen(false);
                       }}
-                      className={`group w-full flex items-center justify-between p-2 touch-target-accessible min-h-[44px] text-xs rounded-xl transition cursor-pointer ${
+                      className={`group w-full flex items-center justify-between p-2 touch-target-accessible min-h-[44px] text-xs rounded-[var(--r8)] transition cursor-pointer ${
                         isSelected
-                          ? bCreator
-                            ? 'bg-indigo-50 text-indigo-900 font-bold border border-indigo-200/80'
-                            : 'bg-emerald-50 text-emerald-900 font-bold border border-emerald-200/80'
-                          : 'text-slate-700 hover:bg-slate-50 border border-transparent'
+                          ? 'bg-[var(--g100)] text-[var(--g800)] font-bold border border-[var(--g300)]'
+                          : 'text-[var(--t1)] hover:bg-[var(--bg)] border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div className={`w-8 h-8 rounded-lg overflow-hidden shrink-0 border flex items-center justify-center font-bold text-xs ${
-                          bCreator ? 'bg-indigo-100 border-indigo-200 text-indigo-700' : 'bg-emerald-100 border-emerald-200 text-emerald-700'
-                        }`}>
+                        <div className="w-8 h-8 rounded-[var(--r8)] overflow-hidden shrink-0 border border-[var(--border)] bg-[var(--g100)] text-[var(--g700)] flex items-center justify-center font-bold text-xs">
                           {bImg ? (
                             <SafeImage
                               src={bImg}
@@ -283,8 +269,8 @@ export const Header: React.FC<HeaderProps> = ({
                           )}
                         </div>
                         <div className="min-w-0 text-left flex-1">
-                          <span className="truncate block font-semibold text-xs">{b.name}</span>
-                          <span className={`text-[10px] font-mono block truncate ${bCreator ? 'text-indigo-600' : 'text-emerald-600'}`}>
+                          <span className="truncate block font-semibold text-xs text-[var(--t1)]">{b.name}</span>
+                          <span className="text-[10px] font-mono block truncate text-[var(--g600)]">
                             {bUrl.replace(/^https?:\/\//, '')}
                           </span>
                         </div>
@@ -296,9 +282,9 @@ export const Header: React.FC<HeaderProps> = ({
                           onClick={(e) => handleCopySpecificBiz(e, b)}
                           title="Copy Public URL"
                           aria-label="Copy Public URL"
-                          className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 rounded-lg hover:bg-white text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                          className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 rounded-[var(--r8)] hover:bg-[var(--card)] text-[var(--t3)] hover:text-[var(--t1)] transition cursor-pointer"
                         >
-                          {isCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                          {isCopied ? <Check className="w-4 h-4 text-[var(--g600)]" /> : <Copy className="w-4 h-4" />}
                         </button>
                         <button
                           type="button"
@@ -308,7 +294,7 @@ export const Header: React.FC<HeaderProps> = ({
                           }}
                           title="Open Store in New Tab"
                           aria-label="Open Store in New Tab"
-                          className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 rounded-lg hover:bg-white text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                          className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 rounded-[var(--r8)] hover:bg-[var(--card)] text-[var(--t3)] hover:text-[var(--t1)] transition cursor-pointer"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </button>
@@ -317,14 +303,14 @@ export const Header: React.FC<HeaderProps> = ({
                   );
                 })}
               </div>
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => {
                     setBizDropdownOpen(false);
                     onCreateNewBusiness();
                   }}
-                  className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 rounded-xl transition cursor-pointer"
+                  className="w-full touch-target-accessible min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-[var(--g700)] hover:bg-[var(--g100)] rounded-[var(--r8)] transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Create New Store or Creator Profile</span>
@@ -336,9 +322,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Live URL Pill (Desktop & Tablet) */}
         {business && storeUrl && (
-          <div className="hidden lg:flex items-center gap-1 bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1 text-xs text-slate-600 font-mono">
-            <span className={`w-1.5 h-1.5 rounded-full inline-block ${isCreator ? 'bg-indigo-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} />
-            <span className="max-w-[200px] truncate text-[11px] text-slate-700 select-all">
+          <div className="hidden lg:flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r8)] px-2.5 py-1 text-xs text-[var(--t2)] font-mono">
+            <span className="w-1.5 h-1.5 rounded-full inline-block bg-[var(--g500)] animate-pulse" />
+            <span className="max-w-[200px] truncate text-[11px] text-[var(--t1)] select-all">
               {storeUrl.replace(/^https?:\/\//, '')}
             </span>
             <button
@@ -346,7 +332,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={(e) => handleCopy(e)}
               title="Copy store link"
               aria-label="Copy store link"
-              className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition cursor-pointer"
+              className="touch-target-accessible min-h-[44px] min-w-[44px] flex items-center justify-center p-1 text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--g100)] rounded-[var(--r8)] transition cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             </button>

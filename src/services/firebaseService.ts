@@ -538,6 +538,12 @@ export async function deleteBusiness(businessId: string): Promise<void> {
     localStorage.removeItem(`storelly_offline_catalog_${businessId}`);
     localStorage.removeItem(`storelly_offline_reviews_${businessId}`);
     localStorage.removeItem(`storelly_analytics_${businessId}`);
+    const adminCached = localStorage.getItem('storelly_admin_all_biz');
+    if (adminCached) {
+      const parsed: BusinessProfile[] = JSON.parse(adminCached);
+      const filtered = parsed.filter((b) => b.id !== businessId);
+      localStorage.setItem('storelly_admin_all_biz', JSON.stringify(filtered));
+    }
   } catch (e) {
     console.warn('LocalStorage cleanup warning:', e);
   }
