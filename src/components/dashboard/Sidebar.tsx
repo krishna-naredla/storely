@@ -30,7 +30,7 @@ import {
   QrCode,
 } from "lucide-react";
 import { BusinessProfile } from "../../types";
-import { BUSINESS_TYPES } from "../../services/businessConfig";
+import { BUSINESS_TYPES, getRelevantModulesForVertical } from "../../services/businessConfig";
 import { subscribeToOrders, getStorefrontUrl } from "../../services/firebaseService";
 import { auth } from "../../config/firebase";
 import { isCreatorProfile, getProfileTypeLabel } from "../../utils/profileHelper";
@@ -115,8 +115,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ? BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail
     : BUSINESS_TYPES.retail;
   const modules = business?.modules;
-
   const isCreator = isCreatorProfile(business);
+  const relevantModules = new Set(
+    getRelevantModulesForVertical(business?.type || (isCreator ? 'digital_creator' : 'retail'))
+  );
   
   const navItems: {
     id: DashboardTab;
@@ -129,14 +131,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: "overview", label: "Overview", icon: LayoutDashboard, visible: true },
         { id: "share", label: "Profile Link & QR", icon: Share2, badge: "Public", visible: true },
         { id: "modules", label: "Creator Modules", icon: Layers, badge: "Modules", visible: true },
-        { id: "portfolio", label: "Portfolio", icon: Briefcase, badge: "Showcase", visible: !!modules?.work_portfolio || !!modules?.portfolio },
-        { id: "biolink", label: "Bio Link", icon: Link, badge: "@link", visible: !!modules?.universal_links || !!modules?.biolink },
-        { id: "catalog", label: "Digital Products", icon: ShoppingBag, visible: !!modules?.digital_products || !!modules?.digitalProducts },
-        { id: "orders", label: "Digital Sales", icon: Package, visible: !!modules?.digital_products || !!modules?.digitalProducts || !!modules?.cart_ordering },
-        { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: !!modules?.booking_appointments },
-        { id: "quotes", label: "Custom Quotes", icon: FileText, visible: !!modules?.custom_quotes },
-        { id: "events", label: "Events & Workshops", icon: Ticket, visible: !!modules?.events_tickets || !!modules?.events_ticketing },
-        { id: "reviews", label: "Reviews", icon: Star, visible: !!modules?.reviews },
+        { id: "portfolio", label: "Portfolio", icon: Briefcase, badge: "Showcase", visible: (relevantModules.has('work_portfolio') || relevantModules.has('portfolio')) && (!!modules?.work_portfolio || !!modules?.portfolio) },
+        { id: "biolink", label: "Bio Link", icon: Link, badge: "@link", visible: relevantModules.has('universal_links') && (!!modules?.universal_links || !!modules?.biolink) },
+        { id: "catalog", label: "Digital Products", icon: ShoppingBag, visible: relevantModules.has('digital_products') && (!!modules?.digital_products || !!modules?.digitalProducts) },
+        { id: "orders", label: "Digital Sales", icon: Package, visible: (relevantModules.has('digital_products') || relevantModules.has('cart_ordering')) && (!!modules?.digital_products || !!modules?.digitalProducts || !!modules?.cart_ordering) },
+        { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: relevantModules.has('booking_appointments') && !!modules?.booking_appointments },
+        { id: "quotes", label: "Custom Quotes", icon: FileText, visible: relevantModules.has('custom_quotes') && !!modules?.custom_quotes },
+        { id: "events", label: "Events & Workshops", icon: Ticket, visible: (relevantModules.has('events_tickets') || relevantModules.has('events_ticketing')) && (!!modules?.events_tickets || !!modules?.events_ticketing) },
+        { id: "reviews", label: "Reviews", icon: Star, visible: relevantModules.has('reviews') && !!modules?.reviews },
         { id: "analytics", label: "Traffic & Sales", icon: BarChart3, visible: true },
         { id: "payments", label: "Payments", icon: CreditCard, visible: true },
         { id: "notifications", label: "Activity", icon: Bell, visible: true },
@@ -161,24 +163,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: bizMeta.itemPlural || t("sidebar.catalog"),
           icon: Package,
           visible:
-            !!modules?.products ||
-            !!modules?.services ||
-            !!modules?.menu ||
-            !!modules?.rooms ||
-            !!modules?.vehicles ||
-            !!modules?.digital_products ||
-            !!modules?.digitalProducts,
+            (relevantModules.has('products') && !!modules?.products) ||
+            (relevantModules.has('services') && !!modules?.services) ||
+            (relevantModules.has('menu') && !!modules?.menu) ||
+            (relevantModules.has('rooms') && !!modules?.rooms) ||
+            (relevantModules.has('vehicles') && !!modules?.vehicles) ||
+            (relevantModules.has('digital_products') && (!!modules?.digital_products || !!modules?.digitalProducts)),
         },
         {
           id: "categories",
           label: t("sidebar.categories"),
           icon: Layers,
           visible:
-            !!modules?.products ||
-            !!modules?.services ||
-            !!modules?.menu ||
-            !!modules?.rooms ||
-            !!modules?.vehicles,
+            (relevantModules.has('products') && !!modules?.products) ||
+            (relevantModules.has('services') && !!modules?.services) ||
+            (relevantModules.has('menu') && !!modules?.menu) ||
+            (relevantModules.has('rooms') && !!modules?.rooms) ||
+            (relevantModules.has('vehicles') && !!modules?.vehicles),
         },
         {
           id: "orders",
@@ -186,48 +187,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: ShoppingBag,
           badge: pendingOrdersCount > 0 ? pendingOrdersCount.toString() : undefined,
           visible:
-            !!modules?.cart_ordering ||
-            !!modules?.menu ||
-            !!modules?.products ||
-            !!modules?.table_delivery ||
-            !!modules?.inquiries ||
-            !!modules?.digital_products ||
-            !!modules?.digitalProducts,
+            (relevantModules.has('cart_ordering') && !!modules?.cart_ordering) ||
+            (relevantModules.has('menu') && !!modules?.menu) ||
+            (relevantModules.has('products') && !!modules?.products) ||
+            (relevantModules.has('table_delivery') && !!modules?.table_delivery) ||
+            (relevantModules.has('inquiries') && !!modules?.inquiries) ||
+            (relevantModules.has('digital_products') && (!!modules?.digital_products || !!modules?.digitalProducts)),
         },
         {
           id: "portfolio",
           label: "Portfolio",
           icon: Briefcase,
           badge: "Showcase",
-          visible: !!modules?.work_portfolio || !!modules?.portfolio,
+          visible: (relevantModules.has('work_portfolio') || relevantModules.has('portfolio')) && (!!modules?.work_portfolio || !!modules?.portfolio),
         },
         {
           id: "biolink",
           label: "Bio Link",
           icon: Link,
           badge: "@link",
-          visible: !!modules?.universal_links || !!modules?.biolink,
+          visible: relevantModules.has('universal_links') && (!!modules?.universal_links || !!modules?.biolink),
         },
         {
           id: "events",
           label: "Events & Tickets",
           icon: Ticket,
-          visible: !!modules?.events_tickets || !!modules?.events_ticketing,
+          visible: (relevantModules.has('events_tickets') || relevantModules.has('events_ticketing')) && (!!modules?.events_tickets || !!modules?.events_ticketing),
         },
         {
           id: "quotes",
           label: "Custom Quotes",
           icon: FileText,
-          visible: !!modules?.custom_quotes,
+          visible: relevantModules.has('custom_quotes') && !!modules?.custom_quotes,
         },
         {
           id: "bookings",
           label: t("sidebar.bookings"),
           icon: CalendarCheck,
           visible:
-            !!modules?.booking_appointments ||
-            !!modules?.stay_booking ||
-            !!modules?.rental_booking,
+            (relevantModules.has('booking_appointments') && !!modules?.booking_appointments) ||
+            (relevantModules.has('stay_booking') && !!modules?.stay_booking) ||
+            (relevantModules.has('rental_booking') && !!modules?.rental_booking),
         },
         {
           id: "customers",
@@ -239,13 +239,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: "reviews",
           label: t("sidebar.reviews"),
           icon: Star,
-          visible: !!modules?.reviews,
+          visible: relevantModules.has('reviews') && !!modules?.reviews,
         },
         {
           id: "offers",
           label: t("sidebar.offers"),
           icon: Tag,
-          visible: !!modules?.offers,
+          visible: relevantModules.has('offers') && !!modules?.offers,
         },
         {
           id: "analytics",

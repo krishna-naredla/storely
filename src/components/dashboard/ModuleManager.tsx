@@ -28,6 +28,7 @@ import { BusinessProfile, BusinessModules } from "../../types";
 import { updateBusinessProfile } from "../../services/firebaseService";
 import { ConfirmActionModal } from "../common/ConfirmActionModal";
 import { isCreatorProfile } from "../../utils/profileHelper";
+import { getRelevantModulesForVertical } from "../../services/businessConfig";
 
 interface ModuleManagerProps {
   business: BusinessProfile;
@@ -286,6 +287,23 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
 
   const categories = ["Catalog", "Ordering", "Bookings", "Marketing"] as const;
   const isCreator = isCreatorProfile(business);
+  const relevantModules = new Set(
+    getRelevantModulesForVertical(business.type || (isCreator ? 'digital_creator' : 'retail'))
+  );
+
+  const isRelevantCommerceModule = (modKey: keyof BusinessModules) => {
+    return relevantModules.has(modKey);
+  };
+
+  const isRelevantCreatorModule = (modKey: keyof BusinessModules) => {
+    if (isCreator) return true;
+    if (modKey === 'work_portfolio') return relevantModules.has('work_portfolio') || relevantModules.has('portfolio');
+    if (modKey === 'events_ticketing') return relevantModules.has('events_tickets') || relevantModules.has('events_ticketing');
+    if (modKey === 'digital_products') return relevantModules.has('digital_products') || relevantModules.has('digitalProducts');
+    return relevantModules.has(modKey);
+  };
+
+  const relevantCreatorModules = CREATOR_MODULE_DEFINITIONS.filter((m) => isRelevantCreatorModule(m.key));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -327,7 +345,7 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
             Dynamic Store Modules
           </h2>
           <p className="text-xs sm:text-sm text-[var(--t2)] max-w-xl">
-            Configure business and creator capabilities for your storefront. Activated features immediately reflect on your navigation sidebar and live store.
+            Configure relevant capabilities for your {business.type ? business.type.replace('_', ' ') : 'store'} storefront. Activated features immediately reflect on your navigation sidebar and live store.
           </p>
         </div>
       </div>
@@ -336,8 +354,10 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
       <div className="space-y-6">
         {categories.map((cat) => {
           const catModules = COMMERCE_MODULE_DEFINITIONS.filter(
-            (m) => m.category === cat,
+            (m) => m.category === cat && isRelevantCommerceModule(m.key),
           );
+          if (catModules.length === 0) return null;
+
           return (
             <div key={cat} className="space-y-3">
               <h3 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
@@ -406,76 +426,78 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
           );
         })}
 
-        {/* Creator Tools Category */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[var(--g500)]" />
-              Creator Tools
-            </h3>
-            <span className="text-[10px] font-semibold text-[var(--g700)] bg-[var(--g100)] px-2 py-0.5 rounded-[var(--r8)] border border-[var(--g200)]">
-              For all businesses
-            </span>
-          </div>
+        {/* Creator Tools Category (shown if relevant for this vertical or creator profile) */}
+        {relevantCreatorModules.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[var(--g500)]" />
+                Creator &amp; Digital Tools
+              </h3>
+              <span className="text-[10px] font-semibold text-[var(--g700)] bg-[var(--g100)] px-2 py-0.5 rounded-[var(--r8)] border border-[var(--g200)]">
+                {isCreator ? "Creator Account" : "Available Tools"}
+              </span>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {CREATOR_MODULE_DEFINITIONS.map((mod) => {
-              const isEnabled = isModuleActive(mod.key);
-              const isSavingThis = savingKey === mod.key;
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {relevantCreatorModules.map((mod) => {
+                const isEnabled = isModuleActive(mod.key);
+                const isSavingThis = savingKey === mod.key;
 
-              return (
-                <div
-                  key={mod.key}
-                  className={`p-4 rounded-[var(--r12)] border transition-all flex items-start justify-between gap-4 ${
-                    isEnabled
-                      ? "bg-[var(--card)] border-[var(--g500)]/40 ring-1 ring-[var(--g500)]/10 shadow-[var(--shadow-xs)]"
-                      : "bg-[var(--bg)] border-[var(--border)] opacity-80"
-                  }`}
-                >
-                  <div className="flex gap-3">
-                    <div className="w-9 h-9 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center shrink-0">
-                      {mod.icon}
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-xs font-bold text-[var(--t1)] flex items-center gap-1.5">
-                        <span>{mod.title}</span>
-                        {isEnabled && (
-                          <span className="text-[9px] font-bold text-[var(--g700)] bg-[var(--g100)] px-1.5 py-0.5 rounded-[var(--r4)] border border-[var(--g200)]">
-                            Active
-                          </span>
-                        )}
-                      </h4>
-                      <p className="text-[11px] text-[var(--t2)] leading-relaxed">
-                        {mod.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Toggle Button */}
-                  <button
-                    type="button"
-                    disabled={isSavingThis}
-                    onClick={() => handleToggleClick(mod)}
-                    className={`p-1 rounded-[var(--r8)] transition cursor-pointer shrink-0 ${
+                return (
+                  <div
+                    key={mod.key}
+                    className={`p-4 rounded-[var(--r12)] border transition-all flex items-start justify-between gap-4 ${
                       isEnabled
-                        ? "text-[var(--g600)]"
-                        : "text-[var(--t3)] hover:text-[var(--t2)]"
+                        ? "bg-[var(--card)] border-[var(--g500)]/40 ring-1 ring-[var(--g500)]/10 shadow-[var(--shadow-xs)]"
+                        : "bg-[var(--bg)] border-[var(--border)] opacity-80"
                     }`}
-                    title={isEnabled ? "Click to disable module" : "Click to enable module"}
                   >
-                    {isSavingThis ? (
-                      <Loader2 className="w-7 h-7 animate-spin text-[var(--g600)]" />
-                    ) : isEnabled ? (
-                      <ToggleRight className="w-8 h-8" />
-                    ) : (
-                      <ToggleLeft className="w-8 h-8" />
-                    )}
-                  </button>
-                </div>
-              );
-            })}
+                    <div className="flex gap-3">
+                      <div className="w-9 h-9 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center shrink-0">
+                        {mod.icon}
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-[var(--t1)] flex items-center gap-1.5">
+                          <span>{mod.title}</span>
+                          {isEnabled && (
+                            <span className="text-[9px] font-bold text-[var(--g700)] bg-[var(--g100)] px-1.5 py-0.5 rounded-[var(--r4)] border border-[var(--g200)]">
+                              Active
+                            </span>
+                          )}
+                        </h4>
+                        <p className="text-[11px] text-[var(--t2)] leading-relaxed">
+                          {mod.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Toggle Button */}
+                    <button
+                      type="button"
+                      disabled={isSavingThis}
+                      onClick={() => handleToggleClick(mod)}
+                      className={`p-1 rounded-[var(--r8)] transition cursor-pointer shrink-0 ${
+                        isEnabled
+                          ? "text-[var(--g600)]"
+                          : "text-[var(--t3)] hover:text-[var(--t2)]"
+                      }`}
+                      title={isEnabled ? "Click to disable module" : "Click to enable module"}
+                    >
+                      {isSavingThis ? (
+                        <Loader2 className="w-7 h-7 animate-spin text-[var(--g600)]" />
+                      ) : isEnabled ? (
+                        <ToggleRight className="w-8 h-8" />
+                      ) : (
+                        <ToggleLeft className="w-8 h-8" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Confirmation Dialog for Disabling Module */}

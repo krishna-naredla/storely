@@ -662,7 +662,8 @@ export async function createCategory(businessId: string, data: Omit<Category, 'i
     const sanitized = sanitizeForFirestore(category);
     await setDoc(catDocRef, sanitized);
   } catch (err) {
-    console.warn('Firestore createCategory warning:', err);
+    console.error('Firestore createCategory error:', err);
+    throw err;
   }
   return category;
 }
@@ -676,7 +677,8 @@ export async function updateCategory(businessId: string, catId: string, data: Pa
     const docRef = doc(db, 'businesses', businessId, 'categories', catId);
     await setDoc(docRef, sanitized, { merge: true });
   } catch (err) {
-    console.warn('Firestore updateCategory warning:', err);
+    console.error('Firestore updateCategory error:', err);
+    throw err;
   }
 }
 
@@ -685,7 +687,8 @@ export async function deleteCategory(businessId: string, catId: string): Promise
     const docRef = doc(db, 'businesses', businessId, 'categories', catId);
     await deleteDoc(docRef);
   } catch (err) {
-    console.warn('Firestore deleteCategory warning:', err);
+    console.error('Firestore deleteCategory error:', err);
+    throw err;
   }
 }
 
@@ -699,7 +702,8 @@ export async function reorderCategories(businessId: string, orderedCategoryIds: 
     });
     await Promise.all(updatePromises);
   } catch (err) {
-    console.warn('Firestore reorderCategories warning:', err);
+    console.error('Firestore reorderCategories error:', err);
+    throw err;
   }
 }
 
@@ -767,7 +771,8 @@ export async function createCatalogItem(
     const sanitized = sanitizeForFirestore(item);
     await setDoc(itemDocRef, sanitized);
   } catch (err) {
-    console.warn('Firestore createCatalogItem warning:', err);
+    console.error('Firestore createCatalogItem error:', err);
+    throw err;
   } finally {
     finishSync();
   }
@@ -784,7 +789,8 @@ export async function updateCatalogItem(businessId: string, itemId: string, data
     const docRef = doc(db, 'businesses', businessId, 'catalog', itemId);
     await setDoc(docRef, sanitized, { merge: true });
   } catch (err) {
-    console.warn('Firestore updateCatalogItem warning:', err);
+    console.error('Firestore updateCatalogItem error:', err);
+    throw err;
   } finally {
     finishSync();
   }
@@ -796,7 +802,8 @@ export async function deleteCatalogItem(businessId: string, itemId: string): Pro
     const docRef = doc(db, 'businesses', businessId, 'catalog', itemId);
     await deleteDoc(docRef);
   } catch (err) {
-    console.warn('Firestore deleteCatalogItem warning:', err);
+    console.error('Firestore deleteCatalogItem error:', err);
+    throw err;
   } finally {
     finishSync();
   }
@@ -834,15 +841,19 @@ export async function createOrder(
 
   try {
     await runTransaction(db, async (transaction) => {
-      // 1. Create the order document
-      const sanitized = sanitizeForFirestore(order);
-      transaction.set(orderDocRef, sanitized);
-
-      // 2. Safely handle inventory within the same transaction
+      // 1. Phase 1: Execute ALL reads first
+      const itemSnapshots: { itemRef: ReturnType<typeof doc>; itemSnap: any; item: typeof order.items[0] }[] = [];
       for (const item of order.items) {
         const itemRef = doc(db, 'businesses', businessId, 'catalog', item.itemId);
         const itemSnap = await transaction.get(itemRef);
-        
+        itemSnapshots.push({ itemRef, itemSnap, item });
+      }
+
+      // 2. Phase 2: Execute ALL writes after every read has completed
+      const sanitized = sanitizeForFirestore(order);
+      transaction.set(orderDocRef, sanitized);
+
+      for (const { itemRef, itemSnap, item } of itemSnapshots) {
         if (itemSnap.exists()) {
           const itemData = itemSnap.data() as CatalogItem;
           // Only decrement if it's actually tracking stock (not null/undefined)
@@ -850,9 +861,7 @@ export async function createOrder(
             const currentStock = itemData.stockQuantity;
             const newQty = currentStock - item.quantity;
             
-            // Prevent negative stock - if stock becomes negative, we floor it at 0 
-            // but we could also throw an error here to fail the order if strictness is desired.
-            // For now, we'll floor at 0 as per the existing logic but keep it safe.
+            // Prevent negative stock - floor at 0
             const safeQty = Math.max(0, newQty);
             
             transaction.update(itemRef, {
@@ -1007,7 +1016,8 @@ export async function updateOrderStatus(businessId: string, orderId: string, sta
       updatedAt: Date.now(),
     });
   } catch (err) {
-    console.warn('Firestore updateOrderStatus warning:', err);
+    console.error('Firestore updateOrderStatus error:', err);
+    throw err;
   }
 }
 
@@ -1016,7 +1026,8 @@ export async function deleteOrder(businessId: string, orderId: string): Promise<
     const docRef = doc(db, 'businesses', businessId, 'orders', orderId);
     await deleteDoc(docRef);
   } catch (err) {
-    console.warn('Firestore deleteOrder warning:', err);
+    console.error('Firestore deleteOrder error:', err);
+    throw err;
   }
 }
 
@@ -1119,7 +1130,8 @@ export async function updateBookingStatus(businessId: string, bookingId: string,
       updatedAt: Date.now(),
     });
   } catch (err) {
-    console.warn('Firestore updateBookingStatus warning:', err);
+    console.error('Firestore updateBookingStatus error:', err);
+    throw err;
   }
 }
 
@@ -1275,7 +1287,7 @@ export async function createReview(
     createdAt: Date.now(),
   };
 
-  await setDoc(reviewDocRef, review);
+  await setDoc(reviewDocRef, sanitizeForFirestore(review));
 
   // Create notification
   await createNotification(businessId, {
@@ -1291,18 +1303,18 @@ export async function createReview(
 
 export async function replyToReview(businessId: string, reviewId: string, reply: string): Promise<void> {
   const docRef = doc(db, 'businesses', businessId, 'reviews', reviewId);
-  await updateDoc(docRef, {
+  await updateDoc(docRef, sanitizeForFirestore({
     reply,
     replyAt: Date.now(),
-  });
+  }));
 }
 
 export async function updateReviewStatus(businessId: string, reviewId: string, status: 'published' | 'hidden'): Promise<void> {
   const docRef = doc(db, 'businesses', businessId, 'reviews', reviewId);
-  await updateDoc(docRef, {
+  await updateDoc(docRef, sanitizeForFirestore({
     status,
     updatedAt: Date.now(),
-  });
+  }));
 }
 
 /**
@@ -1407,13 +1419,13 @@ export async function createOffer(
     createdAt: Date.now(),
   };
 
-  await setDoc(offerDocRef, offer);
+  await setDoc(offerDocRef, sanitizeForFirestore(offer));
   return offer;
 }
 
 export async function updateOffer(businessId: string, offerId: string, data: Partial<Offer>): Promise<void> {
   const docRef = doc(db, 'businesses', businessId, 'offers', offerId);
-  await updateDoc(docRef, data);
+  await updateDoc(docRef, sanitizeForFirestore(data));
 }
 
 export async function deleteOffer(businessId: string, offerId: string): Promise<void> {
@@ -1432,13 +1444,13 @@ export async function recordAnalyticsEvent(
   try {
     const eventDocRef = doc(collection(db, 'businesses', businessId, 'analyticsEvents'));
     const eventId = eventDocRef.id;
-    await setDoc(eventDocRef, {
+    await setDoc(eventDocRef, sanitizeForFirestore({
       id: eventId,
       businessId,
       eventType,
       metadata: metadata || {},
       timestamp: Date.now(),
-    });
+    }));
   } catch (e) {
     // Non-blocking telemetry
   }
@@ -1685,7 +1697,7 @@ export const createBioLink = async (businessId: string, data: any) => {
   saveLocalBioLinks(businessId, [...current, { ...newLink, id: tempId }]);
 
   try {
-    await setDoc(tempDocRef, newLink);
+    await setDoc(tempDocRef, sanitizeForFirestore(newLink));
     return tempId;
   } catch (err) {
     console.warn('Firestore setDoc warning for createBioLink, preserved locally:', err);
@@ -1708,10 +1720,10 @@ export const updateBioLink = async (linkId: string, data: any) => {
 
   try {
     const docRef = doc(db, 'biolinks', linkId);
-    await updateDoc(docRef, {
+    await updateDoc(docRef, sanitizeForFirestore({
       ...data,
       updatedAt: Date.now()
-    });
+    }));
   } catch (err) {
     console.warn('Firestore updateBioLink warning:', err);
   }
@@ -1755,13 +1767,13 @@ export const updateBioLinksOrder = async (links: any[]) => {
 export const recordBioLinkClick = async (businessId: string, linkId: string) => {
   try {
     const eventDocRef = doc(collection(db, 'businesses', businessId, 'analyticsEvents'));
-    await setDoc(eventDocRef, {
+    await setDoc(eventDocRef, sanitizeForFirestore({
       id: eventDocRef.id,
       businessId,
       eventType: 'biolink_click',
       metadata: { linkId },
       timestamp: Date.now()
-    });
+    }));
   } catch(e) {
     console.error(e);
   }
@@ -1770,13 +1782,13 @@ export const recordBioLinkClick = async (businessId: string, linkId: string) => 
 export const recordBioLinkView = async (businessId: string) => {
   try {
     const eventDocRef = doc(collection(db, 'businesses', businessId, 'analyticsEvents'));
-    await setDoc(eventDocRef, {
+    await setDoc(eventDocRef, sanitizeForFirestore({
       id: eventDocRef.id,
       businessId,
       eventType: 'biolink_view',
       metadata: {},
       timestamp: Date.now()
-    });
+    }));
   } catch(e) {
     console.error(e);
   }
