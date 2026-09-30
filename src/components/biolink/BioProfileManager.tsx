@@ -47,6 +47,7 @@ import {
   Star,
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import { normalizeSocialLinksToObject, getSocialLinkValue } from '../../utils/profileHelper';
 import {
   SocialBrandIcon,
   getBrandConfig,
@@ -130,18 +131,21 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
     showVerifiedBadge: rawTheme.showVerifiedBadge !== false,
     profession: rawTheme.profession || business.tagline || 'Entrepreneur | Content Creator',
     showSocialIconsBar: rawTheme.showSocialIconsBar !== false,
-    socials: rawTheme.socials || {
-      whatsapp: business.whatsapp || '',
-      instagram: business.socialLinks?.instagram || '',
-      youtube: business.socialLinks?.youtube || '',
-      telegram: business.socialLinks?.telegram || '',
-      linkedin: business.socialLinks?.linkedin || '',
-      twitter: business.socialLinks?.twitter || '',
-      facebook: business.socialLinks?.facebook || '',
-      discord: '',
-      spotify: '',
-      github: '',
-    },
+    socials: rawTheme.socials || (() => {
+      const existingSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
+      return {
+        whatsapp: business.whatsapp || existingSocials.whatsapp || '',
+        instagram: existingSocials.instagram || '',
+        youtube: existingSocials.youtube || '',
+        telegram: existingSocials.telegram || '',
+        linkedin: existingSocials.linkedin || '',
+        twitter: existingSocials.twitter || '',
+        facebook: existingSocials.facebook || '',
+        discord: existingSocials.discord || '',
+        spotify: existingSocials.spotify || '',
+        github: existingSocials.github || '',
+      };
+    })(),
   });
 
   const [bioText, setBioText] = useState(
@@ -381,25 +385,27 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
     setSaveStatus('saving');
     try {
       const updatedTheme = { ...theme };
+      const baseSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
+      const mergedSocialLinks = {
+        ...baseSocials,
+        whatsapp: theme.socials?.whatsapp || '',
+        instagram: theme.socials?.instagram || '',
+        youtube: theme.socials?.youtube || '',
+        telegram: theme.socials?.telegram || '',
+        linkedin: theme.socials?.linkedin || '',
+        twitter: theme.socials?.twitter || '',
+        facebook: theme.socials?.facebook || '',
+        discord: theme.socials?.discord || '',
+        spotify: theme.socials?.spotify || '',
+        github: theme.socials?.github || '',
+      };
       const updatedBiz: BusinessProfile = {
         ...business,
         bio: bioText,
         description: bioText,
         tagline: theme.profession,
         whatsapp: theme.socials?.whatsapp || business.whatsapp,
-        socialLinks: {
-          ...business.socialLinks,
-          whatsapp: theme.socials?.whatsapp || '',
-          instagram: theme.socials?.instagram || '',
-          youtube: theme.socials?.youtube || '',
-          telegram: theme.socials?.telegram || '',
-          linkedin: theme.socials?.linkedin || '',
-          twitter: theme.socials?.twitter || '',
-          facebook: theme.socials?.facebook || '',
-          discord: theme.socials?.discord || '',
-          spotify: theme.socials?.spotify || '',
-          github: theme.socials?.github || '',
-        },
+        socialLinks: mergedSocialLinks,
         bioTheme: updatedTheme,
         updatedAt: Date.now(),
       };
@@ -408,19 +414,7 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
         description: bioText,
         tagline: theme.profession,
         whatsapp: theme.socials?.whatsapp || business.whatsapp,
-        socialLinks: {
-          ...business.socialLinks,
-          whatsapp: theme.socials?.whatsapp || '',
-          instagram: theme.socials?.instagram || '',
-          youtube: theme.socials?.youtube || '',
-          telegram: theme.socials?.telegram || '',
-          linkedin: theme.socials?.linkedin || '',
-          twitter: theme.socials?.twitter || '',
-          facebook: theme.socials?.facebook || '',
-          discord: theme.socials?.discord || '',
-          spotify: theme.socials?.spotify || '',
-          github: theme.socials?.github || '',
-        },
+        socialLinks: mergedSocialLinks,
         bioTheme: updatedTheme,
       });
       try {
@@ -460,25 +454,27 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
     autoSaveTimerRef.current = setTimeout(async () => {
       try {
         setSaveStatus('saving');
+        const baseSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
+        const mergedSocialLinks = {
+          ...baseSocials,
+          whatsapp: theme.socials?.whatsapp || '',
+          instagram: theme.socials?.instagram || '',
+          youtube: theme.socials?.youtube || '',
+          telegram: theme.socials?.telegram || '',
+          linkedin: theme.socials?.linkedin || '',
+          twitter: theme.socials?.twitter || '',
+          facebook: theme.socials?.facebook || '',
+          discord: theme.socials?.discord || '',
+          spotify: theme.socials?.spotify || '',
+          github: theme.socials?.github || '',
+        };
         const updatedBiz: BusinessProfile = {
           ...business,
           bio: bioText,
           description: bioText,
           tagline: theme.profession,
           whatsapp: theme.socials?.whatsapp || business.whatsapp,
-          socialLinks: {
-            ...business.socialLinks,
-            whatsapp: theme.socials?.whatsapp || '',
-            instagram: theme.socials?.instagram || '',
-            youtube: theme.socials?.youtube || '',
-            telegram: theme.socials?.telegram || '',
-            linkedin: theme.socials?.linkedin || '',
-            twitter: theme.socials?.twitter || '',
-            facebook: theme.socials?.facebook || '',
-            discord: theme.socials?.discord || '',
-            spotify: theme.socials?.spotify || '',
-            github: theme.socials?.github || '',
-          },
+          socialLinks: mergedSocialLinks,
           bioTheme: theme,
           updatedAt: Date.now(),
         };
@@ -487,19 +483,7 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
           description: bioText,
           tagline: theme.profession,
           whatsapp: theme.socials?.whatsapp || business.whatsapp,
-          socialLinks: {
-            ...business.socialLinks,
-            whatsapp: theme.socials?.whatsapp || '',
-            instagram: theme.socials?.instagram || '',
-            youtube: theme.socials?.youtube || '',
-            telegram: theme.socials?.telegram || '',
-            linkedin: theme.socials?.linkedin || '',
-            twitter: theme.socials?.twitter || '',
-            facebook: theme.socials?.facebook || '',
-            discord: theme.socials?.discord || '',
-            spotify: theme.socials?.spotify || '',
-            github: theme.socials?.github || '',
-          },
+          socialLinks: mergedSocialLinks,
           bioTheme: theme,
         });
 

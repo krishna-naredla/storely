@@ -59,6 +59,7 @@ import {
   getFontFamilyClass,
   getBorderRadiusClass,
 } from '../../utils/portfolioTheme';
+import { normalizeSocialLinksToObject } from '../../utils/profileHelper';
 
 interface PortfolioAppearanceTabProps {
   business: BusinessProfile;
@@ -170,16 +171,19 @@ export const PortfolioAppearanceTab: React.FC<PortfolioAppearanceTabProps> = ({
   );
 
   // Social Links
-  const [socialLinks, setSocialLinks] = useState<PortfolioSocialLinks>(
-    settings.socialLinks || {
-      instagram: business.socials?.instagram || '',
-      youtube: business.socials?.youtube || '',
-      twitter: business.socials?.twitter || '',
-      linkedin: business.socials?.linkedin || '',
-      github: '',
-      website: business.socials?.website || '',
-    }
-  );
+  const [socialLinks, setSocialLinks] = useState<PortfolioSocialLinks>(() => {
+    const existingSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
+    return (
+      settings.socialLinks || {
+        instagram: existingSocials.instagram || '',
+        youtube: existingSocials.youtube || '',
+        twitter: existingSocials.twitter || '',
+        linkedin: existingSocials.linkedin || '',
+        github: existingSocials.github || '',
+        website: existingSocials.website || '',
+      }
+    );
+  });
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);

@@ -25,6 +25,60 @@ import { ImageUploadInput } from '../common/ImageUploadInput';
 import { deleteImageFromStorage } from '../../services/cloudinary';
 import { requestFcmNotificationPermission, showMerchantNotification } from '../../services/fcmPushService';
 import { SeoManager } from './SeoManager';
+import { normalizeSocialLinksToArray as normalizeHelperToArray, normalizeSocialLinksToObject } from '../../utils/profileHelper';
+
+const normalizeSocialLinksToArray = (raw: any): { platform: string; url: string }[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((item) => item && (typeof item === 'object' || typeof item === 'string'))
+      .map((item) => {
+        if (typeof item === 'string') {
+          return { platform: 'website', url: item };
+        }
+        return {
+          platform: String(item.platform || 'website').toLowerCase(),
+          url: String(item.url || ''),
+        };
+      })
+      .filter((item) => item.url.trim() !== '');
+  }
+  if (typeof raw === 'object') {
+    const list: { platform: string; url: string }[] = [];
+    Object.entries(raw).forEach(([key, val]) => {
+      if (typeof val === 'string' && val.trim() !== '') {
+        if (isNaN(Number(key))) {
+          list.push({ platform: key.toLowerCase(), url: val.trim() });
+        }
+      } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+        const itemObj = val as any;
+        if (itemObj.platform && typeof itemObj.url === 'string' && itemObj.url.trim() !== '') {
+          list.push({ platform: String(itemObj.platform).toLowerCase(), url: itemObj.url.trim() });
+        }
+      }
+    });
+    return list;
+  }
+  return [];
+};
+
+const formatSocialLinksForStorage = (links: any): Record<string, string> => {
+  const result: Record<string, string> = {};
+  if (Array.isArray(links)) {
+    links.forEach((l) => {
+      if (l && l.platform && typeof l.url === 'string' && l.url.trim() !== '') {
+        result[String(l.platform).toLowerCase()] = l.url.trim();
+      }
+    });
+  } else if (links && typeof links === 'object') {
+    Object.entries(links).forEach(([k, v]) => {
+      if (typeof v === 'string' && v.trim() !== '' && isNaN(Number(k))) {
+        result[k.toLowerCase()] = v.trim();
+      }
+    });
+  }
+  return result;
+};
 
 interface StoreSettingsProps {
   business: BusinessProfile;
@@ -58,7 +112,12 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
     business.enableOnlinePayment ?? false
   );
   const [upiId, setUpiId] = useState(business.upiId || '');
-  const [socialLinks, setSocialLinks] = useState<{platform: string, url: string}[]>(business.socialLinks || []);
+  const [socialLinks, setSocialLinks] = useState<{ platform: string; url: string }[]>(() =>
+    normalizeSocialLinksToArray(business.socialLinks)
+  );
+  const safeSocialLinks = Array.isArray(socialLinks)
+    ? socialLinks
+    : normalizeSocialLinksToArray(socialLinks);
   const platforms = ['instagram', 'facebook', 'youtube', 'linkedin', 'twitter', 'website'];
   const [seoMetaTitle, setSeoMetaTitle] = useState(business.seoMetaTitle || '');
   const [seoMetaDescription, setSeoMetaDescription] = useState(business.seoMetaDescription || '');
@@ -106,7 +165,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
           if (draft.enableCod !== undefined) setEnableCod(draft.enableCod);
           if (draft.enableOnlinePayment !== undefined) setEnableOnlinePayment(draft.enableOnlinePayment);
           if (draft.upiId !== undefined) setUpiId(draft.upiId);
-          if (draft.socialLinks !== undefined) setSocialLinks(draft.socialLinks);
+          if (draft.socialLinks !== undefined) setSocialLinks(normalizeSocialLinksToArray(draft.socialLinks));
           if (draft.seoMetaTitle !== undefined) setSeoMetaTitle(draft.seoMetaTitle);
           if (draft.seoMetaDescription !== undefined) setSeoMetaDescription(draft.seoMetaDescription);
           if (draft.status !== undefined) setStatus(draft.status);
@@ -137,7 +196,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
       enableCod: business.enableCod ?? true,
       enableOnlinePayment: business.enableOnlinePayment ?? false,
       upiId: business.upiId || '',
-      socialLinks: business.socialLinks || [],
+      socialLinks: formatSocialLinksForStorage(normalizeSocialLinksToArray(business.socialLinks)),
       seoMetaTitle: business.seoMetaTitle || '',
       seoMetaDescription: business.seoMetaDescription || '',
       status: business.status || 'active',
@@ -171,7 +230,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
       enableCod,
       enableOnlinePayment,
       upiId: upiId.trim() || undefined,
-      socialLinks: socialLinks.filter(l => l.url.trim() !== ''),
+      socialLinks: formatSocialLinksForStorage(socialLinks),
       seoMetaTitle: seoMetaTitle.trim() || undefined,
       seoMetaDescription: seoMetaDescription.trim() || undefined,
       seoMetaImage: seoMetaImage.trim() || undefined,
@@ -259,7 +318,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
     setEnableCod(business.enableCod ?? true);
     setEnableOnlinePayment(business.enableOnlinePayment ?? false);
     setUpiId(business.upiId || '');
-    setSocialLinks(business.socialLinks || []);
+    setSocialLinks(normalizeSocialLinksToArray(business.socialLinks));
     setSeoMetaTitle(business.seoMetaTitle || '');
     setSeoMetaDescription(business.seoMetaDescription || '');
     setStatus(business.status || 'active');
@@ -326,7 +385,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
         enableCod,
         enableOnlinePayment,
         upiId: upiId.trim() || undefined,
-        socialLinks: socialLinks.filter(l => l.url.trim() !== ''),
+        socialLinks: formatSocialLinksForStorage(socialLinks),
         seoMetaTitle: seoMetaTitle.trim() || undefined,
         seoMetaDescription: seoMetaDescription.trim() || undefined,
         seoMetaImage: seoMetaImage.trim() || undefined,
@@ -655,13 +714,13 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
             Social Media Links
           </h3>
           <div className="space-y-3">
-            {socialLinks.map((link, idx) => (
+            {safeSocialLinks.map((link, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <select
                   value={link.platform}
                   onChange={(e) => {
-                    const newLinks = [...socialLinks];
-                    newLinks[idx].platform = e.target.value;
+                    const newLinks = [...safeSocialLinks];
+                    newLinks[idx] = { ...newLinks[idx], platform: e.target.value };
                     setSocialLinks(newLinks);
                   }}
                   className="w-32 px-3 py-2 text-xs border border-slate-200 rounded-xl"
@@ -672,20 +731,20 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
                   type="url"
                   value={link.url}
                   onChange={(e) => {
-                    const newLinks = [...socialLinks];
-                    newLinks[idx].url = e.target.value;
+                    const newLinks = [...safeSocialLinks];
+                    newLinks[idx] = { ...newLinks[idx], url: e.target.value };
                     setSocialLinks(newLinks);
                   }}
                   placeholder="https://..."
-                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    const newLinks = socialLinks.filter((_, i) => i !== idx);
+                    const newLinks = safeSocialLinks.filter((_, i) => i !== idx);
                     setSocialLinks(newLinks);
                   }}
-                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl"
+                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -693,8 +752,8 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
             ))}
             <button
               type="button"
-              onClick={() => setSocialLinks([...socialLinks, { platform: 'instagram', url: '' }])}
-              className="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition flex items-center gap-2"
+              onClick={() => setSocialLinks([...safeSocialLinks, { platform: 'instagram', url: '' }])}
+              className="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" /> Add Social Link
             </button>

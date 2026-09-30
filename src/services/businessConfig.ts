@@ -728,6 +728,12 @@ export const VENDOR_MODULE_WHITELIST = [
   'offers',
   'digital_card',
   'inventory_tracking',
+  'digital_products',
+  'work_portfolio',
+  'portfolio',
+  'custom_quotes',
+  'events_tickets',
+  'events_ticketing',
   'analytics',
 ] as const;
 
@@ -790,9 +796,9 @@ export const VERTICAL_RELEVANT_MODULES: Record<BusinessType, (keyof BusinessModu
   jewellery: ['products', 'cart_ordering', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
   electronics: ['products', 'services', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
   furniture: ['products', 'services', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
-  education: ['services', 'booking_appointments', 'digital_products', 'cart_ordering', 'offers', 'reviews', 'inquiries', 'digital_card'],
-  services: ['services', 'booking_appointments', 'cart_ordering', 'offers', 'reviews', 'inquiries', 'digital_card'],
-  agency: ['services', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
+  education: ['services', 'booking_appointments', 'digital_products', 'events_tickets', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  services: ['services', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
+  agency: ['services', 'custom_quotes', 'work_portfolio', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
   custom: ['products', 'services', 'cart_ordering', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
   digital_creator: ['work_portfolio', 'portfolio', 'universal_links', 'digital_products', 'booking_appointments', 'custom_quotes', 'events_tickets', 'reviews'],
 };
