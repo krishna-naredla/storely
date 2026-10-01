@@ -561,13 +561,13 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
   const handleAddStarterLinks = async () => {
     setIsSaving(true);
     try {
-      const waNumber = (business.whatsapp || '919876543210').replace(/[^0-9]/g, '');
+      const waNumber = (business.whatsapp || business.phone || '').replace(/[^0-9]/g, '');
       const defaultLinks = [
         {
           type: 'whatsapp',
           title: 'Chat on WhatsApp',
           subtitle: 'Quickly connect with me',
-          url: `https://wa.me/${waNumber}`,
+          url: waNumber ? `https://wa.me/${waNumber}` : '',
           order: 0,
           enabled: true,
         },

@@ -9,7 +9,7 @@ interface VerifiedBadgeProps {
 }
 
 export const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({
-  verified = true,
+  verified = false,
   size = 'sm',
   showLabel = true,
   className = '',

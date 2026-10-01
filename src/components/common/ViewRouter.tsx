@@ -4,8 +4,8 @@ import { StorefrontView } from '../storefront/StorefrontView';
 import { BioProfileView } from '../biolink/BioProfileView';
 import { StandalonePortfolioView } from '../portfolio/StandalonePortfolioView';
 import { StandaloneTrustCardView } from './StandaloneTrustCardView';
-import { PublicModuleUnavailableView } from './PublicModuleUnavailableView';
-import { verifyModuleAvailability } from '../../utils/publicRouteResolver';
+import { PublicStatusView } from './PublicStatusView';
+import { evaluatePublicAvailability } from '../../utils/publicAvailability';
 
 interface ViewRouterProps {
   viewMode: 'dashboard' | 'storefront' | 'store' | 'portfolio' | 'biolink' | 'bio' | 'card';
@@ -26,26 +26,29 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   onOpenStorefront,
   onOpenDigitalCard,
 }) => {
-  // Enforce preview separation: owner preview controls ONLY show when isExplicitPreview is true and business is active
+  // Enforce preview separation: owner preview controls ONLY show when isExplicitPreview is true, authenticated owner is verified, and business is not deleted
   const activePreview = Boolean(
     isExplicitPreview &&
     isOwner &&
-    targetBusiness.status !== 'suspended' &&
     targetBusiness.status !== 'deleted'
   );
 
   // 1. Universal Bio Link View
   if (viewMode === 'biolink' || viewMode === 'bio') {
-    const status = verifyModuleAvailability(targetBusiness, 'bio', activePreview);
-    if (!status.isAvailable) {
+    const result = evaluatePublicAvailability(targetBusiness, 'bio', activePreview);
+    if (!result.isAvailable) {
       return (
-        <PublicModuleUnavailableView
-          business={targetBusiness}
-          moduleType="bio"
-          title={status.title}
-          message={status.message}
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="bio"
           isExplicitPreview={activePreview}
           onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
         />
       );
     }
@@ -65,16 +68,20 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
 
   // 2. Professional Portfolio View
   if (viewMode === 'portfolio') {
-    const status = verifyModuleAvailability(targetBusiness, 'portfolio', activePreview);
-    if (!status.isAvailable) {
+    const result = evaluatePublicAvailability(targetBusiness, 'portfolio', activePreview);
+    if (!result.isAvailable) {
       return (
-        <PublicModuleUnavailableView
-          business={targetBusiness}
-          moduleType="portfolio"
-          title={status.title}
-          message={status.message}
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="portfolio"
           isExplicitPreview={activePreview}
           onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
         />
       );
     }
@@ -90,16 +97,20 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
 
   // 3. Digital Trust Card View
   if (viewMode === 'card') {
-    const status = verifyModuleAvailability(targetBusiness, 'card', activePreview);
-    if (!status.isAvailable) {
+    const result = evaluatePublicAvailability(targetBusiness, 'card', activePreview);
+    if (!result.isAvailable) {
       return (
-        <PublicModuleUnavailableView
-          business={targetBusiness}
-          moduleType="card"
-          title={status.title}
-          message={status.message}
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="card"
           isExplicitPreview={activePreview}
           onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
         />
       );
     }
@@ -119,16 +130,20 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   }
 
   // 4. Default Storefront View (Vendor storefront or Creator digital store)
-  const storeStatus = verifyModuleAvailability(targetBusiness, 'store', activePreview);
-  if (!storeStatus.isAvailable) {
+  const storeResult = evaluatePublicAvailability(targetBusiness, 'store', activePreview);
+  if (!storeResult.isAvailable) {
     return (
-      <PublicModuleUnavailableView
-        business={targetBusiness}
-        moduleType="store"
-        title={storeStatus.title}
-        message={storeStatus.message}
+      <PublicStatusView
+        status={storeResult.status}
+        title={storeResult.title}
+        message={storeResult.message}
+        helperNote={storeResult.helperNote}
+        requestedSlug={targetBusiness.slug}
+        targetView="store"
         isExplicitPreview={activePreview}
         onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        onGoToHome={() => { window.location.href = '/'; }}
+        onRetry={() => { window.location.reload(); }}
       />
     );
   }

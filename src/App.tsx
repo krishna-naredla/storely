@@ -2,6 +2,8 @@ import { CreatorAuthGuard } from './components/auth/CreatorAuthGuard';
 import { useInitializationGuard } from './hooks/useInitializationGuard';
 import { normalizeBusinessData } from './utils/dataNormalization';
 import { ViewRouter } from './components/common/ViewRouter';
+import { PublicStatusView } from './components/common/PublicStatusView';
+import { evaluatePublicAvailability } from './utils/publicAvailability';
 import {
   resolvePublicRouteFromUrl,
   resolveTargetViewForBusiness,
@@ -822,23 +824,42 @@ function MainContent() {
       );
     }
 
-    // 1B. Storefront Found & Active
+    // 1B. Storefront Found & Authoritative Availability Check
     // Public routes must strictly resolve using publicBusiness, never fall back to selectedBusiness!
     const rawTargetBusiness = (publicRouteInfo.isPublicRoute || publicStoreSlug)
       ? publicBusiness
       : (viewMode === 'storefront' ? (publicBusiness || selectedBusiness) : null);
     const targetBusiness = normalizeBusinessData(rawTargetBusiness);
+
     if (targetBusiness && !publicStoreNotFound) {
       const { targetView } = resolveTargetViewForBusiness(publicRouteInfo, targetBusiness);
 
       // Public URLs must NEVER use dashboard/auth guards or expose Dashboard/Edit/Manage/Owner controls.
-      // Owner preview is strictly prohibited on clean public routes or when business is suspended.
+      // Owner preview is strictly permitted ONLY if explicitly requested, authenticated user is verified owner, and business is not deleted.
       const isExplicitOwnerPreview =
         !publicRouteInfo.isPublicRoute &&
         publicRouteInfo.isExplicitPreview &&
         Boolean(currentUser && targetBusiness.ownerId === currentUser.uid) &&
-        targetBusiness.status !== 'suspended' &&
         targetBusiness.status !== 'deleted';
+
+      const availability = evaluatePublicAvailability(targetBusiness, targetView, isExplicitOwnerPreview);
+
+      if (!availability.isAvailable) {
+        return (
+          <PublicStatusView
+            status={availability.status}
+            title={availability.title}
+            message={availability.message}
+            helperNote={availability.helperNote}
+            requestedSlug={publicStoreSlug || targetBusiness.slug}
+            targetView={publicRouteInfo.explicitView}
+            isExplicitPreview={isExplicitOwnerPreview}
+            onBackToDashboard={isExplicitOwnerPreview ? navigateToDashboard : undefined}
+            onGoToHome={() => { window.location.href = '/'; }}
+            onRetry={() => resolvePublicStore(publicStoreSlug || targetBusiness.slug)}
+          />
+        );
+      }
 
       return (
         <ViewRouter
@@ -860,64 +881,19 @@ function MainContent() {
       );
     }
 
-    // 1C. Public Handle Not Found (404) -> Clean Public Not Found Page
-    const isPortfolioRoute = publicRouteInfo.explicitView === 'portfolio';
-    const isBioRoute = publicRouteInfo.explicitView === 'bio';
-    const notFoundTypeLabel = isBioRoute ? 'bio link profile' : isPortfolioRoute ? 'creator portfolio' : 'digital storefront';
-    const notFoundTitle = isBioRoute ? 'Bio Link Not Found' : isPortfolioRoute ? 'Portfolio Not Found' : 'Store Not Found';
-
+    // 1C. Public Handle Not Found (404) -> Clean, Safe Public Status Page
     return (
-      <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)] flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-[var(--card)] border border-[var(--border)] rounded-[var(--r24)] p-8 shadow-[var(--shadow-md)] space-y-6">
-          <div className="w-16 h-16 rounded-[var(--r16)] bg-[var(--g100)] border border-[var(--g200)] flex items-center justify-center mx-auto text-[var(--g600)]">
-            {isBioRoute ? <Sparkles className="w-8 h-8" /> : isPortfolioRoute ? <Briefcase className="w-8 h-8" /> : <Store className="w-8 h-8" />}
-          </div>
-
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-[var(--t1)] font-heading">
-              {notFoundTitle}
-            </h1>
-            <p className="text-xs text-[var(--t2)] leading-relaxed">
-              We couldn't find an active {notFoundTypeLabel} matching the handle{' '}
-              <span className="font-mono font-bold text-[var(--g700)]">"{publicStoreSlug}"</span>.
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-[var(--r12)] bg-[var(--bg)] border border-[var(--border)] text-xs text-[var(--t2)] text-left space-y-1.5">
-            <div className="font-bold text-[var(--t1)] flex items-center gap-1.5">
-              <HelpCircle className="w-3.5 h-3.5 text-[var(--g600)]" />
-              <span>Possible Reasons:</span>
-            </div>
-            <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-[var(--t2)]">
-              <li>The link may contain a spelling mistake.</li>
-              <li>The owner may have updated their handle.</li>
-              <li>This page has not been published yet.</li>
-            </ul>
-          </div>
-
-          <div className="flex flex-col gap-2.5 pt-2">
-            {publicStoreSlug && (
-              <button
-                type="button"
-                onClick={() => resolvePublicStore(publicStoreSlug)}
-                className="w-full py-2.5 px-4 ds-btn-secondary font-bold text-xs rounded-[var(--r12)] transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Retry Loading Page</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={navigateToDashboard}
-              className="w-full py-3 px-4 ds-btn-primary font-bold text-xs rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Home className="w-4 h-4" />
-              <span>Visit Storelly Homepage</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <PublicStatusView
+        status="NOT_FOUND"
+        title="Page not found"
+        message="We couldn't find a public Storelly page at this address."
+        helperNote="Please verify the handle in the URL or visit the Storelly homepage."
+        requestedSlug={publicStoreSlug}
+        targetView={publicRouteInfo.explicitView}
+        isExplicitPreview={false}
+        onGoToHome={() => { window.location.href = '/'; }}
+        onRetry={publicStoreSlug ? () => resolvePublicStore(publicStoreSlug) : undefined}
+      />
     );
   }
 

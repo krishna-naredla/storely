@@ -37,8 +37,8 @@ export const HappyClientsMarquee: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8 text-center relative z-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[var(--r8)] bg-[var(--g100)] border border-[var(--g200)] text-[var(--g700)] text-xs font-black tracking-wide uppercase shadow-xs mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-[var(--g600)] animate-spin" />
-          Trusted by 10,000+ Fast-Growing Brands & Creators Across India
+          <Sparkles className="w-3.5 h-3.5 text-[var(--g600)]" />
+          Powering Digital Stores & Creators Across India
         </div>
 
         <h3 className="text-2xl sm:text-3xl font-heading font-black text-[var(--t1)] tracking-tight">

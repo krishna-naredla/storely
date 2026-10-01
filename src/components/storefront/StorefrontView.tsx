@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SafeImage } from '../common/SafeImage';
 import { VerifiedBadge } from '../common/VerifiedBadge';
 import { getBusinessLogo, getAppLogo } from '../../utils/branding';
+import { isCreatorProfile } from '../../utils/profileHelper';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
 import {
   getCatalogItems,
@@ -559,9 +560,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       )}
 
       {/* Main Store Banner & Profile Header */}
-      <header className="relative bg-white">
-        {/* Banner Cover */}
-        <div className="relative h-[200px] sm:h-[300px] md:h-[400px] w-full bg-slate-100 overflow-hidden">
+      <header className="relative bg-white border-b border-slate-200/80 shadow-xs overflow-hidden">
+        {/* 1. Banner Cover */}
+        <div className="relative h-36 sm:h-48 md:h-60 lg:h-64 w-full bg-slate-900 overflow-hidden">
           {(business.banner || business.coverImage) && !bannerError ? (
             <div className="w-full h-full relative">
               <SafeImage
@@ -572,116 +573,147 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 onError={() => setBannerError(true)}
                 className="w-full h-full object-cover object-center"
               />
-              <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             </div>
           ) : (
-            <div className="w-full h-full bg-emerald-900 flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-400 via-transparent to-transparent" />
-              <div className="relative z-10 flex flex-col items-center gap-2 opacity-50">
-                <Store className="w-12 h-12 text-white/40" />
-                <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">{business.name}</span>
+            <div className="w-full h-full bg-slate-900 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500 via-teal-900 to-slate-900" />
+              <div className="relative z-10 flex flex-col items-center gap-2 text-white/40">
+                <Store className="w-10 h-10" />
+                <span className="text-[10px] font-black uppercase tracking-[0.25em]">{business.name}</span>
               </div>
             </div>
           )}
 
-          {/* Floating Share Button on Banner */}
-          <div className="absolute top-4 right-4 z-20">
+          {/* Floating Share & Action Button on Banner */}
+          <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
             <button
               type="button"
               onClick={handleShareStore}
-              className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:bg-white transition-all active:scale-95 cursor-pointer text-slate-900 border border-white/50"
+              aria-label="Share Store"
+              className="p-2.5 sm:p-3 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-2xl text-white transition border border-white/20 shadow-md active:scale-95 cursor-pointer"
+              title="Share Store"
             >
               <Share2 className="w-4 h-4" />
             </button>
           </div>
         </div>
         
-        {/* Profile Info Section */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end gap-6 -mt-12 sm:-mt-20 mb-8">
-            {/* Logo */}
-            <div className="relative shrink-0 mx-auto md:mx-0">
-              <div className="w-24 h-24 sm:w-36 sm:h-36 bg-white rounded-3xl sm:rounded-[2.5rem] shadow-2xl p-1.5 sm:p-2 border-4 border-white overflow-hidden relative group">
-                <div className="w-full h-full rounded-2xl sm:rounded-[2rem] overflow-hidden bg-slate-50 flex items-center justify-center">
-                  {getBusinessLogo(business) ? (
+        {/* 2. Profile Identity & Action Area: Responsive Grid / Flex-Column Architecture */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-6 -mt-12 sm:-mt-16 md:-mt-20 relative z-10">
+            
+            {/* Identity Group: Logo + Structured Info */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-5 text-center sm:text-left min-w-0 flex-1">
+              
+              {/* Profile Avatar / Logo (Self-contained, non-colliding container) */}
+              <div className="shrink-0">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-white rounded-2xl sm:rounded-3xl shadow-xl p-1.5 border-4 border-white overflow-hidden bg-slate-50 flex items-center justify-center">
+                  {getBusinessLogo(business) && !logoError ? (
                     <SafeImage
                       src={getBusinessLogo(business)!}
                       alt={business.name}
                       fallbackType="avatar"
                       loading="eager"
-                      className="w-full h-full object-contain object-center p-1"
+                      onError={() => setLogoError(true)}
+                      className="w-full h-full object-cover object-center rounded-xl sm:rounded-2xl"
                     />
                   ) : (
-                    <div className="text-emerald-600 font-black text-3xl sm:text-5xl uppercase font-heading select-none">
+                    <div className="w-full h-full rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-700 font-black text-2xl sm:text-4xl uppercase font-heading flex items-center justify-center select-none">
                       {business.name.substring(0, 2)}
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-            
-            {/* Core Info & Primary Actions */}
-            <div className="flex-1 flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-2">
-              <div className="space-y-3 text-center md:text-left min-w-0">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                    <h1 className="text-2xl sm:text-4xl font-black text-slate-900 font-heading tracking-tight truncate leading-tight">
-                      {business.name}
-                    </h1>
-                    <VerifiedBadge size="md" />
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1.5 text-xs sm:text-sm text-slate-500 font-bold uppercase tracking-wide">
-                    {business.category && (
-                      <span className="flex items-center gap-1 text-emerald-600">
-                        <LayoutGrid className="w-4 h-4" />
-                        <span>{business.category}</span>
-                      </span>
-                    )}
-                    {business.city && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>{business.city}</span>
-                      </span>
-                    )}
-                    {business.status === 'open' && (
-                      <span className="flex items-center gap-1 text-emerald-600">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Open Now</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {(business.tagline || business.description || business.bio) && (
-                  <p className="text-sm sm:text-base text-slate-600 font-medium max-w-2xl line-clamp-3 leading-relaxed mx-auto md:mx-0">
-                    {business.tagline || business.bio || business.description}
-                  </p>
-                )}
-              </div>
 
-              {/* Action Group */}
-              <div className="flex items-center justify-center gap-3 shrink-0">
-                {(business.whatsapp || business.phone) && (
-                  <a
-                    href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${business.name}, I'm interested in your offerings.`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 sm:flex-none min-h-[48px] px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/20 transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    <span>WhatsApp Now</span>
-                  </a>
-                )}
-                {business.phone && (
-                  <a
-                    href={`tel:${business.phone}`}
-                    className="p-3.5 min-h-[48px] min-w-[48px] rounded-2xl bg-slate-900 text-white hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/10 flex items-center justify-center"
-                  >
-                    <Phone className="w-5 h-5" />
-                  </a>
-                )}
-              </div>
+              {/* Flex-Column for Store Name, Badges, Category, Tagline */}
+              {(() => {
+                const isCreator = isCreatorProfile(business);
+                const displayCategory = isCreator
+                  ? (business.portfolioSettings?.profession || business.tagline || business.category || '')
+                  : (business.category || bizMeta.label || '');
+                const displayTagline = business.tagline || business.bio || business.description || '';
+
+                return (
+                  <div className="flex flex-col gap-1.5 min-w-0 flex-1 pt-1 sm:pt-0">
+                    {/* Row A: Store Name + Verified Badge */}
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-2.5">
+                      <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 font-heading tracking-tight break-words max-w-full">
+                        {business.name}
+                      </h1>
+                      {Boolean(business.isVerified) && (
+                        <VerifiedBadge verified={true} size="md" />
+                      )}
+                    </div>
+
+                    {/* Row B: Profile Type (VENDOR / CREATOR) + Category + City */}
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs font-bold">
+                      {/* VENDOR or CREATOR Badge */}
+                      {isCreator ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 uppercase tracking-wider text-[10px]">
+                          <Sparkles className="w-3 h-3 text-purple-600" />
+                          <span>CREATOR</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider text-[10px]">
+                          <Store className="w-3 h-3 text-emerald-600" />
+                          <span>VENDOR</span>
+                        </span>
+                      )}
+
+                      {/* Profession or Business Category */}
+                      {displayCategory && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold">
+                          <LayoutGrid className="w-3 h-3 text-slate-500" />
+                          <span>{displayCategory}</span>
+                        </span>
+                      )}
+
+                      {/* Location */}
+                      {business.city && (
+                        <span className="inline-flex items-center gap-1 text-slate-500 text-xs font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{business.city}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Row C: Tagline / Bio Description */}
+                    {displayTagline && (
+                      <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed max-w-2xl break-words line-clamp-3">
+                        {displayTagline}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
+
+            {/* Action Buttons Column */}
+            <div className="flex items-center justify-center sm:justify-end gap-2.5 shrink-0 w-full md:w-auto pt-2 sm:pt-0">
+              {(business.whatsapp || business.phone) && (
+                <a
+                  href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${business.name}, I'm interested in your offerings.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 md:flex-none min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>WhatsApp Now</span>
+                </a>
+              )}
+              {business.phone && (
+                <a
+                  href={`tel:${business.phone}`}
+                  className="min-h-[44px] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-slate-900/10 transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  title="Call Store"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span className="hidden sm:inline">Call</span>
+                </a>
+              )}
+            </div>
+
           </div>
         </div>
       </header>

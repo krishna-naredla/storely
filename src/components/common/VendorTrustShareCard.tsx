@@ -92,7 +92,7 @@ export const VendorTrustShareCard: React.FC<VendorTrustShareCardProps> = ({
   const storeUrl = getStorefrontUrl(business);
   const cardUrl = getTrustCardUrl(business);
   const displayUrl = storeUrl.replace(/^https?:\/\//, '').split('?')[0];
-  const merchantPhone = (business.whatsapp || business.phone || '919876543210').replace(/\D/g, '');
+  const merchantPhone = (business.whatsapp || business.phone || '').replace(/\D/g, '');
 
   const whatsappGreetingText = encodeURIComponent(
     `👋 Hello *${business.name}*!\n\n` +

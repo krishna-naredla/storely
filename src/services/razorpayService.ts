@@ -259,12 +259,12 @@ export async function initiateRazorpaySubscription(
     },
     prefill: {
       name: customer?.name || business?.name || "Store Merchant",
-      email: customer?.email || business?.email || "vendor@storelly.com",
+      email: customer?.email || business?.email || "",
       contact:
         customer?.phone ||
         business?.phone ||
         business?.whatsapp ||
-        "9876543210",
+        "",
     },
     notes: {
       plan_id: plan.id,
