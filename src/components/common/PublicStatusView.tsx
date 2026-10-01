@@ -10,7 +10,6 @@ import {
   AlertCircle,
   HelpCircle,
 } from 'lucide-react';
-import { getAppLogo } from '../../utils/branding';
 import { PublicAvailabilityStatus } from '../../utils/publicAvailability';
 import { CanonicalPublicView } from '../../utils/publicRouteResolver';
 
@@ -95,17 +94,6 @@ export const PublicStatusView: React.FC<PublicStatusViewProps> = ({
       {/* Main Content Card */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
         <main className="max-w-md w-full bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
-          {/* Storelly Logo Header */}
-          <div className="flex justify-center">
-            <a href="/" onClick={(e) => { e.preventDefault(); handleGoHome(); }} className="inline-block">
-              <img
-                src={getAppLogo()}
-                alt="Storelly"
-                className="h-9 sm:h-10 w-auto object-contain"
-              />
-            </a>
-          </div>
-
           {/* Neutral Status Icon Badge */}
           <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto shadow-inner">
             {renderIcon()}

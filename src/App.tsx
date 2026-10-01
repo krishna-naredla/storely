@@ -799,14 +799,8 @@ function MainContent() {
   if (quotePayInfo) {
     if (loadingQuotePay) {
       return (
-        <div className="min-h-screen bg-white flex items-center justify-center p-6">
-          <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
-            <img
-              src={getAppLogo()}
-              alt="Storelly"
-              className="w-full h-full object-contain"
-            />
-          </div>
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 select-none">
+          <div className="w-10 h-10 rounded-full border-3 border-slate-200 border-t-emerald-600 animate-spin" />
         </div>
       );
     }
@@ -828,17 +822,11 @@ function MainContent() {
   // ROUTE 1: PUBLIC STOREFRONT RESOLUTION
   // ==========================================
   if (publicRouteInfo.isPublicRoute || publicStoreSlug || (viewMode === 'storefront' && (publicBusiness || selectedBusiness))) {
-    // 1A. Loading Screen (shown while resolving - never flashes 404)
+    // 1A. Loading Screen (shown while resolving - never flashes Storelly logo or 404)
     if (isLoadingPublicStore || (publicStoreSlug && !publicBusiness && !publicStoreNotFound)) {
       return (
-        <div className="min-h-screen bg-white flex items-center justify-center p-6">
-          <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
-            <img
-              src={getAppLogo()}
-              alt="Storelly"
-              className="w-full h-full object-contain"
-            />
-          </div>
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 select-none">
+          <div className="w-10 h-10 rounded-full border-3 border-slate-200 border-t-emerald-600 animate-spin" />
         </div>
       );
     }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SafeImage } from '../common/SafeImage';
 import { VerifiedBadge } from '../common/VerifiedBadge';
-import { getBusinessLogo, getAppLogo } from '../../utils/branding';
+import { getBusinessLogo } from '../../utils/branding';
 import { isCreatorProfile } from '../../utils/profileHelper';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
 import {
@@ -243,7 +243,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   useEffect(() => {
     if (business.name) {
       
-    document.title = `${business.name} - Official Store | Storelly`;
+    document.title = `${business.name} - Official Store`;
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute('content', business.description || `Shop digital products, services, and exclusive content from ${business.name}.`);
     
@@ -289,7 +289,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         meta.setAttribute('content', content);
       };
 
-      const storeDesc = business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name} on Storelly.`;
+      const storeDesc = business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name}.`;
       const storeImage = business.logo || business.banner || '';
       const storeUrl = window.location.href;
 
@@ -512,15 +512,16 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
      business.modules.table_delivery);
 
   if (isLoading) {
+    const bizLogo = getBusinessLogo(business);
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
-          <img
-            src={getAppLogo()}
-            alt="Storelly"
-            className="w-full h-full object-contain"
-          />
-        </div>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 select-none">
+        {bizLogo ? (
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm border border-slate-200 mb-4 bg-white flex items-center justify-center p-1">
+            <img src={bizLogo} alt={business.name} className="w-full h-full object-contain" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-full border-3 border-slate-200 border-t-emerald-600 animate-spin" />
+        )}
       </div>
     );
   }
@@ -1226,7 +1227,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-[var(--r16)] bg-[var(--bg)] border border-[var(--border)] shadow-[var(--shadow-xs)] text-xs">
             <div className="flex items-center gap-2 text-[var(--t1)]">
               <ShieldCheck className="w-4 h-4 text-[var(--g600)] shrink-0" />
-              <span className="font-semibold">Storelly Verified Partner</span>
+              <span className="font-semibold">Official Verified Partner</span>
             </div>
             <div className="flex items-center gap-2 text-[var(--t1)]">
               <CheckCircle2 className="w-4 h-4 text-[var(--g600)] shrink-0" />
@@ -1407,19 +1408,20 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           </div>
         </section>
 
-        {/* Storelly Powered Showcase Banner with storelly7.jpg.jpeg */}
+        {/* Official Storefront Banner */}
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-900 to-teal-900 p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="absolute right-0 top-0 w-80 h-full opacity-15 bg-cover bg-center pointer-events-none" style={{ backgroundImage: `url('/storelly7.jpg.jpeg')` }}></div>
           <div className="space-y-2 z-10">
-            <span className="bg-emerald-500/30 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Verified Storefront</span>
-            <h3 className="text-xl font-bold font-heading">{business.name} — Powered by Storelly</h3>
+            <span className="bg-emerald-500/30 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Official Storefront</span>
+            <h3 className="text-xl font-bold font-heading">{business.name}</h3>
             <p className="text-emerald-100 text-xs sm:text-sm max-w-xl">
-              Order securely, chat on WhatsApp instantly, and enjoy fast home delivery or pickup services.
+              Order securely, chat on WhatsApp instantly, and enjoy fast home delivery or direct pickup.
             </p>
           </div>
-          <div className="w-40 h-24 rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:flex items-center justify-center bg-black/20 overflow-hidden shrink-0">
-            <img src="/storelly7.jpg.jpeg" alt="Store Showroom" className="w-full h-full object-contain object-center" />
-          </div>
+          {getBusinessLogo(business) && (
+            <div className="w-20 h-20 rounded-xl border border-emerald-500/40 shadow-lg z-10 hidden sm:flex items-center justify-center bg-white/10 p-2 backdrop-blur-xs overflow-hidden shrink-0">
+              <img src={getBusinessLogo(business)!} alt={business.name} className="w-full h-full object-contain object-center" />
+            </div>
+          )}
         </div>
       </main>
 
@@ -1466,12 +1468,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                </p>
             </div>
 
-            <div className="flex flex-col items-center md:items-end gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Powered by</span>
-                <img src="/main logo.jpg" alt="Storelly" className="h-4 grayscale opacity-60" />
-              </div>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">© {new Date().getFullYear()} Storelly Business OS</p>
+            <div className="flex flex-col items-center md:items-end gap-1.5">
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">© {new Date().getFullYear()} {business.name}</p>
+              <p className="text-[9px] text-slate-400">All rights reserved</p>
             </div>
           </div>
         </div>

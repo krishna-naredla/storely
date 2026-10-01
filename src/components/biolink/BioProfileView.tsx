@@ -33,7 +33,7 @@ import {
   BIO_THEME_PRESETS,
 } from './SocialBrandIcons';
 import { DEFAULT_BIO_THEME } from './constants';
-import { getBusinessLogo, getAppLogo } from '../../utils/branding';
+import { getBusinessLogo } from '../../utils/branding';
 
 interface Props {
   business: BusinessProfile;
@@ -280,15 +280,16 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   const hasPortfolioModule = Boolean(business.modules?.work_portfolio || business.modules?.portfolio);
 
   if (loading) {
+    const bizLogo = getBusinessLogo(business);
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
-          <img
-            src={getAppLogo()}
-            alt="Storelly"
-            className="w-full h-full object-contain"
-          />
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 select-none" style={{ background: theme.background }}>
+        {bizLogo ? (
+          <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm border border-white/20 mb-4 bg-white/10 flex items-center justify-center p-1">
+            <img src={bizLogo} alt={business.name} className="w-full h-full object-cover rounded-full" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-full border-3 border-white/20 border-t-emerald-400 animate-spin" />
+        )}
       </div>
     );
   }
@@ -806,7 +807,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
             </div>
           </div>
           <p className="text-xs sm:text-sm opacity-80 leading-relaxed font-normal">
-            This creator profile is officially verified on Storelly. All featured links, digital products, and portfolio works are published directly by {business.name}.
+            This creator profile is officially verified. All featured links, digital products, and portfolio works are published directly by {business.name}.
           </p>
         </div>
 
@@ -836,18 +837,14 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           </button>
         </div>
 
-        {/* Footer: Made with ❤️ by Storelly */}
+        {/* Creator Footer */}
         <div className="mt-12 sm:mt-14 flex flex-col items-center space-y-2">
-          <a
-            href="/"
-            className="flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 min-h-[44px] rounded-full backdrop-blur-md bg-black/15 hover:bg-black/25 text-xs sm:text-sm font-bold transition border border-white/10 active:scale-95 touch-manipulation"
+          <div
+            className="flex items-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 min-h-[44px] rounded-full backdrop-blur-md bg-black/15 text-xs sm:text-sm font-bold border border-white/10 select-none"
             style={{ color: theme.textColor }}
           >
-            <Store className="w-4 h-4 text-emerald-400" />
-            <span>
-              Made with <span className="text-rose-500">❤️</span> by <strong className="font-black">Storelly</strong>
-            </span>
-          </a>
+            <span>© {new Date().getFullYear()} {business.name}</span>
+          </div>
           <div className="text-xs sm:text-sm opacity-60 tracking-wider uppercase font-semibold">
             One Link. Everything You Do.
           </div>

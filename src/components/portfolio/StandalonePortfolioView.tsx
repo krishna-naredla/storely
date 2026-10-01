@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getBusinessLogo, getAppLogo } from '../../utils/branding';
+import { getBusinessLogo } from '../../utils/branding';
 import {
   Briefcase,
   Star,
@@ -383,15 +383,16 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   }
 
   if (isLoading) {
+    const bizLogo = getBusinessLogo(business);
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
-          <img
-            src={getAppLogo()}
-            alt="Storelly"
-            className="w-full h-full object-contain"
-          />
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 select-none" style={{ backgroundColor: themeConfig.backgroundColor }}>
+        {bizLogo ? (
+          <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm border border-white/20 mb-4 bg-white/10 flex items-center justify-center p-1">
+            <img src={bizLogo} alt={business.name} className="w-full h-full object-cover rounded-full" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-full border-3 border-indigo-200 border-t-indigo-600 animate-spin" />
+        )}
       </div>
     );
   }
@@ -1559,10 +1560,10 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
           </div>
         </section>
 
-        {/* FOOTER BRANDING */}
+        {/* FOOTER */}
         <footer className="text-center pt-2 pb-6 space-y-1">
           <p className="text-xs opacity-60 font-medium">
-            Powered by <span className="font-bold text-indigo-600 dark:text-indigo-400">Storelly</span> • One Link. Every Portfolio.
+            © {new Date().getFullYear()} {business.name} • One Link. Every Portfolio.
           </p>
         </footer>
       </main>
