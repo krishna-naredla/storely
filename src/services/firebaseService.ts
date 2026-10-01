@@ -137,20 +137,20 @@ export function getStorefrontUrl(businessOrSlug: any): string {
   return getDigitalStoreUrl(slug);
 }
 
+export const CANONICAL_PRODUCTION_URL = 'https://storelly.app';
+
 /**
- * Resolves the canonical base URL for public links and QR code generation.
- * Uses window.location.origin dynamically so links work in local development, Cloud Run previews, and custom domains.
+ * Resolves the authoritative canonical production base URL for public links, QR codes, and sharing.
+ * Always resolves to https://storelly.app in production so that links never generate localhost, run.app, or preview domains.
  */
-export function getBaseUrl(): string {
-  if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    const origin = window.location.origin.trim();
-    if (origin && origin !== 'null' && (origin.startsWith('http://') || origin.startsWith('https://'))) {
-      return origin;
+export function getBaseUrl(allowLocalDev = false): string {
+  if (allowLocalDev && typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return window.location.origin;
     }
   }
-  return typeof process !== 'undefined' && process.env?.APP_BASE_URL
-    ? process.env.APP_BASE_URL
-    : 'http://localhost:3000';
+  return CANONICAL_PRODUCTION_URL;
 }
 
 export function getBioLinkUrl(slug: string): string {
@@ -376,7 +376,7 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     const q = query(collection(db, 'businesses'), where('slug', '==', slug), limit(1));
     const snap = await getDocs(q);
     if (!snap.empty) {
-      const data = snap.docs[0].data() as BusinessProfile;
+      const data = { ...snap.docs[0].data(), id: snap.docs[0].id } as BusinessProfile;
       if (data.status === 'deleted') {
         removeLocalBusiness(data.id);
         return null;
@@ -394,7 +394,7 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
       const qLower = query(collection(db, 'businesses'), where('slug', '==', lowerSlug), limit(1));
       const snapLower = await getDocs(qLower);
       if (!snapLower.empty) {
-        const data = snapLower.docs[0].data() as BusinessProfile;
+        const data = { ...snapLower.docs[0].data(), id: snapLower.docs[0].id } as BusinessProfile;
         if (data.status === 'deleted') {
           removeLocalBusiness(data.id);
           return null;
@@ -407,12 +407,29 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     }
   }
 
-  // 3. Try fetching by ID directly (in case slug is business ID)
+  // 3. Try matching by username field (Creators often use handle as username)
+  try {
+    const qUser = query(collection(db, 'businesses'), where('username', '==', lowerSlug), limit(1));
+    const snapUser = await getDocs(qUser);
+    if (!snapUser.empty) {
+      const data = { ...snapUser.docs[0].data(), id: snapUser.docs[0].id } as BusinessProfile;
+      if (data.status === 'deleted') {
+        removeLocalBusiness(data.id);
+        return null;
+      }
+      saveLocalBusiness(data);
+      return data;
+    }
+  } catch (err) {
+    console.warn('Firestore username lookup warning:', err);
+  }
+
+  // 4. Try fetching by ID directly (in case slug is business document ID)
   try {
     const docRef = doc(db, 'businesses', slug);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      const data = snap.data() as BusinessProfile;
+      const data = { ...snap.data(), id: snap.id } as BusinessProfile;
       if (data.status === 'deleted') {
         removeLocalBusiness(data.id);
         return null;
@@ -424,36 +441,12 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
     console.warn('Firestore ID lookup warning:', err);
   }
 
-  // 4. Try scanning all businesses in Firestore for slug/name match
-  try {
-    const allSnap = await getDocs(collection(db, 'businesses'));
-    const matched = allSnap.docs.find((d) => {
-      const b = d.data() as BusinessProfile;
-      return (
-        b.slug?.toLowerCase() === lowerSlug ||
-        generateSlug(b.name || '') === lowerSlug ||
-        d.id === slug
-      );
-    });
-    if (matched) {
-      const data = matched.data() as BusinessProfile;
-      if (data.status === 'deleted') {
-        removeLocalBusiness(data.id);
-        return null;
-      }
-      saveLocalBusiness(data);
-      return data;
-    }
-  } catch (err) {
-    console.warn('Firestore fallback scan warning:', err);
-  }
-
   // Clean any stale local cache entry if present
   const localList = getLocalBusinesses();
   const stale = localList.find(
     (b) =>
       b.slug?.toLowerCase() === lowerSlug ||
-      generateSlug(b.name || '') === lowerSlug ||
+      b.username?.toLowerCase() === lowerSlug ||
       b.id === slug
   );
   if (stale) {
@@ -913,6 +906,9 @@ export async function createPublicOrder(
         title: 'New Order Received',
         message: `You have a new ${order.orderType} order from ${order.customerName} for ${order.total}.`,
         link: '/dashboard/orders',
+        entityType: 'order',
+        entityId: order.id,
+        idempotencyKey: `order_${order.id}`,
         metadata: { orderId: order.id, orderNumber: order.orderNumber }
       });
     } catch (notifErr) {
@@ -1130,6 +1126,9 @@ export async function createBooking(
       title: 'New Booking Request',
       message: `New ${data.bookingType.replace('_', ' ')} request from ${data.customerName} for ${data.itemName}.`,
       link: '/dashboard/bookings',
+      entityType: 'booking',
+      entityId: booking.id,
+      idempotencyKey: `booking_${booking.id}`,
       metadata: { bookingId: booking.id, bookingNumber: booking.bookingNumber }
     });
 
@@ -1344,6 +1343,9 @@ export async function createReview(
     title: 'New Review Received',
     message: `${data.customerName} gave a ${data.rating}-star review.`,
     link: '/dashboard/reviews',
+    entityType: 'review',
+    entityId: reviewId,
+    idempotencyKey: `review_${reviewId}`,
     metadata: { reviewId: reviewId }
   });
 
@@ -1371,29 +1373,79 @@ export async function updateReviewStatus(businessId: string, reviewId: string, s
  */
 export async function createNotification(
   businessId: string,
-  data: Omit<Notification, 'id' | 'businessId' | 'createdAt' | 'read'>
-): Promise<Notification> {
+  data: Omit<Notification, 'id' | 'businessId' | 'createdAt' | 'read'> & {
+    idempotencyKey?: string;
+  }
+): Promise<Notification | null> {
+  if (!businessId) return null;
   try {
-    const colRef = collection(db, 'businesses', businessId, 'notifications');
-    const docRef = doc(colRef);
+    // 1. Fetch business doc to determine profileType, ownerId, and module eligibility
+    const bizRef = doc(db, 'businesses', businessId);
+    const bizSnap = await getDoc(bizRef);
+    if (!bizSnap.exists()) {
+      console.warn('Cannot create notification: Business profile not found:', businessId);
+      return null;
+    }
+    const biz = bizSnap.data() as BusinessProfile;
+    const isCreator = biz.profileType === 'creator' || biz.storeType === 'creator' || biz.type === 'digital_creator';
+    const profileType: 'creator' | 'vendor' = isCreator ? 'creator' : 'vendor';
+    const ownerId = biz.ownerId;
+    const modules = biz.modules || {};
+
+    // 2. Module-aware gating: strictly prevent creating notifications for disabled modules
+    if (data.type === 'order' || data.type === 'digital_product') {
+      if (isCreator && !modules.digital_products && !modules.digitalProducts && !modules.cart_ordering) {
+        return null;
+      }
+      if (!isCreator && !modules.products && !modules.menu && !modules.cart_ordering && !modules.table_delivery && !modules.digital_products) {
+        return null;
+      }
+    } else if (data.type === 'booking' || data.type === 'consultation') {
+      if (!modules.booking_appointments && !modules.stay_booking && !modules.rental_booking) {
+        return null;
+      }
+    } else if (data.type === 'quote') {
+      if (!modules.custom_quotes) return null;
+    } else if (data.type === 'event') {
+      if (!modules.events_tickets && !modules.events_ticketing) return null;
+    } else if (data.type === 'review') {
+      if (!modules.reviews) return null;
+    }
+
+    // 3. Deterministic docId / Idempotency to prevent duplicates
+    const notifDocId = data.idempotencyKey || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const docRef = doc(db, 'businesses', businessId, 'notifications', notifDocId);
+
+    // If an idempotencyKey was provided, check if document already exists
+    if (data.idempotencyKey) {
+      const existingSnap = await getDoc(docRef);
+      if (existingSnap.exists()) {
+        return existingSnap.data() as Notification;
+      }
+    }
+
     const notification: Notification = {
       ...data,
-      id: docRef.id,
+      id: notifDocId,
       businessId,
+      ownerId: ownerId || undefined,
+      profileType,
       read: false,
       createdAt: Date.now(),
     };
+
     await setDoc(docRef, sanitizeForFirestore(notification));
     return notification;
   } catch (err) {
     console.error('Error creating notification:', err);
-    throw err;
+    return null;
   }
 }
 
 export function subscribeToNotifications(
   businessId: string,
-  callback: (notifications: Notification[]) => void
+  callback: (notifications: Notification[]) => void,
+  profileType?: 'vendor' | 'creator'
 ): () => void {
   if (!businessId || !auth?.currentUser) {
     callback([]);
@@ -1405,7 +1457,17 @@ export function subscribeToNotifications(
     return onSnapshot(
       q,
       (snap) => {
-        const list = snap.docs.map((d) => d.data() as Notification);
+        const currentUserId = auth?.currentUser?.uid;
+        let list = snap.docs.map((d) => d.data() as Notification);
+
+        // Strict tenant + profile + owner isolation
+        list = list.filter((n) => {
+          if (n.businessId !== businessId) return false;
+          if (n.ownerId && currentUserId && n.ownerId !== currentUserId) return false;
+          if (profileType && n.profileType && n.profileType !== profileType) return false;
+          return true;
+        });
+
         callback(list);
       },
       (err) => {
@@ -1420,23 +1482,32 @@ export function subscribeToNotifications(
 }
 
 export async function markNotificationAsRead(businessId: string, notificationId: string): Promise<void> {
+  if (!businessId || !notificationId || !auth?.currentUser) return;
   const docRef = doc(db, 'businesses', businessId, 'notifications', notificationId);
-  await updateDoc(docRef, { read: true });
+  await updateDoc(docRef, { read: true, updatedAt: Date.now() });
 }
 
 export async function markAllNotificationsAsRead(businessId: string): Promise<void> {
+  if (!businessId || !auth?.currentUser) return;
   try {
     const colRef = collection(db, 'businesses', businessId, 'notifications');
     const q = query(colRef, where('read', '==', false));
     const snap = await getDocs(q);
+    if (snap.empty) return;
     const batch = writeBatch(db);
     snap.docs.forEach((d) => {
-      batch.update(d.ref, { read: true });
+      batch.update(d.ref, { read: true, updatedAt: Date.now() });
     });
     await batch.commit();
   } catch (err) {
     console.error('Error marking all as read:', err);
   }
+}
+
+export async function deleteNotification(businessId: string, notificationId: string): Promise<void> {
+  if (!businessId || !notificationId || !auth?.currentUser) return;
+  const docRef = doc(db, 'businesses', businessId, 'notifications', notificationId);
+  await deleteDoc(docRef);
 }
 
 /**
@@ -2483,6 +2554,9 @@ export async function purchaseEventTicketTransaction(
     title: 'New Ticket Purchased',
     message: `${buyerDetails.customerName} bought a ticket for ${result.ticket.eventTitle}.`,
     link: '/dashboard/events',
+    entityType: 'event',
+    entityId: result.ticket.eventId,
+    idempotencyKey: `ticket_${result.ticket.id}`,
     metadata: { ticketId: result.ticket.id, eventId: result.ticket.eventId }
   });
 
@@ -2611,6 +2685,9 @@ export async function createCustomQuoteRequest(
     title: 'New Quote Request',
     message: `Custom quote requested by ${data.customerName}.`,
     link: '/dashboard/quotes',
+    entityType: 'quote',
+    entityId: newDocRef.id,
+    idempotencyKey: `quote_${newDocRef.id}`,
     metadata: { requestId: newDocRef.id, requestNumber: requestNumber }
   });
 
@@ -2636,8 +2713,7 @@ export async function submitQuoteOffer(
   }
 
   const paymentLinkId = `paylink_qr_${requestId}_${Date.now()}`;
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const paymentUrl = `${origin}/quote-pay/${businessId}/${requestId}`;
+  const paymentUrl = getQuotePayUrl(businessId, requestId);
 
   const updatePayload = {
     quotedPrice: quoteDetails.quotedPrice,

@@ -23,6 +23,7 @@ import {
   QrCode,
   Layers,
   ShoppingBag,
+  Bell,
   Loader2,
   Lock,
   User,
@@ -53,8 +54,8 @@ import {
   getBusinessById,
   createBusiness,
   getStorefrontUrl,
-  subscribeToOrders,
-  subscribeToBookings,
+  subscribeToNotifications,
+  markNotificationAsRead,
 } from './services/firebaseService';
 import { showMerchantNotification } from './services/fcmPushService';
 import { testFirestoreConnection, db } from './config/firebase';
@@ -305,16 +306,19 @@ function MainContent() {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [activeNewOrderNotification, setActiveNewOrderNotification] = useState<{
+  const [activeAlertNotification, setActiveAlertNotification] = useState<{
     id: string;
     title: string;
     body: string;
-    type: 'order' | 'booking';
+    type: string;
+    targetTab: DashboardTab;
+    headerLabel: string;
+    buttonLabel: string;
   } | null>(null);
 
-  // Cache to track processed orders/bookings to prevent duplicate chimes & false triggers
-  const seenOrderIdsRef = useRef<Set<string>>(new Set());
-  const seenBookingIdsRef = useRef<Set<string>>(new Set());
+  // Cache to track processed notification IDs to prevent duplicate chimes & false triggers
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+  const notifInitializedRef = useRef<boolean>(false);
 
 
   const playNotificationChime = (volumeMultiplier = 1.0) => {
@@ -352,7 +356,7 @@ function MainContent() {
 
   // Attention Seek Mode: if notification popup is not acknowledged within 15 seconds, repeat chime with increasing volume sequence
   useEffect(() => {
-    if (!activeNewOrderNotification) return;
+    if (!activeAlertNotification) return;
 
     const timer1 = setTimeout(() => {
       playNotificationChime(1.5);
@@ -366,7 +370,7 @@ function MainContent() {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, [activeNewOrderNotification]);
+  }, [activeAlertNotification]);
 
   // Public Storefront Resolution States
   const [publicRouteInfo, setPublicRouteInfo] = useState<PublicRouteInfo>(() => resolvePublicRouteFromUrl());
@@ -600,87 +604,102 @@ function MainContent() {
     }
   }, [currentUser, authLoading]);
 
-  // Real-time Push Notification Listener for New Orders & Bookings strictly scoped to active selectedBusiness
+  // Real-time Push Notification Listener strictly scoped to active selectedBusiness and active profile
   useEffect(() => {
     // Clear notification caches immediately on business switch or unmount to prevent cross-business notification leakage
-    seenOrderIdsRef.current.clear();
-    seenBookingIdsRef.current.clear();
+    seenNotificationIdsRef.current.clear();
+    notifInitializedRef.current = false;
+    setActiveAlertNotification(null);
 
-    // Strictly isolate notifications: do NOT listen or chime when viewing public customer storefronts
+    // Strictly isolate notifications: do NOT listen or chime when viewing public customer storefronts or unauthenticated
     if (!currentUser || !selectedBusiness || !selectedBusiness.id || publicStoreSlug || viewMode === 'storefront') {
       return;
     }
 
     const biz = selectedBusiness;
-    let ordersInitialized = false;
-    const unsubOrders = subscribeToOrders(biz.id, (orders) => {
-      if (!ordersInitialized) {
-        // Initialize existing order cache so existing orders never trigger notifications
-        orders.forEach((o) => seenOrderIdsRef.current.add(o.id));
-        ordersInitialized = true;
-        return;
-      }
+    const isCreator = isCreatorProfile(biz);
+    const currentProfileType = isCreator ? 'creator' : 'vendor';
 
-      // Filter ONLY brand new pending orders for this specific business
-      const newOrders = orders.filter(
-        (o) => !seenOrderIdsRef.current.has(o.id) && o.status === 'pending' && (!o.businessId || o.businessId === biz.id)
-      );
+    const unsubscribe = subscribeToNotifications(
+      biz.id,
+      (notifications) => {
+        if (!notifInitializedRef.current) {
+          // Initialize existing notification cache so historical notifications never trigger chimes/popups
+          notifications.forEach((n) => seenNotificationIdsRef.current.add(n.id));
+          notifInitializedRef.current = true;
+          return;
+        }
 
-      newOrders.forEach((latest) => {
-        seenOrderIdsRef.current.add(latest.id);
-        playNotificationChime();
-        setActiveNewOrderNotification({
-          id: latest.id,
-          title: `New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})`,
-          body: `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
-          type: 'order',
-        });
-        showMerchantNotification(
-          `📦 New Order #${latest.orderNumber || latest.id.slice(-5)} (${biz.name})!`,
-          `${latest.customerName} placed an order for ${biz.currencySymbol || '₹'}${latest.total}`,
-          biz
+        // Filter brand new unread notifications strictly matching this business & profile
+        const freshNotifications = notifications.filter(
+          (n) => !seenNotificationIdsRef.current.has(n.id) && !n.read && n.businessId === biz.id
         );
-      });
-    });
 
-    let bookingsInitialized = false;
-    const unsubBookings = subscribeToBookings(biz.id, (bookings) => {
-      if (!bookingsInitialized) {
-        // Initialize existing booking cache
-        bookings.forEach((b) => seenBookingIdsRef.current.add(b.id));
-        bookingsInitialized = true;
-        return;
-      }
+        freshNotifications.forEach((latest) => {
+          seenNotificationIdsRef.current.add(latest.id);
+          playNotificationChime();
 
-      // Filter ONLY brand new pending bookings for this specific business
-      const newBookings = bookings.filter(
-        (b) => !seenBookingIdsRef.current.has(b.id) && b.status === 'pending' && (!b.businessId || b.businessId === biz.id)
-      );
+          let targetTab: DashboardTab = 'notifications';
+          let headerLabel = isCreator ? '🔔 New Creator Alert' : '🔔 New Store Alert';
+          let buttonLabel = 'View in Activity';
 
-      newBookings.forEach((latestBooking) => {
-        seenBookingIdsRef.current.add(latestBooking.id);
-        playNotificationChime();
-        setActiveNewOrderNotification({
-          id: latestBooking.id,
-          title: `New Appointment (${biz.name})`,
-          body: `${latestBooking.customerName} requested a booking`,
-          type: 'booking',
+          if (latest.type === 'order') {
+            targetTab = 'orders';
+            headerLabel = isCreator ? '🔔 New Digital Sale' : '🔔 New Order Alert';
+            buttonLabel = isCreator ? 'View in Digital Sales' : 'View in Orders';
+          } else if (latest.type === 'digital_product') {
+            targetTab = 'orders';
+            headerLabel = '🔔 Digital Product Sold';
+            buttonLabel = 'View in Digital Sales';
+          } else if (latest.type === 'booking') {
+            targetTab = 'bookings';
+            headerLabel = isCreator ? '🔔 1:1 Consultation Request' : '🔔 New Booking Alert';
+            buttonLabel = isCreator ? 'View in Consultations' : 'View in Bookings';
+          } else if (latest.type === 'consultation') {
+            targetTab = 'bookings';
+            headerLabel = '🔔 1:1 Consultation Request';
+            buttonLabel = 'View in Consultations';
+          } else if (latest.type === 'quote') {
+            targetTab = 'quotes';
+            headerLabel = '🔔 Custom Quote Request';
+            buttonLabel = 'View in Quotes';
+          } else if (latest.type === 'event') {
+            targetTab = 'events';
+            headerLabel = '🔔 Event Ticket Sold';
+            buttonLabel = 'View in Events';
+          } else if (latest.type === 'review') {
+            targetTab = 'reviews';
+            headerLabel = '🔔 New Customer Review';
+            buttonLabel = 'View in Reviews';
+          } else if (latest.type === 'payment') {
+            targetTab = 'payments';
+            headerLabel = '🔔 Payment Verified';
+            buttonLabel = 'View in Payments';
+          }
+
+          setActiveAlertNotification({
+            id: latest.id,
+            title: latest.title,
+            body: latest.message,
+            type: latest.type,
+            targetTab,
+            headerLabel,
+            buttonLabel,
+          });
+
+          showMerchantNotification(latest.title, latest.message, biz);
         });
-        showMerchantNotification(
-          `📅 New Appointment / Booking (${biz.name})!`,
-          `${latestBooking.customerName} requested a booking`,
-          biz
-        );
-      });
-    });
+      },
+      currentProfileType
+    );
 
     return () => {
-      unsubOrders();
-      unsubBookings();
-      seenOrderIdsRef.current.clear();
-      seenBookingIdsRef.current.clear();
+      unsubscribe();
+      seenNotificationIdsRef.current.clear();
+      notifInitializedRef.current = false;
+      setActiveAlertNotification(null);
     };
-  }, [currentUser, selectedBusiness?.id, publicStoreSlug, viewMode]);
+  }, [currentUser?.uid, selectedBusiness?.id, selectedBusiness?.profileType, publicStoreSlug, viewMode]);
 
   // Business Selector Handler
   const handleSelectBusiness = (biz: BusinessProfile) => {
@@ -944,9 +963,14 @@ function MainContent() {
     return (
       <Suspense
         fallback={
-          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-            <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
-            <p className="mt-3 text-sm font-semibold text-slate-500">Loading Store Setup...</p>
+          <div className="min-h-screen bg-white flex items-center justify-center p-6">
+            <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+              <img
+                src={getAppLogo()}
+                alt="Storelly"
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
         }
       >
@@ -1184,9 +1208,9 @@ function MainContent() {
         onOpenShareModal={() => setIsShareModalOpen(true)}
       />
 
-      {/* Real-time Order & Booking Pop-up Alert Banner with Swipe-to-Dismiss */}
+      {/* Real-time Push Notification Alert Banner with Swipe-to-Dismiss */}
       <AnimatePresence>
-        {activeNewOrderNotification && (
+        {activeAlertNotification && (
           <div className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
             <motion.div
               drag="x"
@@ -1194,50 +1218,65 @@ function MainContent() {
               dragElastic={0.7}
               onDragEnd={(_, info) => {
                 if (Math.abs(info.offset.x) > 100 || Math.abs(info.velocity.x) > 500) {
-                  setActiveNewOrderNotification(null);
+                  setActiveAlertNotification(null);
                 }
               }}
               initial={{ y: -50, opacity: 0, scale: 0.95 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -30, opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
               whileTap={{ cursor: 'grabbing' }}
-              className="max-w-md w-full bg-slate-900/95 backdrop-blur-md border border-emerald-500/50 text-white rounded-3xl p-5 shadow-2xl flex items-start gap-4 cursor-grab touch-pan-y pointer-events-auto select-none"
+              className={`max-w-md w-full bg-slate-900/95 backdrop-blur-md border text-white rounded-3xl p-5 shadow-2xl flex items-start gap-4 cursor-grab touch-pan-y pointer-events-auto select-none ${
+                isCreatorProfile(biz) ? 'border-purple-500/50' : 'border-emerald-500/50'
+              }`}
             >
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 overflow-hidden">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border ${
+                isCreatorProfile(biz)
+                  ? 'bg-purple-600/20 border-purple-500/30 text-purple-400'
+                  : 'bg-emerald-600/20 border-emerald-500/30 text-emerald-400'
+              }`}>
                 {biz.logo ? (
                   <img src={biz.logo} alt={biz.name} className="w-full h-full object-cover" />
                 ) : (
-                  <ShoppingBag className="w-6 h-6 animate-bounce" />
+                  <Bell className="w-6 h-6 animate-bounce" />
                 )}
               </div>
               <div className="flex-1 space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">🔔 New Order Alert</span>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${
+                      isCreatorProfile(biz) ? 'text-purple-400' : 'text-emerald-400'
+                    }`}>
+                      {activeAlertNotification.headerLabel}
+                    </span>
                     <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">(Swipe to dismiss)</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveNewOrderNotification(null)}
+                    onClick={() => setActiveAlertNotification(null)}
                     className="text-slate-400 hover:text-white text-xs font-bold p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
                   >
                     ✕
                   </button>
                 </div>
-                <h4 className="font-extrabold text-sm text-white">{activeNewOrderNotification?.title}</h4>
-                <p className="text-xs text-slate-300">{activeNewOrderNotification?.body}</p>
+                <h4 className="font-extrabold text-sm text-white">{activeAlertNotification?.title}</h4>
+                <p className="text-xs text-slate-300">{activeAlertNotification?.body}</p>
                 <div className="pt-2">
                   <button
                     type="button"
                     onClick={() => {
-                      if (activeNewOrderNotification) {
-                        setActiveTab(activeNewOrderNotification.type === 'order' ? 'orders' : 'bookings');
-                        setActiveNewOrderNotification(null);
+                      if (activeAlertNotification && selectedBusiness?.id) {
+                        markNotificationAsRead(selectedBusiness.id, activeAlertNotification.id).catch(() => {});
+                        setActiveTab(activeAlertNotification.targetTab);
+                        setActiveAlertNotification(null);
                       }
                     }}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                    className={`w-full py-2 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-2 ${
+                      isCreatorProfile(biz)
+                        ? 'bg-purple-600 hover:bg-purple-500'
+                        : 'bg-emerald-600 hover:bg-emerald-500'
+                    }`}
                   >
-                    View in Orders <ArrowRight className="w-3.5 h-3.5" />
+                    {activeAlertNotification.buttonLabel} <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>

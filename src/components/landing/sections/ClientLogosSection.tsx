@@ -43,7 +43,7 @@ export const ClientLogosSection: React.FC = () => {
     <section className="py-16 bg-[#faf9f5] border-b border-[#e7e5df] overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 text-center space-y-8">
         <p className="text-xs font-extrabold uppercase tracking-widest text-[#5c6b63]">
-          Trusted by Top-Performing Local Brands & Storefronts Across India
+          Powering Local Brands, Stores & Creators
         </p>
 
         {/* Right-to-Left Smooth Auto-Scrolling Marquee */}

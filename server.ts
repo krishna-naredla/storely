@@ -303,18 +303,61 @@ async function createServerNotification(businessId: string, data: {
   title: string;
   message: string;
   link?: string;
+  entityType?: string;
+  entityId?: string;
+  idempotencyKey?: string;
   metadata?: any;
 }) {
   try {
-    const colRef = collection(serverDb, "businesses", businessId, "notifications");
-    const docRef = doc(colRef);
+    if (!businessId) return;
+    const bizDoc = await getDoc(doc(serverDb, "businesses", businessId));
+    if (!bizDoc.exists()) return;
+    const biz = bizDoc.data();
+    const isCreator = biz.profileType === 'creator' || biz.storeType === 'creator' || biz.type === 'digital_creator';
+    const profileType: 'creator' | 'vendor' = isCreator ? 'creator' : 'vendor';
+    const ownerId = biz.ownerId;
+    const modules = biz.modules || {};
+
+    // Module-aware gating: strictly prevent creating notifications for disabled modules
+    if (data.type === 'order' || data.type === 'digital_product') {
+      if (isCreator && !modules.digital_products && !modules.digitalProducts && !modules.cart_ordering) {
+        return;
+      }
+      if (!isCreator && !modules.products && !modules.menu && !modules.cart_ordering && !modules.table_delivery && !modules.digital_products) {
+        return;
+      }
+    } else if (data.type === 'booking' || data.type === 'consultation') {
+      if (!modules.booking_appointments && !modules.stay_booking && !modules.rental_booking) {
+        return;
+      }
+    } else if (data.type === 'quote') {
+      if (!modules.custom_quotes) return;
+    } else if (data.type === 'event') {
+      if (!modules.events_tickets && !modules.events_ticketing) return;
+    } else if (data.type === 'review') {
+      if (!modules.reviews) return;
+    }
+
+    const notifDocId = data.idempotencyKey || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const docRef = doc(serverDb, "businesses", businessId, "notifications", notifDocId);
+
+    if (data.idempotencyKey) {
+      const existing = await getDoc(docRef);
+      if (existing.exists()) {
+        return;
+      }
+    }
+
     await setDoc(docRef, {
       ...data,
-      id: docRef.id,
+      id: notifDocId,
       businessId,
+      ownerId: ownerId || null,
+      profileType,
       read: false,
       createdAt: Date.now(),
     });
+    console.log(`[SERVER NOTIFICATION] Created ${data.type} notification ${notifDocId} for business ${businessId}`);
   } catch (err) {
     console.error("[SERVER NOTIFICATION] Failed:", err);
   }
@@ -349,6 +392,9 @@ async function updateQuotePayment(businessId: string, requestId: string, payment
       title: "Quote Payment Verified",
       message: `Payment received for quote #${data.requestNumber}.`,
       link: "/dashboard/quotes",
+      entityType: "quote",
+      entityId: requestId,
+      idempotencyKey: `quote_pay_${requestId}_${paymentId}`,
       metadata: { requestId, paymentId }
     });
 
@@ -434,6 +480,9 @@ async function updateEventTicketPayment(businessId: string, eventId: string, buy
         title: "New Event Ticket Sold",
         message: `${buyerDetails.customerName} purchased a ticket for "${result.ticket.eventTitle}".`,
         link: "/dashboard/events",
+        entityType: "event",
+        entityId: eventId,
+        idempotencyKey: `ticket_pay_${result.ticket.id}_${buyerDetails.paymentId}`,
         metadata: { eventId, ticketId: result.ticket.id }
       });
     }
@@ -658,6 +707,9 @@ async function updateOrderPayment(businessId: string, orderId: string, paymentId
         title: "Order Payment Verified",
         message: `Payment received for order #${orderData.orderNumber || orderId}.`,
         link: "/dashboard/orders",
+        entityType: "order",
+        entityId: orderId,
+        idempotencyKey: `order_pay_${orderId}_${paymentId}`,
         metadata: { orderId, paymentId }
       });
     }
@@ -809,6 +861,25 @@ app.post("/api/digital/verify-payment", paymentLimiter, async (req, res) => {
     const host = req.headers.host || `localhost:${PORT}`;
     const downloadUrl = `${protocol}://${host}/api/digital/download?token=${encodeURIComponent(token)}`;
 
+    if (businessId) {
+      await createServerNotification(businessId, {
+        type: "digital_product",
+        title: "Digital Product Sold",
+        message: `${req.body.customerName || "Customer"} purchased "${canonicalProduct.name}" for ₹${Number(canonicalProduct.salePrice ?? canonicalProduct.price ?? 0)}.`,
+        link: "/dashboard/orders",
+        entityType: "digital_product",
+        entityId: itemId,
+        idempotencyKey: `digi_sale_${razorpay_order_id}_${razorpay_payment_id}`,
+        metadata: {
+          itemId,
+          productName: canonicalProduct.name,
+          paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
+          customerName: req.body.customerName,
+        }
+      });
+    }
+
     res.json({
       success: true,
       downloadUrl,
@@ -926,6 +997,9 @@ app.post("/api/orders/create-public", async (req, res) => {
       title: "New Order Received",
       message: `You have a new ${order.orderType || "delivery"} order from ${order.customerName || "Customer"} for ₹${order.total || 0}.`,
       link: "/dashboard/orders",
+      entityType: "order",
+      entityId: order.id,
+      idempotencyKey: `order_create_${order.id}`,
       metadata: { orderId: order.id, orderNumber: order.orderNumber },
     });
 
@@ -1224,10 +1298,10 @@ app.get("/api/digital/download", async (req, res) => {
   }
 });
 
-// 4b. Cloudinary File / Image Cleanup Endpoint (Protected)
+// 4b. Cloudinary File / Image Cleanup Endpoint (Protected: Tenant-Isolated)
 app.post("/api/digital/delete-file", uploadSignLimiter, verifyAuth, async (req: any, res: express.Response) => {
   try {
-    const { publicId, resourceType = "image" } = req.body;
+    const { publicId, resourceType = "image", businessId } = req.body;
     if (!publicId || typeof publicId !== "string") {
       return res.status(400).json({ success: false, error: "Missing publicId parameter" });
     }
@@ -1235,6 +1309,18 @@ app.post("/api/digital/delete-file", uploadSignLimiter, verifyAuth, async (req: 
     // Strict sanitization: alphanumeric, slashes, dashes, underscores only; no path traversal
     if (!/^[a-zA-Z0-9_\-\/]+$/.test(publicId) || publicId.includes("..")) {
       return res.status(400).json({ success: false, error: "Invalid publicId format." });
+    }
+
+    // Verify tenant ownership if businessId provided
+    if (businessId) {
+      const bizSnap = await getDoc(doc(serverDb, "businesses", businessId));
+      if (bizSnap.exists()) {
+        const ownerId = bizSnap.data().ownerId;
+        const userUid = req.user?.uid;
+        if (ownerId !== userUid && !req.user?.admin && !req.user?.masterAdmin) {
+          return res.status(403).json({ success: false, error: "Forbidden: You do not own this business asset." });
+        }
+      }
     }
 
     if (!CLOUDINARY_API_SECRET) {

@@ -1197,7 +1197,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   {hasCollabs && (
                     <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800/80 space-y-4">
                       <h3 className="text-xs font-bold opacity-60 uppercase tracking-wider">
-                        Trusted by Leading Brands
+                        Brand Collaborations & Clients
                       </h3>
                       <div className="flex flex-wrap items-center gap-3">
                         {brandCollabs.map((collab) => (

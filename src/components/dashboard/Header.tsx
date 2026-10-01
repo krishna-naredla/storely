@@ -63,22 +63,26 @@ export const Header: React.FC<HeaderProps> = ({
   const storeUrl = business ? (isCreator ? getPrimaryPublicUrl(business) : getStorefrontUrl(business)) : '';
 
   useEffect(() => {
+    prevUnreadCountRef.current = 0;
     if (!business?.id || !auth?.currentUser) {
       setUnreadNotificationsCount(0);
       return;
     }
-    const unsubscribe = subscribeToNotifications(business.id, (notifications) => {
-      const count = notifications.filter((n) => !n.read).length;
-      
-      // Play sound if a new notification arrives
-      if (count > prevUnreadCountRef.current && prevUnreadCountRef.current !== 0) {
-        playNotificationSound();
-      }
-      prevUnreadCountRef.current = count;
-      setUnreadNotificationsCount(count);
-    });
-    return () => unsubscribe();
-  }, [business?.id]);
+    const currentProfileType = isCreator ? 'creator' : 'vendor';
+    const unsubscribe = subscribeToNotifications(
+      business.id,
+      (notifications) => {
+        const count = notifications.filter((n) => !n.read).length;
+        setUnreadNotificationsCount(count);
+      },
+      currentProfileType
+    );
+    return () => {
+      unsubscribe();
+      prevUnreadCountRef.current = 0;
+      setUnreadNotificationsCount(0);
+    };
+  }, [business?.id, isCreator]);
 
   const playNotificationSound = () => {
     try {

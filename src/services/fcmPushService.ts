@@ -28,29 +28,6 @@ export async function requestFcmNotificationPermission(): Promise<boolean> {
   }
 }
 
-export function recordNotificationHistory(businessId: string, businessName: string, title: string, body: string, type: 'order' | 'booking') {
-  try {
-    const key = `storelly_notification_history_${businessId}`;
-    const existing = localStorage.getItem(key);
-    const list: any[] = existing ? JSON.parse(existing) : [];
-    const newItem = {
-      id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-      businessId,
-      businessName,
-      title,
-      body,
-      type,
-      timestamp: Date.now(),
-      read: false,
-    };
-    list.unshift(newItem);
-    const trimmed = list.slice(0, 20);
-    localStorage.setItem(key, JSON.stringify(trimmed));
-  } catch (e) {
-    console.warn('Failed to record notification history:', e);
-  }
-}
-
 export function isStoreCurrentlyOpen(business: BusinessProfile): boolean {
   if (!business.businessHours) return true;
   if (business.businessHours.isAlwaysOpen) return true;
@@ -71,11 +48,7 @@ export function isStoreCurrentlyOpen(business: BusinessProfile): boolean {
   return currentTimeMinutes >= openMinutes && currentTimeMinutes <= closeMinutes;
 }
 
-export function showMerchantNotification(title: string, body: string, business?: BusinessProfile, type: 'order' | 'booking' = 'order') {
-  if (business) {
-    recordNotificationHistory(business.id, business.name, title, body, type);
-  }
-
+export function showMerchantNotification(title: string, body: string, business?: BusinessProfile) {
   // Check store timings if business profile is provided
   if (business && !isStoreCurrentlyOpen(business)) {
     console.log(`Store ${business.name} is currently closed according to business hours. Skipping notification alert.`);
@@ -88,11 +61,6 @@ export function showMerchantNotification(title: string, body: string, business?:
         body,
         icon: business?.logo || '/icons/icon.svg',
       });
-
-      // Play alert chime
-      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-      audio.volume = 0.8;
-      audio.play().catch(() => {});
     } catch (e) {
       console.warn('Could not display push notification:', e);
     }

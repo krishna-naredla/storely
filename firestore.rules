@@ -283,8 +283,20 @@ service cloud.firestore {
       }
 
       match /notifications/{notificationId} {
-        allow create: if true;
-        allow read, update, delete: if isBusinessOwner(businessId);
+        // Enforce valid notification payload strictly matching parent business
+        allow create: if (
+          request.resource.data.businessId == businessId &&
+          request.resource.data.read == false &&
+          request.resource.data.title is string &&
+          request.resource.data.title.size() > 0 &&
+          request.resource.data.title.size() <= 200 &&
+          request.resource.data.message is string &&
+          request.resource.data.message.size() <= 1000
+        );
+        // Only authenticated business owner or admin can read, mark read, or delete notifications
+        allow read, delete: if isBusinessOwner(businessId);
+        allow update: if isBusinessOwner(businessId) &&
+          request.resource.data.businessId == resource.data.businessId;
       }
 
       match /expenses/{expenseId} {

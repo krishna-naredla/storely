@@ -455,13 +455,29 @@ export interface Review {
   createdAt: number;
 }
 
+export type NotificationType =
+  | 'order'
+  | 'booking'
+  | 'payment'
+  | 'quote'
+  | 'event'
+  | 'system'
+  | 'review'
+  | 'digital_product'
+  | 'consultation'
+  | 'inquiry';
+
 export interface Notification {
   id: string;
   businessId: string;
-  type: 'order' | 'booking' | 'payment' | 'quote' | 'event' | 'system' | 'review';
+  ownerId?: string;
+  profileType?: 'vendor' | 'creator';
+  type: NotificationType;
   title: string;
   message: string;
   link?: string; // Deep link to the dashboard section
+  entityType?: 'order' | 'booking' | 'payment' | 'quote' | 'event' | 'review' | 'digital_product' | 'consultation' | 'inquiry' | 'system';
+  entityId?: string;
   read: boolean;
   createdAt: number;
   metadata?: Record<string, any>;

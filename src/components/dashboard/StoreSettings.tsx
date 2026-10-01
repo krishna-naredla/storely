@@ -887,7 +887,7 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
                 <span>Your browser is configured correctly to receive system push notifications for new orders and bookings.</span>
                 <button
                   type="button"
-                  onClick={() => showMerchantNotification(`🧪 Test Order #${Math.floor(1000 + Math.random() * 9000)}`, `Test order placed for ${business.name}`, business, 'order')}
+                  onClick={() => showMerchantNotification(`🧪 Test Order #${Math.floor(1000 + Math.random() * 9000)}`, `Test order placed for ${business.name}`, business)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0 cursor-pointer"
                 >
                   Send Test Alert
