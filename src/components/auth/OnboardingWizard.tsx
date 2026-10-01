@@ -900,7 +900,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           Store URL Slug *
                         </label>
                         <div className="flex items-center text-xs border border-slate-200 rounded-xl bg-slate-50 overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 transition">
-                          <span className="pl-3.5 text-slate-400 font-mono select-none">storelly.app/store/</span>
+                          <span className="pl-3.5 text-slate-400 font-mono select-none">
+                            {typeof window !== 'undefined' ? `${window.location.host}/store/` : 'storelly.app/store/'}
+                          </span>
                           <input
                             type="text"
                             value={slug}

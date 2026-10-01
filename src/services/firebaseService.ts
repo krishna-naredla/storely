@@ -140,29 +140,48 @@ export function getStorefrontUrl(businessOrSlug: any): string {
 export const CANONICAL_PRODUCTION_URL = 'https://storelly.app';
 
 /**
- * Resolves the authoritative canonical production base URL for public links, QR codes, and sharing.
- * Always resolves to https://storelly.app in production so that links never generate localhost, run.app, or preview domains.
+ * Resolves the authoritative base URL for public links, QR codes, and sharing.
+ * Always resolves to window.location.origin in the browser so that links, new tabs, and QR codes
+ * immediately load on the current deployment host without ERR_NAME_NOT_RESOLVED DNS errors.
  */
-export function getBaseUrl(allowLocalDev = false): string {
-  if (allowLocalDev && typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return window.location.origin;
-    }
+export function getBaseUrl(_allowLocalDev = true): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  if (typeof process !== 'undefined' && process.env?.APP_BASE_URL) {
+    return process.env.APP_BASE_URL;
   }
   return CANONICAL_PRODUCTION_URL;
 }
 
-export function getBioLinkUrl(slug: string): string {
-  return `${getBaseUrl()}/@${encodeURIComponent(slug)}`;
+export function getBioLinkUrl(businessOrSlug: any): string {
+  if (typeof businessOrSlug === 'object' && businessOrSlug !== null) {
+    if (businessOrSlug.customDomain) {
+      return `https://${businessOrSlug.customDomain}`;
+    }
+    return `${getBaseUrl()}/@${encodeURIComponent(businessOrSlug.slug || '')}`;
+  }
+  return `${getBaseUrl()}/@${encodeURIComponent(businessOrSlug || '')}`;
 }
 
-export function getPortfolioUrl(slug: string): string {
-  return `${getBaseUrl()}/portfolio/${encodeURIComponent(slug)}`;
+export function getPortfolioUrl(businessOrSlug: any): string {
+  if (typeof businessOrSlug === 'object' && businessOrSlug !== null) {
+    if (businessOrSlug.customDomain) {
+      return `https://${businessOrSlug.customDomain}`;
+    }
+    return `${getBaseUrl()}/portfolio/${encodeURIComponent(businessOrSlug.slug || '')}`;
+  }
+  return `${getBaseUrl()}/portfolio/${encodeURIComponent(businessOrSlug || '')}`;
 }
 
-export function getDigitalStoreUrl(slug: string): string {
-  return `${getBaseUrl()}/store/${encodeURIComponent(slug)}`;
+export function getDigitalStoreUrl(businessOrSlug: any): string {
+  if (typeof businessOrSlug === 'object' && businessOrSlug !== null) {
+    if (businessOrSlug.customDomain) {
+      return `https://${businessOrSlug.customDomain}`;
+    }
+    return `${getBaseUrl()}/store/${encodeURIComponent(businessOrSlug.slug || '')}`;
+  }
+  return `${getBaseUrl()}/store/${encodeURIComponent(businessOrSlug || '')}`;
 }
 
 export function getQuotePayUrl(businessId: string, requestId: string): string {
@@ -182,14 +201,13 @@ export function getCategoryDeepUrl(businessOrSlug: any, categoryIdOrSlug: string
 }
 
 export function getModuleDeepUrl(businessOrSlug: any, moduleType: 'catalog' | 'digital' | 'services' | 'portfolio' | 'events' | 'quotes' | 'reviews' | 'card' | 'biolink'): string {
-  const slug = typeof businessOrSlug === 'object' && businessOrSlug !== null ? businessOrSlug.slug : businessOrSlug;
   if (moduleType === 'biolink') {
-    return getBioLinkUrl(slug);
+    return getBioLinkUrl(businessOrSlug);
   }
   if (moduleType === 'portfolio') {
-    return getPortfolioUrl(slug);
+    return getPortfolioUrl(businessOrSlug);
   }
-  const storeUrl = getDigitalStoreUrl(slug);
+  const storeUrl = getDigitalStoreUrl(businessOrSlug);
   const separator = storeUrl.includes('?') ? '&' : '?';
   return `${storeUrl}${separator}view=${encodeURIComponent(moduleType)}`;
 }
