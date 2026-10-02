@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Store, Facebook, Instagram, Twitter, Linkedin, Youtube, Mail, ShieldCheck, Apple, Play } from 'lucide-react';
-import { getAppLogo } from '../../utils/branding';
+import { getAppLogo, getAppName } from '../../utils/branding';
 
 interface LandingFooterProps {
   onOpenMasterAdmin?: () => void;
 }
 
 export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenMasterAdmin }) => {
+  const [, setBrandingTick] = useState(0);
+
+  useEffect(() => {
+    const handleBrandingChanged = () => setBrandingTick((t) => t + 1);
+    window.addEventListener('storelly_branding_changed', handleBrandingChanged);
+    return () => window.removeEventListener('storelly_branding_changed', handleBrandingChanged);
+  }, []);
+
   return (
     <footer className="bg-[#123c25] text-slate-300 py-16 sm:py-24 border-t border-[#155330]">
       <div className="max-w-[1180px] mx-auto px-6">
@@ -18,9 +26,9 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenMasterAdmin 
           <div className="col-span-2 space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-emerald-500/30 shadow-sm flex items-center justify-center bg-white">
-                <img src={getAppLogo()} alt="Storelly Logo" className="w-full h-full object-cover" />
+                <img src={getAppLogo()} alt={`${getAppName()} Logo`} className="w-full h-full object-cover" />
               </div>
-              <span className="text-xl font-extrabold text-white tracking-tight">Storelly</span>
+              <span className="text-xl font-extrabold text-white tracking-tight">{getAppName()}</span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed max-w-xs">
               All-in-one platform helping local businesses create an online store, manage products, receive orders, and grow their brand.

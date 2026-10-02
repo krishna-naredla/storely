@@ -11,7 +11,7 @@ import {
 } from './utils/publicRouteResolver';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getAppLogo, getBusinessLogo } from './utils/branding';
+import { getAppLogo, getAppName, getBusinessLogo } from './utils/branding';
 import { useDynamicBranding } from './utils/dynamicBranding';
 import {
   Store,
@@ -43,6 +43,7 @@ import {
   HelpCircle,
   Home,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StorefrontCartProvider } from './context/StorefrontCartContext';
@@ -75,7 +76,15 @@ import { QuotePaymentView } from './components/storefront/QuotePaymentView';
 import { LandingPage } from './components/landing/LandingPage';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { AuthModal } from './components/auth/AuthModal';
-import { isUserAuthorizedAdmin } from './services/adminService';
+import {
+  isUserAuthorizedAdmin,
+  adminGetGlobalSettings,
+  adminGetBranding,
+  adminGetSeoConfig,
+  adminGetCustomDomains,
+  getCachedSeoConfig,
+} from './services/adminService';
+import { PlatformGlobalSettings, PlatformSeoConfig } from './types/admin';
 
 // Lazy-loaded major dashboard views to reduce initial mobile bundle size
 const CatalogManager = lazy(() => import('./components/dashboard/CatalogManager').then(m => ({ default: m.CatalogManager })));
@@ -159,8 +168,11 @@ function generateFallbackOgImage(name: string): string {
 /**
  * Helper function to update document head with charset, viewport, and vendor-specific og:title, og:description, and og:image
  */
-function injectStoreMetadata(business: BusinessProfile) {
+function injectStoreMetadata(business: BusinessProfile, platformSeo?: PlatformSeoConfig | null) {
   if (!business) return;
+
+  const seo = platformSeo || getCachedSeoConfig();
+  const brandName = getAppName() || 'Storelly';
 
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -187,9 +199,13 @@ function injectStoreMetadata(business: BusinessProfile) {
   }
   viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 
-  const title = isPortfolio
-    ? `${business.name} — ${business.portfolioSettings?.headline || business.tagline || 'Official Creator Portfolio & Case Studies'}`
-    : `${business.name} — ${business.tagline || 'Official Storefront'}`;
+  // Dynamic Title: combines merchant identifier with dynamic SEO metaTitle suffix or tagline
+  const platformTitleSuffix = seo?.metaTitle ? ` | ${seo.metaTitle}` : ` | ${brandName}`;
+  const vendorTitleContent = isPortfolio
+    ? (business.portfolioSettings?.headline || business.tagline || 'Official Creator Portfolio & Case Studies')
+    : (business.tagline || 'Official Storefront');
+
+  const title = `${business.name} — ${vendorTitleContent}${platformTitleSuffix}`;
   document.title = title;
 
   const updateMeta = (property: string, content: string, isProperty = true) => {
@@ -207,9 +223,29 @@ function injectStoreMetadata(business: BusinessProfile) {
     meta.setAttribute('content', content);
   };
 
+  // Description: merchant description or dynamic platform SEO fallback
   const desc = isPortfolio
-    ? (business.portfolioSettings?.subheadline || business.description || `Explore verified work samples, case studies, and creative services by ${business.name}.`)
-    : (business.tagline || business.description || `Explore catalog, special offers, and order instantly from ${business.name}.`);
+    ? (business.portfolioSettings?.subheadline || business.description || seo?.metaDescription || `Explore verified work samples, case studies, and creative services by ${business.name}.`)
+    : (business.tagline || business.description || seo?.metaDescription || `Explore catalog, special offers, and order instantly from ${business.name}.`);
+
+  // Keywords: dynamic combination of merchant tags + platform SEO keywords
+  const dynamicKeywords = [
+    business.name,
+    business.category || '',
+    business.city || '',
+    business.state || '',
+    seo?.keywords || '',
+  ].filter(Boolean).join(', ');
+
+  // Standard SEO tags
+  updateMeta('description', desc, false);
+  if (dynamicKeywords) {
+    updateMeta('keywords', dynamicKeywords, false);
+  }
+
+  if (seo?.googleVerification) {
+    updateMeta('google-site-verification', seo.googleVerification, false);
+  }
 
   const img = business.banner || business.logo || generateFallbackOgImage(business.name);
   const url = window.location.href;
@@ -222,7 +258,7 @@ function injectStoreMetadata(business: BusinessProfile) {
     : 'image/jpeg';
 
   // Primary OpenGraph Metadata (LinkedIn, WhatsApp, Facebook, iMessage)
-  updateMeta('og:site_name', 'Storelly');
+  updateMeta('og:site_name', brandName);
   updateMeta('og:title', isPortfolio ? `${business.name} | Creator Portfolio` : `${business.name} | Official Store`);
   updateMeta('og:description', desc);
   updateMeta('og:image', img);
@@ -239,7 +275,7 @@ function injectStoreMetadata(business: BusinessProfile) {
 
   // LinkedIn & Twitter Card metadata
   updateMeta('twitter:card', 'summary_large_image', false);
-  updateMeta('twitter:site', '@Storelly', false);
+  updateMeta('twitter:site', `@${brandName.toLowerCase().replace(/\s+/g, '')}`, false);
   updateMeta('twitter:title', isPortfolio ? `${business.name} Portfolio` : business.name, false);
   updateMeta('twitter:description', desc, false);
   updateMeta('twitter:image', img, false);
@@ -287,9 +323,124 @@ function injectStoreMetadata(business: BusinessProfile) {
   }
 }
 
+// Platform Maintenance View for when platform-wide maintenance mode is toggled ON
+interface PlatformMaintenanceViewProps {
+  settings?: PlatformGlobalSettings | null;
+  onOpenAdminLogin: () => void;
+}
+
+const PlatformMaintenanceView: React.FC<PlatformMaintenanceViewProps> = ({ settings, onOpenAdminLogin }) => {
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative z-10 max-w-lg w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 sm:p-10 shadow-2xl backdrop-blur-xl text-center space-y-6">
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-12 h-12 rounded-2xl overflow-hidden border border-slate-700 bg-slate-800 flex items-center justify-center shadow-lg">
+            <img src={getAppLogo()} alt={getAppName()} className="w-full h-full object-cover" />
+          </div>
+          <span className="text-2xl font-black tracking-tight font-heading text-white">{getAppName()}</span>
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          Under Scheduled Maintenance
+        </div>
+
+        <div className="space-y-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            System Maintenance Underway
+          </h1>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            We are currently performing scheduled platform maintenance and infrastructure upgrades to improve system performance. Public storefronts and vendor services will resume shortly.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 space-y-1.5 text-left">
+          <div className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Platform Support</div>
+          {settings?.supportEmail && (
+            <div className="flex items-center justify-between">
+              <span>Email:</span>
+              <span className="font-mono text-emerald-400 select-all">{settings.supportEmail}</span>
+            </div>
+          )}
+          {settings?.supportPhone && (
+            <div className="flex items-center justify-between">
+              <span>Helpline:</span>
+              <span className="font-mono text-emerald-400 select-all">{settings.supportPhone}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <span className="text-slate-500 text-[11px]">Platform Administrator?</span>
+          <button
+            type="button"
+            onClick={onOpenAdminLogin}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-md flex items-center gap-1.5 cursor-pointer text-xs"
+          >
+            <Lock className="w-3.5 h-3.5" /> Admin Sign In
+          </button>
+        </div>
+      </div>
+
+      <div className="relative z-10 mt-8 text-xs text-slate-600 text-center">
+        © {new Date().getFullYear()} {getAppName()}. All rights reserved.
+      </div>
+    </div>
+  );
+};
+
 // Main App Container
 function MainContent() {
   const { currentUser, logout, loading: authLoading } = useAuth();
+
+  // Platform Global Settings & Startup Firestore Sync
+  const [platformGlobalSettings, setPlatformGlobalSettings] = useState<PlatformGlobalSettings | null>(null);
+  const [platformSeoConfig, setPlatformSeoConfig] = useState<PlatformSeoConfig | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function initPlatformSettings() {
+      try {
+        const [global, branding, seo, domains] = await Promise.all([
+          adminGetGlobalSettings(),
+          adminGetBranding(),
+          adminGetSeoConfig(),
+          adminGetCustomDomains(),
+        ]);
+        if (isMounted) {
+          setPlatformGlobalSettings(global);
+          setPlatformSeoConfig(seo);
+        }
+      } catch (err) {
+        console.warn('Error loading platform settings at startup:', err);
+      }
+    }
+
+    initPlatformSettings();
+
+    const handleGlobalSettingsChanged = (e: any) => {
+      if (e?.detail) {
+        setPlatformGlobalSettings(e.detail);
+      }
+    };
+    window.addEventListener('storelly_global_settings_changed', handleGlobalSettingsChanged);
+
+    const handleSeoChanged = (e: any) => {
+      if (e?.detail) {
+        setPlatformSeoConfig(e.detail);
+      }
+    };
+    window.addEventListener('storelly_seo_changed', handleSeoChanged);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storelly_global_settings_changed', handleGlobalSettingsChanged);
+      window.removeEventListener('storelly_seo_changed', handleSeoChanged);
+    };
+  }, []);
 
   // Navigation & View States
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
@@ -418,13 +569,20 @@ function MainContent() {
     }
   }, [quotePayInfo]);
 
-  // Invoke injectStoreMetadata whenever publicBusiness changes
+  // Invoke injectStoreMetadata whenever publicBusiness or platformSeoConfig changes
   useEffect(() => {
     if (publicBusiness) {
-      injectStoreMetadata(publicBusiness);
+      injectStoreMetadata(publicBusiness, platformSeoConfig);
     }
-  }, [publicBusiness]);
-  const [isMasterAdminMode, setIsMasterAdminMode] = useState<boolean>(false);
+  }, [publicBusiness, platformSeoConfig]);
+  const [isMasterAdminMode, setIsMasterAdminMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      return path === '/admin' || path.startsWith('/admin/') || search.includes('admin=true');
+    }
+    return false;
+  });
 
   // Check user custom claims, dedicated 'admin-settings' document in Firestore, or email whitelist upon login
   useEffect(() => {
@@ -794,6 +952,19 @@ function MainContent() {
   }
 
   // ==========================================
+  // PLATFORM-WIDE MAINTENANCE MODE ENFORCEMENT
+  // ==========================================
+  const isAuthorizedAdminUser = Boolean(currentUser?.email && isUserAuthorizedAdmin(currentUser.email));
+  if (platformGlobalSettings?.maintenanceMode && !isAuthorizedAdminUser) {
+    return (
+      <PlatformMaintenanceView
+        settings={platformGlobalSettings}
+        onOpenAdminLogin={() => setIsMasterAdminMode(true)}
+      />
+    );
+  }
+
+  // ==========================================
   // ROUTE: DIRECT CUSTOM QUOTE PAYMENT
   // ==========================================
   if (quotePayInfo) {
@@ -839,7 +1010,12 @@ function MainContent() {
     const targetBusiness = normalizeBusinessData(rawTargetBusiness);
 
     if (targetBusiness && !publicStoreNotFound) {
-      const { targetView } = resolveTargetViewForBusiness(publicRouteInfo, targetBusiness);
+      const { targetView, canonicalPath } = resolveTargetViewForBusiness(publicRouteInfo, targetBusiness);
+
+      // If resolving /store/:slug redirected to /@:slug for a single-module creator, keep browser address bar in sync
+      if (typeof window !== 'undefined' && canonicalPath && window.location.pathname.startsWith('/store/') && targetView === 'bio') {
+        window.history.replaceState(null, '', canonicalPath);
+      }
 
       // Public URLs must NEVER use dashboard/auth guards or expose Dashboard/Edit/Manage/Owner controls.
       // Owner preview is strictly permitted ONLY if explicitly requested, authenticated user is verified owner, and business is not deleted.
@@ -941,6 +1117,7 @@ function MainContent() {
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
           initialMode={authModalMode}
+          allowNewRegistrations={platformGlobalSettings?.allowNewRegistrations ?? true}
         />
       </>
     );
@@ -948,6 +1125,29 @@ function MainContent() {
 
   // Full-page SaaS Setup Experience for creating a new business or when user has no businesses yet
   if (isOnboardingOpen || (!selectedBusiness && businesses.length === 0)) {
+    if (platformGlobalSettings?.allowNewRegistrations === false && !isAuthorizedAdminUser && businesses.length === 0) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 font-heading">Registrations Temporarily Closed</h2>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              New merchant onboarding is currently paused by platform administration. Please check back soon or contact support if you need assistance.
+            </p>
+            <button
+              type="button"
+              onClick={logout}
+              className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <Suspense
         fallback={
@@ -1029,6 +1229,8 @@ function MainContent() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           userName={currentUser.displayName || currentUser.email}
+          onLogout={logout}
+          onOpenSettings={() => setActiveTab('settings')}
         />
 
         {/* Tab Content Router */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAppLogo } from '../../utils/branding';
+import { getAppLogo, getAppName } from '../../utils/branding';
 import { Store, Menu, X } from 'lucide-react';
 
 interface Props {
@@ -9,11 +9,19 @@ interface Props {
 export const LandingNavbar: React.FC<Props> = ({ onOpenAuth }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [, setBrandingTick] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    const handleBrandingChanged = () => setBrandingTick((t) => t + 1);
+    window.addEventListener('storelly_branding_changed', handleBrandingChanged);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('storelly_branding_changed', handleBrandingChanged);
+    };
   }, []);
 
   const navLinks = [
@@ -31,9 +39,9 @@ export const LandingNavbar: React.FC<Props> = ({ onOpenAuth }) => {
         {/* Logo */}
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
           <div className="w-10 h-10 rounded-[var(--r8)] overflow-hidden border border-[var(--border)] shadow-[var(--shadow-xs)] flex items-center justify-center bg-[var(--card)]">
-            <img src={getAppLogo()} alt="Storelly Logo" className="w-full h-full object-cover" />
+            <img src={getAppLogo()} alt={`${getAppName()} Logo`} className="w-full h-full object-cover" />
           </div>
-          <span className="text-xl font-heading font-extrabold text-[var(--t1)] tracking-tight">Storelly</span>
+          <span className="text-xl font-heading font-extrabold text-[var(--t1)] tracking-tight">{getAppName()}</span>
         </div>
 
         {/* Desktop Links */}

@@ -151,3 +151,50 @@ export interface PlatformRazorpayConfig {
   updatedAt?: number;
 }
 
+export interface PlatformBrandingConfig {
+  siteName: string;
+  logoUrl: string;
+  faviconUrl: string;
+  updatedAt?: number;
+}
+
+export interface PlatformSeoConfig {
+  googleVerification: string;
+  metaTitle: string;
+  metaDescription: string;
+  keywords: string;
+  updatedAt?: number;
+}
+
+export interface PlatformLandingHeroConfig {
+  badge: string;
+  headline: string;
+  subtitle: string;
+  heroImageUrl: string;
+  updatedAt?: number;
+}
+
+export interface PlatformLandingBrandItem {
+  name: string;
+  icon: string;
+}
+
+export interface PlatformLandingCMSConfig {
+  hero: PlatformLandingHeroConfig;
+  brands: PlatformLandingBrandItem[];
+  updatedAt?: number;
+}
+
+export interface PlatformCustomDomainMapping {
+  domain: string;
+  slug: string;
+  status: 'Active' | 'Pending' | 'Inactive';
+  createdAt?: number;
+  verifiedAt?: number;
+}
+
+export interface PlatformCustomDomainsConfig {
+  domains: PlatformCustomDomainMapping[];
+  updatedAt?: number;
+}
+

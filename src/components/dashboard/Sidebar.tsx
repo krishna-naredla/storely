@@ -291,13 +291,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full w-64 bg-[var(--card)] border-r border-[var(--border)] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-40 h-screen w-64 bg-[var(--card)] border-r border-[var(--border)] flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Brand Header */}
-        <div>
-          <div className="h-16 px-5 flex items-center justify-between border-b border-[var(--border)]">
+        <div className="shrink-0 h-16 px-5 flex items-center justify-between border-b border-[var(--border)]">
             <button
               type="button"
               onClick={() => {
@@ -344,7 +343,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Current Business Card - Click to Open Storefront / Portfolio */}
           {business && (
-            <div className="px-3.5 pt-3 pb-1">
+            <div className="shrink-0 px-3.5 pt-3 pb-1">
               <button
                 type="button"
                 onClick={() => {
@@ -435,8 +434,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {/* Navigation Links */}
-          <div className="px-3 py-2 space-y-1 overflow-y-auto max-h-[calc(100vh-250px)]">
+          {/* Navigation Links - Scrolls smoothly in available space */}
+          <div className="flex-1 min-h-0 px-3 py-2 space-y-1 overflow-y-auto">
             {navItems
               .filter((item) => item.visible)
               .map((item) => {
@@ -476,10 +475,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 );
               })}
           </div>
-        </div>
 
-        {/* Footer Actions */}
-        <div className="p-3 border-t border-[var(--border)] space-y-2 bg-[var(--bg)]">
+        {/* Footer Actions - Fixed at bottom, NEVER pushed off-screen or overlapped */}
+        <div className="shrink-0 p-3 border-t border-[var(--border)] space-y-2 bg-[var(--bg)] mt-auto">
           {onOpenMasterAdmin && (
             <button
               type="button"
@@ -504,9 +502,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={onLogout}
-            className="w-full touch-target-accessible min-h-[44px] flex items-center gap-2 py-2 px-3 text-[var(--t2)] hover:text-[var(--r500)] hover:bg-[var(--r100)] rounded-[var(--r8)] text-xs font-medium transition cursor-pointer"
+            className="w-full touch-target-accessible min-h-[44px] flex items-center gap-2 py-2 px-3 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200/60 hover:border-rose-300 rounded-[var(--r8)] text-xs font-bold transition cursor-pointer shadow-xs"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-3.5 h-3.5 text-rose-500" />
             <span>Sign Out</span>
           </button>
         </div>

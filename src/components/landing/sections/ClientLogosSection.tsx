@@ -1,28 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { Store, ShoppingBag, Cpu, Home, PackageCheck, Sparkles } from 'lucide-react';
+import { adminGetBrands, DEFAULT_LANDING_BRANDS } from '../../../services/adminService';
+import { PlatformLandingBrandItem } from '../../../types/admin';
 
 export const ClientLogosSection: React.FC = () => {
-  const [clients, setClients] = useState([
-    { name: 'Organic Store', icon: 'Store' },
-    { name: 'Fashion Hub', icon: 'ShoppingBag' },
-    { name: 'Tech World', icon: 'Cpu' },
-    { name: 'Home Decor', icon: 'Home' },
-    { name: 'Fresh Basket', icon: 'PackageCheck' },
-    { name: 'Beauty Bliss', icon: 'Sparkles' },
-    { name: 'Krishna Pickles', icon: 'Store' },
-    { name: 'Artisan Crafts', icon: 'ShoppingBag' }
-  ]);
-
-  useEffect(() => {
+  const [clients, setClients] = useState<PlatformLandingBrandItem[]>(() => {
     try {
       const saved = localStorage.getItem('storelly_admin_brands');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setClients(parsed);
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
+    return DEFAULT_LANDING_BRANDS;
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    adminGetBrands().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        setClients(data);
+      }
+    });
+
+    const handleBrandsChanged = (e: any) => {
+      if (Array.isArray(e?.detail)) {
+        setClients(e.detail);
+      }
+    };
+
+    window.addEventListener('storelly_brands_changed', handleBrandsChanged);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storelly_brands_changed', handleBrandsChanged);
+    };
   }, []);
 
   const getIcon = (iconName: string) => {

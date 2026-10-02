@@ -14,7 +14,9 @@ import {
   Sparkles,
   Briefcase,
   QrCode,
-  Globe
+  Globe,
+  LogOut,
+  Settings
 } from 'lucide-react';
 import { BusinessProfile, Notification } from '../../types';
 import { getStorefrontUrl, subscribeToNotifications } from '../../services/firebaseService';
@@ -37,6 +39,8 @@ interface HeaderProps {
   onOpenShareModal: () => void;
   onNavigateToNotifications?: () => void;
   userName?: string | null;
+  onLogout?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,6 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShareModal,
   onNavigateToNotifications,
   userName,
+  onLogout,
+  onOpenSettings,
 }) => {
   const { t } = useLanguage();
   const syncStatus = useFirestoreSyncStatus();
@@ -56,8 +62,25 @@ export const Header: React.FC<HeaderProps> = ({
   const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [copiedBizId, setCopiedBizId] = useState<string | null>(null);
   const [bizDropdownOpen, setBizDropdownOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const prevUnreadCountRef = useRef(0);
+
+  // Close user profile dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userMenuOpen]);
 
   const isCreator = isCreatorProfile(business);
   const storeUrl = business ? (isCreator ? getPrimaryPublicUrl(business) : getStorefrontUrl(business)) : '';
@@ -324,9 +347,9 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Live URL Pill (Desktop & Tablet) */}
+        {/* Live URL Pill (Large Desktop) */}
         {business && storeUrl && (
-          <div className="hidden lg:flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r8)] px-2.5 py-1 text-xs text-[var(--t2)] font-mono">
+          <div className="hidden xl:flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r8)] px-2.5 py-1 text-xs text-[var(--t2)] font-mono shrink-0">
             <span className="w-1.5 h-1.5 rounded-full inline-block bg-[var(--g500)] animate-pulse" />
             <span className="max-w-[200px] truncate text-[11px] text-[var(--t1)] select-all">
               {storeUrl.replace(/^https?:\/\//, '')}
@@ -492,11 +515,99 @@ export const Header: React.FC<HeaderProps> = ({
           </>
         )}
 
-        {/* User Avatar */}
-        <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-[var(--border)]">
-          <div className="w-8 h-8 rounded-full bg-[var(--bg)] border border-[var(--border)] text-[var(--t1)] flex items-center justify-center font-bold text-xs">
-            {userName ? userName.slice(0, 1).toUpperCase() : <User className="w-4 h-4 text-[var(--t3)]" />}
-          </div>
+        {/* User Profile Menu & Direct Sign Out */}
+        <div className="relative flex items-center gap-1.5 pl-1.5 sm:pl-2.5 border-l border-[var(--border)] shrink-0" ref={userMenuRef}>
+          <button
+            type="button"
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex items-center gap-1.5 p-1 rounded-[var(--r8)] hover:bg-[var(--bg)] transition cursor-pointer select-none"
+            title="User Profile & Account Menu"
+            aria-label="User Profile & Account Menu"
+            aria-expanded={userMenuOpen}
+          >
+            <div className="w-8 h-8 rounded-full bg-[var(--g100)] border border-[var(--border)] text-[var(--g700)] flex items-center justify-center font-bold text-xs shadow-2xs">
+              {userName ? userName.slice(0, 1).toUpperCase() : <User className="w-4 h-4 text-[var(--t3)]" />}
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-[var(--t3)] transition-transform duration-200 hidden sm:block ${userMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Quick 1-click Sign Out button on Desktop Header */}
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Sign Out of Storelly"
+              aria-label="Sign Out"
+              className="hidden lg:flex touch-target-accessible min-h-[36px] min-w-[36px] items-center justify-center p-2 rounded-[var(--r8)] text-[var(--t3)] hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Profile Dropdown Menu */}
+          {userMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-[var(--card)] rounded-[var(--r16)] shadow-[var(--shadow-lg)] border border-[var(--border)] p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-2.5 border-b border-[var(--border)]">
+                <p className="text-xs font-bold text-[var(--t1)] truncate">
+                  {userName || "Signed In User"}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider">
+                    {isCreator ? "Creator Account" : "Merchant Account"}
+                  </span>
+                  {business && (
+                    <span className="text-[10px] text-[var(--g600)] font-medium truncate">
+                      • {business.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="py-1 space-y-0.5">
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      onOpenSettings();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--t1)] hover:bg-[var(--bg)] rounded-[var(--r8)] font-medium transition cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-[var(--t2)]" />
+                    <span>Account Settings</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onOpenStorefront();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--t1)] hover:bg-[var(--bg)] rounded-[var(--r8)] font-medium transition cursor-pointer"
+                >
+                  {isCreator ? <Sparkles className="w-3.5 h-3.5 text-[var(--g600)]" /> : <Store className="w-3.5 h-3.5 text-[var(--g600)]" />}
+                  <span>{isCreator ? "View Public Profile" : "View Live Store"}</span>
+                </button>
+              </div>
+
+              {onLogout && (
+                <div className="pt-1 mt-1 border-t border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-[var(--r8)] font-semibold transition cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>

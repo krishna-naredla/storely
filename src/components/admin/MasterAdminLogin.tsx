@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, ArrowRight, Loader2, AlertCircle, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Lock, Mail, ArrowRight, Loader2, AlertCircle, ArrowLeft, KeyRound, CheckCircle2, Sparkles } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../config/firebase';
-import { verifyAdminInFirestore } from '../../services/adminService';
+import { verifyAdminInFirestore, isUserAuthorizedAdmin, AUTHORIZED_ADMIN_EMAILS } from '../../services/adminService';
 
 interface MasterAdminLoginProps {
   onLoginSuccess: () => void;
@@ -10,19 +10,27 @@ interface MasterAdminLoginProps {
 }
 
 export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSuccess, onBackToApp }) => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('maninaredla218@gmail.com');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // If already authenticated as an authorized admin, proceed directly
+  useEffect(() => {
+    if (auth.currentUser && isUserAuthorizedAdmin(auth.currentUser.email)) {
+      onLoginSuccess();
+    }
+  }, [onLoginSuccess]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
 
-    if (!email.trim() || !password.trim()) {
+    const targetEmail = email.trim();
+    if (!targetEmail || !password.trim()) {
       setError('Please enter both admin email and secure password.');
       return;
     }
@@ -30,16 +38,16 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
     setIsLoading(true);
     try {
       // 1. Verify admin role against Firestore / security registry
-      const isAuthorized = await verifyAdminInFirestore(email.trim());
+      const isAuthorized = await verifyAdminInFirestore(targetEmail);
       if (!isAuthorized) {
-        setError('Access Denied: This email address is not authorized as a verified Master Admin.');
+        setError(`Access Denied: ${targetEmail} is not authorized as a verified Master Admin.`);
         setIsLoading(false);
         return;
       }
 
       // 2. Attempt authentication with Firebase Auth
       try {
-        const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const cred = await signInWithEmailAndPassword(auth, targetEmail, password);
         const isVerified = await verifyAdminInFirestore(cred.user.email, cred.user.uid);
         if (!isVerified) {
           await auth.signOut();
@@ -50,14 +58,40 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
         onLoginSuccess();
       } catch (signInErr: any) {
         const code = signInErr.code || '';
-        if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-          setError('Incorrect credentials. Please verify your password or use Google Sign-In.');
-        } else if (code === 'auth/user-not-found') {
-          setError('Admin account not found. Please contact the Super Admin or use Google Sign-In.');
+
+        // If user account is not created yet in Firebase Auth and this is an authorized super admin,
+        // automatically initialize and bootstrap credentials for them
+        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+          if (isUserAuthorizedAdmin(targetEmail)) {
+            try {
+              const newCred = await createUserWithEmailAndPassword(auth, targetEmail, password);
+              const isVerified = await verifyAdminInFirestore(newCred.user.email, newCred.user.uid);
+              if (isVerified) {
+                setSuccessMessage('Admin credentials verified & initialized successfully!');
+                onLoginSuccess();
+                return;
+              }
+            } catch (createErr: any) {
+              if (createErr.code === 'auth/email-already-in-use') {
+                setError('Incorrect password for this admin account. If you forgot your password, click "Reset Password?" below.');
+                return;
+              } else if (createErr.code === 'auth/weak-password') {
+                setError('Password must be at least 6 characters.');
+                return;
+              } else if (createErr.code === 'auth/network-request-failed') {
+                setError('Network request failed. Please check your internet connection.');
+                return;
+              }
+            }
+          }
+        }
+
+        if (code === 'auth/wrong-password') {
+          setError('Incorrect credentials. Please verify your password or use the "Reset Password?" link below.');
         } else if (code === 'auth/invalid-email') {
           setError('Invalid email address format.');
         } else if (code === 'auth/too-many-requests') {
-          setError('Too many failed login attempts. Please try again later.');
+          setError('Too many failed login attempts. Please try again later or reset your password.');
         } else {
           setError(signInErr.message || 'Authentication failed. Please verify your credentials.');
         }
@@ -81,7 +115,7 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
       const isAuthorized = await verifyAdminInFirestore(userEmail, result.user.uid);
       if (!isAuthorized) {
         await auth.signOut();
-        setError('Access Denied: The Google account signed in is not authorized as a Master Admin.');
+        setError(`Access Denied: The Google account (${userEmail}) is not authorized as a Master Admin.`);
         setIsLoading(false);
         return;
       }
@@ -89,7 +123,20 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
       onLoginSuccess();
     } catch (err: any) {
       console.error('Google admin login error:', err);
-      setError(err.message || 'Google sign-in failed. Please try again.');
+      const code = err?.code || '';
+      const msg = err?.message || '';
+
+      if (code === 'auth/network-request-failed' || msg.includes('network-request-failed')) {
+        setError(
+          'Google popup connection failed (auth/network-request-failed) due to browser iframe cross-origin restrictions. Please sign in below using your admin email (' + (email || 'maninaredla218@gmail.com') + ') and password.'
+        );
+      } else if (code === 'auth/popup-blocked') {
+        setError('Google sign-in popup was blocked by your browser. Please allow popups or use email & password login below.');
+      } else if (code === 'auth/popup-closed-by-user') {
+        setError('Google sign-in popup was closed before completing.');
+      } else {
+        setError(msg || 'Google sign-in failed. Please try again or use email login below.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -106,10 +153,14 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
     setIsResetting(true);
     try {
       await sendPasswordResetEmail(auth, email.trim());
-      setSuccessMessage('Password reset email sent! Please check your inbox / spam folder for maninaredla218@gmail.com.');
+      setSuccessMessage(`Password reset email sent to ${email.trim()}! Please check your inbox / spam folder.`);
     } catch (err: any) {
       console.error('Password reset error:', err);
-      setError(err.message || 'Failed to send password reset email.');
+      if (err.code === 'auth/user-not-found') {
+        setError('This email does not have a password set up yet. Enter a password above (at least 6 characters) and click "Access Control Center" to create your password directly!');
+      } else {
+        setError(err.message || 'Failed to send password reset email.');
+      }
     } finally {
       setIsResetting(false);
     }
@@ -150,9 +201,9 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-medium flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-            <span>{error}</span>
+          <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-medium flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+            <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
@@ -165,7 +216,22 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300">Admin Email</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-300">Admin Email</label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEmail('maninaredla218@gmail.com')}
+                  className={`text-[10px] px-2 py-0.5 rounded-md font-mono transition cursor-pointer ${
+                    email === 'maninaredla218@gmail.com'
+                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                      : 'text-slate-400 hover:text-slate-200 bg-slate-800'
+                  }`}
+                >
+                  maninaredla218@gmail.com
+                </button>
+              </div>
+            </div>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
               <input
@@ -174,7 +240,7 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="owner@storelly.com"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 pl-10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 pl-10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-mono"
               />
             </div>
           </div>
@@ -199,10 +265,13 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Enter password (min 6 characters)"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 pl-10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition"
               />
             </div>
+            <p className="text-[11px] text-slate-500">
+              First time logging in? Enter your desired password and click below to initialize your admin credentials.
+            </p>
           </div>
 
           <button
@@ -235,7 +304,7 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
           type="button"
           onClick={handleGoogleLogin}
           disabled={isLoading}
-          className="w-full bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
+          className="w-full bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-900 font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 text-xs"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -255,12 +324,12 @@ export const MasterAdminLogin: React.FC<MasterAdminLoginProps> = ({ onLoginSucce
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.27 0 3.17 2.69 1.19 6.6l4.08 3.15c.95-2.85 3.6-4.96 6.73-4.96z"
             />
           </svg>
-          Continue with Google (Instant Admin Login)
+          Continue with Google
         </button>
 
         <div className="text-center pt-2 border-t border-slate-800/80">
           <p className="text-[11px] text-slate-500">
-            Restricted System. All administrative actions are logged with audit metadata for platform security.
+            Restricted System. Authorized administrators: <span className="font-mono text-slate-400">maninaredla218@gmail.com</span>, <span className="font-mono text-slate-400">localride369@gmail.com</span>.
           </p>
         </div>
       </div>

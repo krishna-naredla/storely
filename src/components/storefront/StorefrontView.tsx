@@ -58,6 +58,8 @@ import {
   FileText,
   Briefcase,
   LayoutGrid,
+  Link as LinkIcon,
+  ArrowRight,
   Map,
   Globe,
   Instagram,
@@ -234,6 +236,53 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
 
+  // Module enablement flags
+  const isCreator = isCreatorProfile(business);
+  const isDigitalProductsEnabled = Boolean(
+    business.modules?.digital_products || business.modules?.digitalProducts
+  );
+  const isConsultationsEnabled = Boolean(
+    business.modules?.booking_appointments || business.modules?.digital_products || business.modules?.digitalProducts
+  );
+  const isPortfolioEnabled = Boolean(
+    business.modules?.work_portfolio || business.modules?.portfolio
+  );
+  const isCommerceEnabled = Boolean(
+    business.modules?.cart_ordering ||
+    business.modules?.products ||
+    business.modules?.menu ||
+    business.modules?.table_delivery
+  );
+
+  // Filter catalog items strictly based on current active module configuration
+  const filterCatalogItemsByModules = (items: CatalogItem[]): CatalogItem[] => {
+    return items.filter((item) => {
+      // 1. Digital product gating (digital files, courses, digital downloads)
+      const isDigitalItem =
+        item.productType === 'digital_file' ||
+        item.type === 'course' ||
+        (item.productType !== 'physical' && Boolean(item.digitalFileUrl && item.digitalFileUrl.trim().length > 0));
+
+      if (isDigitalItem) {
+        if (!isDigitalProductsEnabled) return false;
+      }
+
+      // 2. Consultation slots gating
+      if (item.productType === 'consultation_slot') {
+        if (!isConsultationsEnabled) return false;
+      }
+
+      // 3. For creator profiles: physical commerce products must be gated if no commerce module is enabled
+      if (isCreator && (item.productType === 'physical' || !item.productType)) {
+        if (!isCommerceEnabled && !isDigitalProductsEnabled) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
   const handleDigitalPurchase = (item: CatalogItem) => {
     setSelectedItemForDigital(item);
   };
@@ -332,13 +381,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     if (cachedData) {
       try {
         const parsed = JSON.parse(cachedData);
-        setCatalogItems(parsed.items || []);
+        setCatalogItems(filterCatalogItemsByModules(parsed.items || []));
         setCategories(parsed.categories || []);
         setOffers(parsed.offers || []);
         setReviews(parsed.reviews || []);
         setEvents(parsed.events || []);
         setBioLinks(parsed.bioLinks || []);
-        setPortfolioItems(parsed.portfolioItems || []);
+        setPortfolioItems(isPortfolioEnabled ? (parsed.portfolioItems || []) : []);
         setTestimonials(parsed.testimonials || []);
         setIsLoading(false);
       } catch (e) {
@@ -350,14 +399,23 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       if (!cachedData) {
         setIsLoading(true);
       }
-      const [fetchedItems, fetchedCategories, fetchedOffers, fetchedReviews, fetchedEvents, fetchedBioLinks, fetchedPortfolioItems, fetchedTestimonials] = await Promise.all([
+      const [
+        fetchedItems,
+        fetchedCategories,
+        fetchedOffers,
+        fetchedReviews,
+        fetchedEvents,
+        fetchedBioLinks,
+        fetchedPortfolioItems,
+        fetchedTestimonials
+      ] = await Promise.all([
         getCatalogItems(business.id, true),
         getCategories(business.id),
         getOffers(business.id),
         getReviews(business.id),
         getEvents(business.id),
         getBioLinks(business.id) as Promise<any[]>,
-        getPortfolioItems(business.id, true),
+        isPortfolioEnabled ? getPortfolioItems(business.id, true) : Promise.resolve([]),
         getTestimonials(business.id, true),
       ]);
 
@@ -366,16 +424,19 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       const publishedReviews = fetchedReviews.filter((r) => r.status === 'published');
       const activeEvents = fetchedEvents.filter((e) => e.status !== 'cancelled');
 
-      setCatalogItems(fetchedItems);
+      // Filter catalog items according to currently active modules
+      const visibleItems = filterCatalogItemsByModules(fetchedItems);
+
+      setCatalogItems(visibleItems);
       setCategories(activeCategories);
       setOffers(activeOffers);
       setReviews(publishedReviews);
       setEvents(activeEvents);
       setBioLinks(fetchedBioLinks.filter(l => l.enabled).sort((a,b) => (a.order || 0) - (b.order || 0)));
-      setPortfolioItems(fetchedPortfolioItems);
+      setPortfolioItems(isPortfolioEnabled ? fetchedPortfolioItems : []);
       setTestimonials(fetchedTestimonials);
 
-      // Save to cache for next instant load
+      // Save raw items to cache so when modules are toggled back on, items reappear instantly
       localStorage.setItem(
         cacheKey,
         JSON.stringify({
@@ -385,7 +446,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           reviews: publishedReviews,
           events: activeEvents,
           bioLinks: fetchedBioLinks.filter(l => l.enabled).sort((a,b) => (a.order || 0) - (b.order || 0)),
-          portfolioItems: fetchedPortfolioItems,
+          portfolioItems: isPortfolioEnabled ? fetchedPortfolioItems : [],
           testimonials: fetchedTestimonials,
           timestamp: Date.now(),
         })
@@ -399,7 +460,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
   useEffect(() => {
     loadStoreData();
-  }, [business.id]);
+  }, [business.id, JSON.stringify(business.modules)]);
 
   useEffect(() => {
     if (catalogItems.length > 0 || categories.length > 0) {
@@ -414,12 +475,14 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         localStorage.setItem(`storelly_table_${business.id}`, tableParam);
       }
 
-      // Deep link to a specific item
+      // Deep link to a specific item (gated by module flag)
       if (itemId) {
         const item = catalogItems.find(i => i.id === itemId || i.slug === itemId);
         if (item) {
           if (item.productType === 'digital_file') {
-            setSelectedItemForDigital(item);
+            if (isDigitalProductsEnabled) {
+              setSelectedItemForDigital(item);
+            }
           } else {
             setSelectedItemForDetail(item);
           }
@@ -442,7 +505,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       } else if (viewParam === 'reviews') {
         const el = document.getElementById('reviews-section');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
-      } else if (viewParam === 'portfolio') {
+      } else if (viewParam === 'portfolio' && isPortfolioEnabled) {
         const el = document.getElementById('portfolio-section');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       } else if (viewParam === 'events') {
@@ -458,21 +521,33 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
       : '5.0';
 
-  // Filter & sort catalog items
+  // Filter & sort catalog items with strict module gating
   const filteredItems = catalogItems
     .filter((item) => {
-      // Category filter
+      // 1. Explicit module gating defense
+      const isDigitalItem =
+        item.productType === 'digital_file' ||
+        item.type === 'course' ||
+        (item.productType !== 'physical' && Boolean(item.digitalFileUrl && item.digitalFileUrl.trim().length > 0));
+
+      if (isDigitalItem && !isDigitalProductsEnabled) return false;
+      if (item.productType === 'consultation_slot' && !isConsultationsEnabled) return false;
+      if (isCreator && (item.productType === 'physical' || !item.productType)) {
+        if (!isCommerceEnabled && !isDigitalProductsEnabled) return false;
+      }
+
+      // 2. Category filter
       if (selectedCategory !== 'all' && item.categoryId !== selectedCategory) {
         return false;
       }
-      // Search filter
+      // 3. Search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesName = item.name.toLowerCase().includes(query);
         const matchesDesc = (item.shortDescription || '').toLowerCase().includes(query);
         if (!matchesName && !matchesDesc) return false;
       }
-      // Food veg/non-veg filter
+      // 4. Food veg/non-veg filter
       if (foodFilter === 'veg' && item.isVeg !== true) return false;
       if (foodFilter === 'non_veg' && item.isVeg === true) return false;
 
@@ -506,10 +581,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
   const isOrderable =
     business.status !== 'maintenance' &&
-    (business.modules.cart_ordering ||
-     business.modules.products ||
-     business.modules.menu ||
-     business.modules.table_delivery);
+    Boolean(
+      business.modules?.cart_ordering ||
+      business.modules?.products ||
+      business.modules?.menu ||
+      business.modules?.table_delivery
+    );
 
   if (isLoading) {
     const bizLogo = getBusinessLogo(business);
@@ -721,6 +798,33 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
         
+        {/* Creator Single-Module Bio Link Notice Banner when Digital Store is Disabled */}
+        {isCreator && !isDigitalProductsEnabled && (business.modules?.universal_links || business.modules?.bio_links || business.modules?.biolink) && (
+          <div className="rounded-2xl p-4 bg-purple-50 border border-purple-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-purple-900 shadow-xs">
+            <div className="flex items-center gap-3 text-center sm:text-left">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold font-heading">
+                  Looking for {business.name}'s official links &amp; socials?
+                </p>
+                <p className="text-[11px] text-purple-700">
+                  Their primary public profile is active at @{business.username || business.slug}.
+                </p>
+              </div>
+            </div>
+            <a
+              href={`/@${business.username || business.slug || business.id}`}
+              className="px-4 py-2 min-h-[38px] bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              <span>View Bio Link</span>
+              <ArrowRight className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+        
         {/* Active Promotional Offers Ribbon */}
         {offers.length > 0 && (
           <section className="space-y-4">
@@ -767,153 +871,191 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           </section>
         )}
 
-        {/* Search, Filter & Categories Navigation Bar */}
-        <div className={`sticky ${onBackToDashboard ? 'top-12 sm:top-14' : 'top-0'} z-30 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/60 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 transition-all duration-300`}>
-          <div className="max-w-6xl mx-auto space-y-4">
-            {/* Search bar & Sort Controls */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
-              <div className="relative flex-1 group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={`Search in ${business.name}...`}
-                  className="w-full min-h-[48px] pl-11 pr-4 py-3 bg-white text-sm border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-hidden shadow-sm transition-all"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
-                {/* Food Diet Filter */}
-                {(business.type === 'restaurant' || business.type === 'bakery' || business.type === 'grocery') && (
-                  <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shrink-0 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setFoodFilter('all')}
-                      className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                        foodFilter === 'all'
-                          ? 'bg-slate-900 text-white'
-                          : 'text-slate-500 hover:bg-slate-50'
-                      }`}
-                    >
-                      All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFoodFilter('veg')}
-                      className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        foodFilter === 'veg'
-                          ? 'bg-emerald-600 text-white'
-                          : 'text-emerald-600 hover:bg-emerald-50'
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-current" />
-                      <span>Veg</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFoodFilter('non_veg')}
-                      className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        foodFilter === 'non_veg'
-                          ? 'bg-rose-600 text-white'
-                          : 'text-rose-600 hover:bg-rose-50'
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-current" />
-                      <span>Non-Veg</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Sort Dropdown */}
-                <div className="relative shrink-0 group">
-                  <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={sortBy}
-                    onChange={(e: any) => setSortBy(e.target.value)}
-                    className="min-h-[44px] pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-hidden font-bold text-slate-700 shadow-sm appearance-none cursor-pointer"
-                  >
-                    <option value="default">Featured</option>
-                    <option value="price_asc">Price: Low to High</option>
-                    <option value="price_desc">Price: High to Low</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+        {/* Search, Filter & Categories Navigation Bar (shown only when items exist) */}
+        {catalogItems.length > 0 && (
+          <div className={`sticky ${onBackToDashboard ? 'top-12 sm:top-14' : 'top-0'} z-30 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/60 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 transition-all duration-300`}>
+            <div className="max-w-6xl mx-auto space-y-4">
+              {/* Search bar & Sort Controls */}
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+                <div className="relative flex-1 group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={`Search in ${business.name}...`}
+                    className="w-full min-h-[48px] pl-11 pr-4 py-3 bg-white text-sm border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-hidden shadow-sm transition-all"
+                  />
                 </div>
-              </div>
-            </div>
 
-            {/* Categories Navigation */}
-            {categories.length > 0 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x border-t border-slate-200/60 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('all')}
-                  className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all cursor-pointer border-2 ${
-                    selectedCategory === 'all'
-                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                      : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
-                  }`}
-                >
-                  All Items
-                </button>
-
-                {categories.map((cat) => {
-                  const count = catalogItems.filter((i) => i.categoryId === cat.id).length;
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all flex items-center gap-2 cursor-pointer border-2 ${
-                        isSelected
-                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                          : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
-                      }`}
-                    >
-                      <span>{cat.name}</span>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-lg font-bold ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                <div className="flex items-center gap-3 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
+                  {/* Food Diet Filter */}
+                  {(business.type === 'restaurant' || business.type === 'bakery' || business.type === 'grocery') && (
+                    <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shrink-0 shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setFoodFilter('all')}
+                        className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                          foodFilter === 'all'
+                            ? 'bg-slate-900 text-white'
+                            : 'text-slate-500 hover:bg-slate-50'
                         }`}
                       >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFoodFilter('veg')}
+                        className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                          foodFilter === 'veg'
+                            ? 'bg-emerald-600 text-white'
+                            : 'text-emerald-600 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-current" />
+                        <span>Veg</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFoodFilter('non_veg')}
+                        className={`min-h-[36px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                          foodFilter === 'non_veg'
+                            ? 'bg-rose-600 text-white'
+                            : 'text-rose-600 hover:bg-rose-50'
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-current" />
+                        <span>Non-Veg</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sort Dropdown */}
+                  <div className="relative shrink-0 group">
+                    <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <select
+                      value={sortBy}
+                      onChange={(e: any) => setSortBy(e.target.value)}
+                      className="min-h-[44px] pl-9 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-hidden font-bold text-slate-700 shadow-sm appearance-none cursor-pointer"
+                    >
+                      <option value="default">Featured</option>
+                      <option value="price_asc">Price: Low to High</option>
+                      <option value="price_desc">Price: High to Low</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Categories Navigation */}
+              {categories.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar touch-pan-x border-t border-slate-200/60 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('all')}
+                    className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all cursor-pointer border-2 ${
+                      selectedCategory === 'all'
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                        : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
+                    }`}
+                  >
+                    All Items
+                  </button>
+
+                  {categories.map((cat) => {
+                    const count = catalogItems.filter((i) => i.categoryId === cat.id).length;
+                    const isSelected = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all flex items-center gap-2 cursor-pointer border-2 ${
+                          isSelected
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                            : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
+                        }`}
+                      >
+                        <span>{cat.name}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-lg font-bold ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Catalog Items Grid */}
         <div>
           {filteredItems.length === 0 ? (
-            <div className="py-12 px-6 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3 shadow-xs max-w-md mx-auto my-6">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100/60 shadow-xs">
-                <ShoppingBag className="w-6 h-6" />
+            isCreator && !isDigitalProductsEnabled ? (
+              <div className="py-12 px-6 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-4 shadow-xs max-w-md mx-auto my-6">
+                <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto border border-purple-100 shadow-xs">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-black text-slate-900 font-heading">
+                    Digital Store Offline
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    {business.name} is currently not offering digital products or downloads.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+                  {(business.modules?.universal_links || business.modules?.bio_links || business.modules?.biolink) && (
+                    <a
+                      href={`/@${business.username || business.slug || business.id}`}
+                      className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer shadow-md inline-flex items-center justify-center gap-2"
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      <span>Visit Bio Link (@{business.username || business.slug})</span>
+                    </a>
+                  )}
+                  {isPortfolioEnabled && (
+                    <a
+                      href={`/portfolio/${business.slug || business.id}`}
+                      className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer shadow-md inline-flex items-center justify-center gap-2"
+                    >
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span>View Portfolio</span>
+                    </a>
+                  )}
+                </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-black text-slate-900 font-heading">
-                  No products found
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  {searchQuery ? `No results matching "${searchQuery}".` : 'No items match your selected category or filter.'}
-                </p>
+            ) : (
+              <div className="py-12 px-6 text-center bg-white rounded-3xl border border-slate-200/80 p-8 space-y-3 shadow-xs max-w-md mx-auto my-6">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100/60 shadow-xs">
+                  <ShoppingBag className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 font-heading">
+                    No products found
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {searchQuery ? `No results matching "${searchQuery}".` : 'No items match your selected category or filter.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSearchQuery('');
+                    setFoodFilter('all');
+                  }}
+                  className="min-h-[44px] px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-md inline-flex items-center gap-2"
+                >
+                  <span>Reset all filters</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCategory('all');
-                  setSearchQuery('');
-                  setFoodFilter('all');
-                }}
-                className="min-h-[44px] px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-md inline-flex items-center gap-2"
-              >
-                <span>Reset all filters</span>
-              </button>
-            </div>
+            )
           ) : (
             <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
               {filteredItems.map((item) => {

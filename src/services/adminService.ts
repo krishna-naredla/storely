@@ -22,7 +22,18 @@ import {
   PlatformAnnouncement,
   PlatformGlobalSettings,
   PlatformClientBrand,
+  PlatformBrandingConfig,
+  PlatformSeoConfig,
+  PlatformLandingHeroConfig,
+  PlatformLandingBrandItem,
+  PlatformLandingCMSConfig,
+  PlatformCustomDomainMapping,
+  PlatformCustomDomainsConfig,
 } from '../types/admin';
+import {
+  DEFAULT_BRANDING_CONFIG,
+  setCachedBranding,
+} from '../utils/branding';
 
 // Whitelisted default Super Admin emails for secure authorization
 export const AUTHORIZED_ADMIN_EMAILS = [
@@ -804,5 +815,394 @@ export async function adminGetGlobalSettings(): Promise<PlatformGlobalSettings> 
 
 export async function adminSaveGlobalSettings(settings: PlatformGlobalSettings): Promise<void> {
   await setDoc(doc(db, 'platform_settings', 'global'), settings);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('storelly_global_settings_changed', { detail: settings }));
+  }
+}
+
+export const DEFAULT_SEO_CONFIG: PlatformSeoConfig = {
+  googleVerification: '',
+  metaTitle: 'Storelly — Digital Business OS & Instant Public Storefront',
+  metaDescription: 'Turn your local business into a digital storefront in minutes with WhatsApp checkout and instant catalog.',
+  keywords: 'digital store, whatsapp store, business os, storelly, local business online',
+};
+
+export const DEFAULT_LANDING_HERO: PlatformLandingHeroConfig = {
+  badge: "India's #1 Digital Business Operating System",
+  headline: "Launch Your Online Store & Grow With Storelly",
+  subtitle: "Empower your local shop, boutique, homemade brand, or service business with a professional storefront, product catalog, instant orders, and custom digital cards — in minutes, no coding needed.",
+  heroImageUrl: "/landingpage.jpeg",
+};
+
+export const DEFAULT_LANDING_BRANDS: PlatformLandingBrandItem[] = [
+  { name: 'Organic Store', icon: 'Store' },
+  { name: 'Fashion Hub', icon: 'ShoppingBag' },
+  { name: 'Tech World', icon: 'Cpu' },
+  { name: 'Home Decor', icon: 'Home' },
+  { name: 'Fresh Basket', icon: 'PackageCheck' },
+  { name: 'Beauty Bliss', icon: 'Sparkles' },
+  { name: 'Krishna Pickles', icon: 'Store' },
+  { name: 'Artisan Crafts', icon: 'ShoppingBag' },
+];
+
+/**
+ * 1. Branding (platform_settings/branding)
+ */
+export async function adminGetBranding(): Promise<PlatformBrandingConfig> {
+  try {
+    const snap = await getDoc(doc(db, 'platform_settings', 'branding'));
+    if (snap.exists()) {
+      const data = snap.data() as PlatformBrandingConfig;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('storelly_branding_name', data.siteName || DEFAULT_BRANDING_CONFIG.siteName);
+        localStorage.setItem('storelly_branding_logo', data.logoUrl || DEFAULT_BRANDING_CONFIG.logoUrl);
+        localStorage.setItem('storelly_branding_favicon', data.faviconUrl || DEFAULT_BRANDING_CONFIG.faviconUrl);
+      }
+      applyPlatformBranding(data);
+      return data;
+    }
+  } catch (err) {
+    console.warn('Error fetching branding from Firestore:', err);
+  }
+
+  // Fallback to localStorage or default
+  const fallback = { ...DEFAULT_BRANDING_CONFIG };
+  if (typeof window !== 'undefined') {
+    try {
+      const savedName = localStorage.getItem('storelly_branding_name');
+      const savedLogo = localStorage.getItem('storelly_branding_logo');
+      const savedFavicon = localStorage.getItem('storelly_branding_favicon');
+      if (savedName) fallback.siteName = savedName;
+      if (savedLogo) fallback.logoUrl = savedLogo;
+      if (savedFavicon) fallback.faviconUrl = savedFavicon;
+    } catch {}
+  }
+  applyPlatformBranding(fallback);
+  return fallback;
+}
+
+export async function adminSaveBranding(branding: PlatformBrandingConfig): Promise<void> {
+  const payload: PlatformBrandingConfig = {
+    ...branding,
+    updatedAt: Date.now(),
+  };
+
+  await setDoc(doc(db, 'platform_settings', 'branding'), payload);
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('storelly_branding_name', payload.siteName);
+    localStorage.setItem('storelly_branding_logo', payload.logoUrl);
+    localStorage.setItem('storelly_branding_favicon', payload.faviconUrl);
+    window.dispatchEvent(new CustomEvent('storelly_branding_changed', { detail: payload }));
+  }
+
+  applyPlatformBranding(payload);
+}
+
+export function applyPlatformBranding(branding: PlatformBrandingConfig) {
+  setCachedBranding(branding);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('storelly_branding_changed', { detail: branding }));
+  }
+  if (typeof document === 'undefined') return;
+  if (branding.faviconUrl) {
+    try {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = branding.faviconUrl;
+    } catch {}
+  }
+}
+
+let inMemorySeoConfig: PlatformSeoConfig = (() => {
+  if (typeof window !== 'undefined') {
+    try {
+      const gsc = localStorage.getItem('storelly_seo_gsc');
+      const title = localStorage.getItem('storelly_seo_title');
+      const desc = localStorage.getItem('storelly_seo_desc');
+      const keywords = localStorage.getItem('storelly_seo_keywords');
+      return {
+        googleVerification: gsc || DEFAULT_SEO_CONFIG.googleVerification,
+        metaTitle: title || DEFAULT_SEO_CONFIG.metaTitle,
+        metaDescription: desc || DEFAULT_SEO_CONFIG.metaDescription,
+        keywords: keywords || DEFAULT_SEO_CONFIG.keywords,
+      };
+    } catch {}
+  }
+  return { ...DEFAULT_SEO_CONFIG };
+})();
+
+export function getCachedSeoConfig(): PlatformSeoConfig {
+  return inMemorySeoConfig;
+}
+
+export function setCachedSeoConfig(seo: Partial<PlatformSeoConfig>) {
+  inMemorySeoConfig = { ...inMemorySeoConfig, ...seo };
+}
+
+/**
+ * 2. SEO Config (platform_settings/seo)
+ */
+export async function adminGetSeoConfig(): Promise<PlatformSeoConfig> {
+  try {
+    const snap = await getDoc(doc(db, 'platform_settings', 'seo'));
+    if (snap.exists()) {
+      const data = snap.data() as PlatformSeoConfig;
+      setCachedSeoConfig(data);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('storelly_seo_gsc', data.googleVerification || '');
+        localStorage.setItem('storelly_seo_title', data.metaTitle || '');
+        localStorage.setItem('storelly_seo_desc', data.metaDescription || '');
+        localStorage.setItem('storelly_seo_keywords', data.keywords || '');
+      }
+      applyPlatformSeo(data);
+      return data;
+    }
+  } catch (err) {
+    console.warn('Error fetching SEO config from Firestore:', err);
+  }
+
+  // Fallback to localStorage or default
+  const fallback = { ...DEFAULT_SEO_CONFIG };
+  if (typeof window !== 'undefined') {
+    try {
+      const gsc = localStorage.getItem('storelly_seo_gsc');
+      const title = localStorage.getItem('storelly_seo_title');
+      const desc = localStorage.getItem('storelly_seo_desc');
+      const keywords = localStorage.getItem('storelly_seo_keywords');
+      if (gsc !== null) fallback.googleVerification = gsc;
+      if (title) fallback.metaTitle = title;
+      if (desc) fallback.metaDescription = desc;
+      if (keywords) fallback.keywords = keywords;
+    } catch {}
+  }
+  setCachedSeoConfig(fallback);
+  applyPlatformSeo(fallback);
+  return fallback;
+}
+
+export async function adminSaveSeoConfig(seo: PlatformSeoConfig): Promise<void> {
+  const payload: PlatformSeoConfig = {
+    ...seo,
+    updatedAt: Date.now(),
+  };
+
+  await setDoc(doc(db, 'platform_settings', 'seo'), payload);
+  setCachedSeoConfig(payload);
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('storelly_seo_gsc', payload.googleVerification || '');
+    localStorage.setItem('storelly_seo_title', payload.metaTitle || '');
+    localStorage.setItem('storelly_seo_desc', payload.metaDescription || '');
+    localStorage.setItem('storelly_seo_keywords', payload.keywords || '');
+    window.dispatchEvent(new CustomEvent('storelly_seo_changed', { detail: payload }));
+  }
+
+  applyPlatformSeo(payload);
+}
+
+export function applyPlatformSeo(seo: PlatformSeoConfig) {
+  if (typeof document === 'undefined') return;
+
+  // Always apply Google verification tag regardless of route
+  if (seo.googleVerification) {
+    let gsc = document.querySelector('meta[name="google-site-verification"]');
+    if (!gsc) {
+      gsc = document.createElement('meta');
+      gsc.setAttribute('name', 'google-site-verification');
+      document.head.appendChild(gsc);
+    }
+    gsc.setAttribute('content', seo.googleVerification);
+  }
+
+  // Do not overwrite active public vendor storefront titles if on a public storefront route
+  const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
+  const isSpecificPublicStore = 
+    pathname.startsWith('/store/') || 
+    pathname.startsWith('/@') || 
+    pathname.startsWith('/portfolio/') || 
+    pathname.startsWith('/p/') || 
+    pathname.startsWith('/card/');
+
+  if (isSpecificPublicStore) {
+    return;
+  }
+
+  if (seo.metaTitle) {
+    document.title = seo.metaTitle;
+    let ogTitle = document.querySelector('meta[property="og:title"]');
+    if (!ogTitle) {
+      ogTitle = document.createElement('meta');
+      ogTitle.setAttribute('property', 'og:title');
+      document.head.appendChild(ogTitle);
+    }
+    ogTitle.setAttribute('content', seo.metaTitle);
+  }
+
+  if (seo.metaDescription) {
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.setAttribute('name', 'description');
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute('content', seo.metaDescription);
+
+    let ogDesc = document.querySelector('meta[property="og:description"]');
+    if (!ogDesc) {
+      ogDesc = document.createElement('meta');
+      ogDesc.setAttribute('property', 'og:description');
+      document.head.appendChild(ogDesc);
+    }
+    ogDesc.setAttribute('content', seo.metaDescription);
+  }
+
+  if (seo.keywords) {
+    let metaKw = document.querySelector('meta[name="keywords"]');
+    if (!metaKw) {
+      metaKw = document.createElement('meta');
+      metaKw.setAttribute('name', 'keywords');
+      document.head.appendChild(metaKw);
+    }
+    metaKw.setAttribute('content', seo.keywords);
+  }
+}
+
+/**
+ * 3. Landing CMS: Hero & Brands (platform_settings/landing_cms)
+ */
+export async function adminGetLandingHero(): Promise<PlatformLandingHeroConfig> {
+  try {
+    const snap = await getDoc(doc(db, 'platform_settings', 'landing_cms'));
+    if (snap.exists()) {
+      const data = snap.data() as any;
+      if (data.hero) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('storelly_landing_hero_config', JSON.stringify(data.hero));
+        }
+        return data.hero as PlatformLandingHeroConfig;
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching landing hero from Firestore:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('storelly_landing_hero_config');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+  }
+  return DEFAULT_LANDING_HERO;
+}
+
+export async function adminSaveLandingHero(hero: PlatformLandingHeroConfig): Promise<void> {
+  const existingSnap = await getDoc(doc(db, 'platform_settings', 'landing_cms')).catch(() => null);
+  const existingData = existingSnap && existingSnap.exists() ? existingSnap.data() : {};
+
+  const payload = {
+    ...existingData,
+    hero: {
+      ...hero,
+      updatedAt: Date.now(),
+    },
+    updatedAt: Date.now(),
+  };
+
+  await setDoc(doc(db, 'platform_settings', 'landing_cms'), payload, { merge: true });
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('storelly_landing_hero_config', JSON.stringify(hero));
+    window.dispatchEvent(new CustomEvent('storelly_hero_changed', { detail: hero }));
+  }
+}
+
+export async function adminGetBrands(): Promise<PlatformLandingBrandItem[]> {
+  try {
+    const snap = await getDoc(doc(db, 'platform_settings', 'landing_cms'));
+    if (snap.exists()) {
+      const data = snap.data() as any;
+      if (Array.isArray(data.brands) && data.brands.length > 0) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('storelly_admin_brands', JSON.stringify(data.brands));
+        }
+        return data.brands as PlatformLandingBrandItem[];
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching brands from Firestore:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('storelly_admin_brands');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+  }
+  return DEFAULT_LANDING_BRANDS;
+}
+
+export async function adminSaveBrands(brands: PlatformLandingBrandItem[]): Promise<void> {
+  const existingSnap = await getDoc(doc(db, 'platform_settings', 'landing_cms')).catch(() => null);
+  const existingData = existingSnap && existingSnap.exists() ? existingSnap.data() : {};
+
+  const payload = {
+    ...existingData,
+    brands,
+    updatedAt: Date.now(),
+  };
+
+  await setDoc(doc(db, 'platform_settings', 'landing_cms'), payload, { merge: true });
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('storelly_admin_brands', JSON.stringify(brands));
+    window.dispatchEvent(new CustomEvent('storelly_brands_changed', { detail: brands }));
+  }
+}
+
+/**
+ * 4. Custom Domains (platform_settings/custom_domains)
+ */
+export async function adminGetCustomDomains(): Promise<PlatformCustomDomainMapping[]> {
+  try {
+    const snap = await getDoc(doc(db, 'platform_settings', 'custom_domains'));
+    if (snap.exists()) {
+      const data = snap.data() as any;
+      if (Array.isArray(data.domains)) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('storelly_admin_custom_domains', JSON.stringify(data.domains));
+        }
+        return data.domains as PlatformCustomDomainMapping[];
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching custom domains from Firestore:', err);
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('storelly_admin_custom_domains');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+  }
+  return [];
+}
+
+export async function adminSaveCustomDomains(domains: PlatformCustomDomainMapping[]): Promise<void> {
+  const payload: PlatformCustomDomainsConfig = {
+    domains,
+    updatedAt: Date.now(),
+  };
+
+  await setDoc(doc(db, 'platform_settings', 'custom_domains'), payload);
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('storelly_admin_custom_domains', JSON.stringify(domains));
+    window.dispatchEvent(new CustomEvent('storelly_domains_changed', { detail: domains }));
+  }
 }
 

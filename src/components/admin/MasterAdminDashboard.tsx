@@ -76,6 +76,16 @@ import {
   adminDeleteBusiness,
   adminSaveGlobalSettings,
   adminRecordAuditLog,
+  adminGetBranding,
+  adminSaveBranding,
+  adminGetSeoConfig,
+  adminSaveSeoConfig,
+  adminGetLandingHero,
+  adminSaveLandingHero,
+  adminGetBrands,
+  adminSaveBrands,
+  adminGetCustomDomains,
+  adminSaveCustomDomains,
 } from '../../services/adminService';
 import { getStorefrontUrl } from '../../services/firebaseService';
 import { AdminPricingManager } from './AdminPricingManager';
@@ -195,6 +205,12 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
   const [domainInput, setDomainInput] = useState('');
   const [domainSlugInput, setDomainSlugInput] = useState('');
 
+  // Saving states for Firestore persistence
+  const [isSavingHero, setIsSavingHero] = useState(false);
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+  const [isSavingSeo, setIsSavingSeo] = useState(false);
+  const [isSavingDomains, setIsSavingDomains] = useState(false);
+
   // Global Settings Form State
   const [settingsForm, setSettingsForm] = useState({
     siteTitle: 'Storelly — Digital Business OS & Instant Public Storefront',
@@ -266,7 +282,22 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
     setIsLoading(true);
     setError(null);
     try {
-      const [bizData, ordData, bookData, revData, custData, plansData, cmsData, settingsData, auditData] = await Promise.all([
+      const [
+        bizData,
+        ordData,
+        bookData,
+        revData,
+        custData,
+        plansData,
+        cmsData,
+        settingsData,
+        auditData,
+        brandingData,
+        seoData,
+        heroData,
+        brandsData,
+        domainsData,
+      ] = await Promise.all([
         adminGetAllBusinesses(),
         adminGetAllOrders(),
         adminGetAllBookings(),
@@ -276,6 +307,11 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
         adminGetPricingCMS(),
         adminGetGlobalSettings(),
         adminGetAuditLogs(),
+        adminGetBranding(),
+        adminGetSeoConfig(),
+        adminGetLandingHero(),
+        adminGetBrands(),
+        adminGetCustomDomains(),
       ]);
 
       setBusinesses(bizData);
@@ -288,6 +324,11 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
       setCmsForm(cmsData);
       setGlobalSettings(settingsData);
       setAuditLogs(auditData);
+      setBrandingConfig(brandingData);
+      setSeoConfig(seoData);
+      setLandingHero(heroData);
+      setLandingBrands(brandsData);
+      setCustomDomains(domainsData);
     } catch (err: any) {
       console.error('Error loading Master Admin data:', err);
       setError(err?.message || 'Failed to connect to Firestore server. Stale cached data is not displayed.');
@@ -1372,13 +1413,21 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                       </div>
                       <button
                         type="button"
-                        onClick={() => {
-                          localStorage.setItem('storelly_landing_hero_config', JSON.stringify(landingHero));
-                          alert('Landing hero settings saved successfully!');
+                        disabled={isSavingHero}
+                        onClick={async () => {
+                          setIsSavingHero(true);
+                          try {
+                            await adminSaveLandingHero(landingHero);
+                            alert('Landing hero settings saved and synchronized to Firestore successfully!');
+                          } catch (err: any) {
+                            alert('Error saving landing hero: ' + (err?.message || 'Unknown error'));
+                          } finally {
+                            setIsSavingHero(false);
+                          }
                         }}
-                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
                       >
-                        Save Hero Section Settings
+                        {isSavingHero ? 'Saving to Firestore...' : 'Save Hero Section Settings'}
                       </button>
                     </div>
                   </div>
@@ -1395,13 +1444,17 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                       />
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!newBrandName.trim()) return;
                           const updated = [...landingBrands, { name: newBrandName.trim(), icon: 'Store' }];
                           setLandingBrands(updated);
-                          localStorage.setItem('storelly_admin_brands', JSON.stringify(updated));
                           setNewBrandName('');
-                          alert('New brand added successfully to marquee!');
+                          try {
+                            await adminSaveBrands(updated);
+                            alert('New brand added and saved to Firestore successfully!');
+                          } catch (err: any) {
+                            alert('Error saving brand: ' + (err?.message || 'Unknown error'));
+                          }
                         }}
                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer flex items-center gap-2"
                       >
@@ -1420,10 +1473,14 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               const updated = landingBrands.filter((_, i) => i !== idx);
                               setLandingBrands(updated);
-                              localStorage.setItem('storelly_admin_brands', JSON.stringify(updated));
+                              try {
+                                await adminSaveBrands(updated);
+                              } catch (err: any) {
+                                alert('Error removing brand: ' + (err?.message || 'Unknown error'));
+                              }
                             }}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer"
                           >
@@ -1477,15 +1534,21 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
 
                     <button
                       type="button"
-                      onClick={() => {
-                        localStorage.setItem('storelly_branding_name', brandingConfig.siteName);
-                        localStorage.setItem('storelly_branding_logo', brandingConfig.logoUrl);
-                        localStorage.setItem('storelly_branding_favicon', brandingConfig.faviconUrl);
-                        alert('Branding settings saved successfully!');
+                      disabled={isSavingBranding}
+                      onClick={async () => {
+                        setIsSavingBranding(true);
+                        try {
+                          await adminSaveBranding(brandingConfig);
+                          alert('Branding settings saved and synchronized to Firestore successfully!');
+                        } catch (err: any) {
+                          alert('Error saving branding: ' + (err?.message || 'Unknown error'));
+                        } finally {
+                          setIsSavingBranding(false);
+                        }
                       }}
-                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
+                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
                     >
-                      Save Branding Settings
+                      {isSavingBranding ? 'Saving to Firestore...' : 'Save Branding Settings'}
                     </button>
                   </div>
                 </div>
@@ -1543,16 +1606,21 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
 
                     <button
                       type="button"
-                      onClick={() => {
-                        localStorage.setItem('storelly_seo_gsc', seoConfig.googleVerification);
-                        localStorage.setItem('storelly_seo_title', seoConfig.metaTitle);
-                        localStorage.setItem('storelly_seo_desc', seoConfig.metaDescription);
-                        localStorage.setItem('storelly_seo_keywords', seoConfig.keywords);
-                        alert('SEO & Search Console settings synchronized successfully!');
+                      disabled={isSavingSeo}
+                      onClick={async () => {
+                        setIsSavingSeo(true);
+                        try {
+                          await adminSaveSeoConfig(seoConfig);
+                          alert('SEO & Search Console settings saved and synchronized to Firestore successfully!');
+                        } catch (err: any) {
+                          alert('Error saving SEO settings: ' + (err?.message || 'Unknown error'));
+                        } finally {
+                          setIsSavingSeo(false);
+                        }
                       }}
-                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
+                      className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-md transition cursor-pointer"
                     >
-                      Save SEO & Search Settings
+                      {isSavingSeo ? 'Saving to Firestore...' : 'Save SEO & Search Settings'}
                     </button>
                   </div>
                 </div>
@@ -1588,21 +1656,29 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                       </select>
                       <button
                         type="button"
-                        onClick={() => {
+                        disabled={isSavingDomains}
+                        onClick={async () => {
                           if (!domainInput.trim() || !domainSlugInput) {
                             alert('Please enter a domain and select a store slug.');
                             return;
                           }
-                          const updated = [...customDomains, { domain: domainInput.trim(), slug: domainSlugInput, status: 'Active' }];
+                          const updated = [...customDomains, { domain: domainInput.trim(), slug: domainSlugInput, status: 'Active', createdAt: Date.now() }];
                           setCustomDomains(updated);
-                          localStorage.setItem('storelly_admin_custom_domains', JSON.stringify(updated));
                           setDomainInput('');
                           setDomainSlugInput('');
-                          alert('Custom domain mapping added successfully!');
+                          setIsSavingDomains(true);
+                          try {
+                            await adminSaveCustomDomains(updated);
+                            alert('Custom domain mapping saved to Firestore successfully!');
+                          } catch (err: any) {
+                            alert('Error saving custom domain: ' + (err?.message || 'Unknown error'));
+                          } finally {
+                            setIsSavingDomains(false);
+                          }
                         }}
-                        className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                        className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
                       >
-                        <Plus className="w-4 h-4" /> Map Domain
+                        <Plus className="w-4 h-4" /> {isSavingDomains ? 'Saving...' : 'Map Domain'}
                       </button>
                     </div>
                   </div>
@@ -1630,10 +1706,14 @@ export const MasterAdminDashboard: React.FC<MasterAdminDashboardProps> = ({ admi
                             <td className="p-4 text-right">
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   const updated = customDomains.filter((_: any, i: number) => i !== idx);
                                   setCustomDomains(updated);
-                                  localStorage.setItem('storelly_admin_custom_domains', JSON.stringify(updated));
+                                  try {
+                                    await adminSaveCustomDomains(updated);
+                                  } catch (err: any) {
+                                    alert('Error removing custom domain: ' + (err?.message || 'Unknown error'));
+                                  }
                                 }}
                                 className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg transition cursor-pointer"
                               >

@@ -272,6 +272,39 @@ export function resolveTargetViewForBusiness(
   // If user requested an explicit view (e.g. /store/:slug, /@:slug, /portfolio/:slug, /card/:slug):
   // Directly honor that explicit view. Do NOT silently change to another view!
   if (route.explicitView === 'store') {
+    // Creator single-module storefront gating:
+    // When a creator has ONLY universal_links enabled (no digital_products, no work_portfolio, no vendor commerce modules),
+    // visiting /store/:slug redirects to their active /@:slug bio-link page instead, since that's their actual active page.
+    if (isCreator && !route.isExplicitPreview) {
+      const modules = business.modules || {};
+      const hasDigitalStore = Boolean(
+        modules.digital_products ||
+        modules.digitalProducts ||
+        modules.products ||
+        modules.catalog
+      );
+      const hasPortfolio = Boolean(
+        modules.work_portfolio ||
+        modules.portfolio
+      );
+      const hasCommerce = Boolean(
+        modules.cart_ordering ||
+        modules.menu ||
+        modules.table_delivery ||
+        modules.services ||
+        modules.rooms ||
+        modules.vehicles
+      );
+      const hasBio = Boolean(
+        modules.universal_links ||
+        modules.bio_links ||
+        modules.biolink
+      );
+
+      if (!hasDigitalStore && !hasPortfolio && !hasCommerce && hasBio) {
+        return { targetView: 'bio', canonicalPath: `/@${slug}` };
+      }
+    }
     return { targetView: 'store', canonicalPath: `/store/${slug}` };
   }
   if (route.explicitView === 'bio') {

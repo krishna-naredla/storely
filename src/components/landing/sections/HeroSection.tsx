@@ -1,23 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, Star } from 'lucide-react';
+import { adminGetLandingHero, DEFAULT_LANDING_HERO } from '../../../services/adminService';
+import { PlatformLandingHeroConfig } from '../../../types/admin';
 
 interface Props {
   onOpenAuth: (mode: 'login' | 'signup') => void;
 }
 
 export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
-  const heroConfig = (() => {
+  const [heroConfig, setHeroConfig] = useState<PlatformLandingHeroConfig>(() => {
     try {
       const saved = localStorage.getItem('storelly_landing_hero_config');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return {
-      badge: "India's #1 Digital Business Operating System",
-      headline: "Launch Your Online Store & Grow With Storelly",
-      subtitle: "Empower your local shop, boutique, homemade brand, or service business with a professional storefront, product catalog, instant orders, and custom digital cards — in minutes, no coding needed.",
-      heroImageUrl: "/landingpage.jpeg"
+    return DEFAULT_LANDING_HERO;
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    adminGetLandingHero().then((data) => {
+      if (isMounted && data) {
+        setHeroConfig(data);
+      }
+    });
+
+    const handleHeroChanged = (e: any) => {
+      if (e?.detail) setHeroConfig(e.detail);
     };
-  })();
+
+    window.addEventListener('storelly_hero_changed', handleHeroChanged);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storelly_hero_changed', handleHeroChanged);
+    };
+  }, []);
 
   return (
     <div className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden bg-[var(--bg)] border-b border-[var(--border)]">
@@ -32,7 +48,15 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-black text-[var(--t1)] leading-[1.12] tracking-tight">
-              {heroConfig.headline.split('Storelly')[0]} <span className="text-[var(--g600)]">Storelly</span> {heroConfig.headline.split('Storelly')[1] || ''}
+              {heroConfig.headline && heroConfig.headline.includes('Storelly') ? (
+                <>
+                  {heroConfig.headline.split('Storelly')[0]}
+                  <span className="text-[var(--g600)]">Storelly</span>
+                  {heroConfig.headline.split('Storelly')[1] || ''}
+                </>
+              ) : (
+                heroConfig.headline
+              )}
             </h1>
             
             <p className="text-lg sm:text-xl text-[var(--t2)] leading-relaxed max-w-2xl font-normal">
@@ -71,7 +95,7 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           <div className="lg:col-span-5 relative flex items-center justify-center">
             <div className="relative w-full rounded-[var(--r20)] bg-[var(--card)] shadow-[var(--shadow-lg)] border border-[var(--border)] p-4 sm:p-5 overflow-hidden flex items-center justify-center">
               <img 
-                src={"/landingpage.jpeg"} 
+                src={heroConfig.heroImageUrl || "/landingpage.jpeg"} 
                 alt="Storelly Business Showcase" 
                 className="w-full h-auto max-h-[580px] lg:max-h-[640px] object-cover rounded-[var(--r12)] border border-[var(--border)] shadow-[var(--shadow-sm)] mx-auto"
               />
