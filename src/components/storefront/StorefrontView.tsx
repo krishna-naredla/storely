@@ -798,33 +798,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 space-y-8">
         
-        {/* Creator Single-Module Bio Link Notice Banner when Digital Store is Disabled */}
-        {isCreator && !isDigitalProductsEnabled && (business.modules?.universal_links || business.modules?.bio_links || business.modules?.biolink) && (
-          <div className="rounded-2xl p-4 bg-purple-50 border border-purple-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-purple-900 shadow-xs">
-            <div className="flex items-center gap-3 text-center sm:text-left">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold font-heading">
-                  Looking for {business.name}'s official links &amp; socials?
-                </p>
-                <p className="text-[11px] text-purple-700">
-                  Their primary public profile is active at @{business.username || business.slug}.
-                </p>
-              </div>
-            </div>
-            <a
-              href={`/@${business.username || business.slug || business.id}`}
-              className="px-4 py-2 min-h-[38px] bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
-            >
-              <LinkIcon className="w-3.5 h-3.5" />
-              <span>View Bio Link</span>
-              <ArrowRight className="w-3 h-3" />
-            </a>
-          </div>
-        )}
-        
         {/* Active Promotional Offers Ribbon */}
         {offers.length > 0 && (
           <section className="space-y-4">

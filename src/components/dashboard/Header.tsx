@@ -531,16 +531,17 @@ export const Header: React.FC<HeaderProps> = ({
             <ChevronDown className={`w-3.5 h-3.5 text-[var(--t3)] transition-transform duration-200 hidden sm:block ${userMenuOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Quick 1-click Sign Out button on Desktop Header */}
+          {/* Direct Sign Out button in Header */}
           {onLogout && (
             <button
               type="button"
               onClick={onLogout}
               title="Sign Out of Storelly"
               aria-label="Sign Out"
-              className="hidden lg:flex touch-target-accessible min-h-[36px] min-w-[36px] items-center justify-center p-2 rounded-[var(--r8)] text-[var(--t3)] hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50/80 hover:bg-rose-100/90 border border-rose-200 rounded-[var(--r8)] transition cursor-pointer shadow-2xs shrink-0"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           )}
 

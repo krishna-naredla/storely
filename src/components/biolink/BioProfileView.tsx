@@ -83,13 +83,16 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     showVerifiedBadge: rawTheme?.showVerifiedBadge !== false,
     profession: rawTheme?.profession || business?.tagline || businessTagline || DEFAULT_BIO_THEME.profession,
     showSocialIconsBar: rawTheme?.showSocialIconsBar !== false,
+    showStoreLink: rawTheme?.showStoreLink === true || (business as any)?.showStoreOnBio === true,
+    showPortfolioLink: rawTheme?.showPortfolioLink === true || (business as any)?.showPortfolioOnBio === true,
+    showOfficialLinksBadge: rawTheme?.showOfficialLinksBadge === true || (business as any)?.showOfficialLinksBadge === true,
   };
 
   const canonicalBioUrl = getBioLinkUrl(businessSlug);
 
   useEffect(() => {
     if (!businessId) return;
-    const title = `${businessName} — Official Links`;
+    const title = businessName;
     document.title = title;
     recordBioLinkView(businessId);
     loadData();
@@ -221,7 +224,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
 
   const handleShare = async () => {
     const shareData = {
-      title: `${business.name} — Official Links`,
+      title: business.name,
       text: business.tagline || `Check out all links, services & updates for ${business.name}!`,
       url: canonicalBioUrl,
     };
@@ -323,15 +326,17 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
                 <ArrowLeft className="w-4 h-4" />
                 <span>Dashboard</span>
               </button>
-            ) : (
+            ) : theme.showOfficialLinksBadge ? (
               <div className="flex items-center gap-2 opacity-80 text-xs sm:text-sm font-semibold tracking-wider uppercase text-white">
                 <Sparkles className="w-4 h-4 text-emerald-400" />
                 <span>Official Links</span>
               </div>
+            ) : (
+              <div />
             )}
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {hasStoreModule && (
+              {theme.showStoreLink && hasStoreModule && (
                 <a
                   href={`/store/${business.slug}`}
                   target="_blank"
@@ -345,7 +350,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
                 </a>
               )}
 
-              {hasPortfolioModule && (
+              {theme.showPortfolioLink && hasPortfolioModule && (
                 <a
                   href={`/portfolio/${business.slug}`}
                   target="_blank"
@@ -384,15 +389,17 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               <ArrowLeft className="w-4 h-4" />
               <span>Dashboard</span>
             </button>
-          ) : (
+          ) : theme.showOfficialLinksBadge ? (
             <div className="flex items-center gap-2 opacity-70 text-xs sm:text-sm font-semibold tracking-wider uppercase" style={{ color: theme.textColor }}>
               <Sparkles className="w-4 h-4 text-emerald-400" />
               <span>Official Links</span>
             </div>
+          ) : (
+            <div />
           )}
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {hasStoreModule && (
+            {theme.showStoreLink && hasStoreModule && (
               <a
                 href={`/store/${business.slug}`}
                 target="_blank"
@@ -406,7 +413,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               </a>
             )}
 
-            {hasPortfolioModule && (
+            {theme.showPortfolioLink && hasPortfolioModule && (
               <a
                 href={`/portfolio/${business.slug}`}
                 target="_blank"
@@ -649,9 +656,9 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
         )}
 
         {/* ENABLED MODULES SHOWCASE (Portfolio / Digital Store) */}
-        {(hasPortfolioModule || hasStoreModule) && (
+        {((hasPortfolioModule && theme.showPortfolioLink) || (hasStoreModule && theme.showStoreLink)) && (
           <div className="w-full mt-6 xs:mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {hasPortfolioModule && (
+            {hasPortfolioModule && theme.showPortfolioLink && (
               <a
                 href={`/portfolio/${business.slug}`}
                 className="group p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 flex items-center justify-between shadow-lg text-left"
@@ -673,7 +680,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               </a>
             )}
 
-            {hasStoreModule && (
+            {hasStoreModule && theme.showStoreLink && (
               <a
                 href={`/store/${business.slug}`}
                 className="group p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all duration-300 flex items-center justify-between shadow-lg text-left"

@@ -1069,6 +1069,23 @@ export async function updateOrderStatus(businessId: string, orderId: string, sta
   }
 }
 
+export async function updateOrder(
+  businessId: string,
+  orderId: string,
+  data: Partial<Order>
+): Promise<void> {
+  try {
+    const docRef = doc(db, 'businesses', businessId, 'orders', orderId);
+    await updateDoc(docRef, {
+      ...data,
+      updatedAt: Date.now(),
+    });
+  } catch (err) {
+    console.error('Firestore updateOrder error:', err);
+    throw err;
+  }
+}
+
 export async function deleteOrder(businessId: string, orderId: string): Promise<void> {
   try {
     const docRef = doc(db, 'businesses', businessId, 'orders', orderId);

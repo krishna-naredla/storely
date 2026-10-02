@@ -173,6 +173,9 @@ export interface BusinessProfile {
   shareCount?: number;
   bioRouting?: 'standalone' | 'storefront' | 'both';
   bioTheme?: any;
+  showStoreOnBio?: boolean;
+  showPortfolioOnBio?: boolean;
+  showOfficialLinksBadge?: boolean;
   portfolioSettings?: PortfolioSettings;
   trustCardSettings?: StoreTrustCardSettings;
   createdAt: number;
@@ -382,6 +385,14 @@ export interface Order {
   downloadStatus?: 'not_started' | 'completed';
   digitalAccessUrl?: string; // Temporary signed URL
   notes?: string;
+  // Shipping & Courier metadata
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  packageWeight?: string;
+  packageDimensions?: string;
+  customerState?: string;
+  customerCountry?: string;
+  shippingLabelGeneratedAt?: number;
   createdAt: number;
   updatedAt: number;
 }

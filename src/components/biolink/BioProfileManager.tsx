@@ -45,6 +45,8 @@ import {
   Zap,
   Save,
   Star,
+  Briefcase,
+  ShoppingBag,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { normalizeSocialLinksToObject, getSocialLinkValue } from '../../utils/profileHelper';
@@ -66,6 +68,8 @@ const QUICK_PRESET_ITEMS = [
   { type: 'instagram', label: 'Instagram', desc: 'Follow on Instagram', subtitle: 'Reels, posts & stories' },
   { type: 'youtube', label: 'YouTube', desc: 'YouTube Channel', subtitle: 'Subscribe & watch videos' },
   { type: 'telegram', label: 'Telegram', desc: 'Telegram Channel', subtitle: 'Join community' },
+  { type: 'digital_store', label: 'Store', desc: 'My Digital Store', subtitle: 'Products, catalog & downloads' },
+  { type: 'portfolio', label: 'Portfolio', desc: 'My Portfolio', subtitle: 'Projects, gallery & case studies' },
   { type: 'website', label: 'Website', desc: 'Visit My Website', subtitle: 'Portfolio & services' },
   { type: 'twitter', label: 'X (Twitter)', desc: 'Follow on X', subtitle: 'Thoughts & updates' },
   { type: 'google_form', label: 'Google Form', desc: 'Google Form', subtitle: 'Fill this form' },
@@ -73,7 +77,6 @@ const QUICK_PRESET_ITEMS = [
   { type: 'google_doc', label: 'Google Doc', desc: 'Google Docs', subtitle: 'Read documentation' },
   { type: 'email', label: 'Email', desc: 'Email Me', subtitle: "Let's work together" },
   { type: 'phone', label: 'Phone Call', desc: 'Call Me Directly', subtitle: 'Quick phone call' },
-  { type: 'digital_store', label: 'Digital Store', desc: 'Digital Products', subtitle: 'eBooks, Templates & more' },
   { type: 'consultation', label: 'Consultation', desc: 'Book 1:1 Call', subtitle: 'Pick a slot that works' },
   { type: 'custom', label: 'Custom Link', desc: 'Custom Destination', subtitle: 'Tap to view' },
 ];
@@ -131,6 +134,9 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
     showVerifiedBadge: rawTheme.showVerifiedBadge !== false,
     profession: rawTheme.profession || business.tagline || 'Entrepreneur | Content Creator',
     showSocialIconsBar: rawTheme.showSocialIconsBar !== false,
+    showStoreLink: rawTheme.showStoreLink === true || (business as any)?.showStoreOnBio === true,
+    showPortfolioLink: rawTheme.showPortfolioLink === true || (business as any)?.showPortfolioOnBio === true,
+    showOfficialLinksBadge: rawTheme.showOfficialLinksBadge === true || (business as any)?.showOfficialLinksBadge === true,
     socials: rawTheme.socials || (() => {
       const existingSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
       return {
@@ -256,6 +262,14 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
       setUrl(business.socialLinks?.youtube || theme.socials?.youtube || brand.placeholderUrl);
     } else if (presetItem.type === 'website' && business.website) {
       setUrl(business.website);
+    } else if (presetItem.type === 'digital_store') {
+      setUrl(`/store/${business.slug || business.id}`);
+      setTitle('My Digital Store');
+      setSubtitle('Products, downloads & catalog');
+    } else if (presetItem.type === 'portfolio') {
+      setUrl(`/portfolio/${business.slug || business.id}`);
+      setTitle('My Portfolio');
+      setSubtitle('Selected works & showcase');
     } else {
       setUrl(brand.placeholderUrl);
     }
@@ -407,6 +421,9 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
         whatsapp: theme.socials?.whatsapp || business.whatsapp,
         socialLinks: mergedSocialLinks,
         bioTheme: updatedTheme,
+        showStoreOnBio: updatedTheme.showStoreLink === true,
+        showPortfolioOnBio: updatedTheme.showPortfolioLink === true,
+        showOfficialLinksBadge: updatedTheme.showOfficialLinksBadge === true,
         updatedAt: Date.now(),
       };
       await updateBusinessProfile(business.id, {
@@ -416,6 +433,9 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
         whatsapp: theme.socials?.whatsapp || business.whatsapp,
         socialLinks: mergedSocialLinks,
         bioTheme: updatedTheme,
+        showStoreOnBio: updatedTheme.showStoreLink === true,
+        showPortfolioOnBio: updatedTheme.showPortfolioLink === true,
+        showOfficialLinksBadge: updatedTheme.showOfficialLinksBadge === true,
       });
       try {
         localStorage.setItem(`storelly_biz_${business.id}`, JSON.stringify(updatedBiz));
@@ -527,6 +547,26 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
     }
     setTheme(updatedTheme);
     setHasUnsavedChanges(true);
+  };
+
+  const handleToggleSection = async (
+    key: 'showStoreLink' | 'showPortfolioLink' | 'showOfficialLinksBadge',
+    val: boolean
+  ) => {
+    const updatedTheme: any = { ...theme, [key]: val };
+    setTheme(updatedTheme);
+    setHasUnsavedChanges(true);
+
+    const updates: Partial<BusinessProfile> = {
+      bioTheme: updatedTheme,
+    };
+    if (key === 'showStoreLink') updates.showStoreOnBio = val;
+    if (key === 'showPortfolioLink') updates.showPortfolioOnBio = val;
+    if (key === 'showOfficialLinksBadge') updates.showOfficialLinksBadge = val;
+
+    await syncBusinessUpdate(updates);
+    setShowAutoSavedToast(true);
+    setTimeout(() => setShowAutoSavedToast(false), 2000);
   };
 
   const handleApplyPreset = async (presetId: string) => {
@@ -956,6 +996,125 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                 </form>
               )}
 
+              {/* Store & Portfolio Modules Visibility Switches Card */}
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-emerald-600" />
+                      <span>Store & Portfolio Visibility on Bio Link</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Enable or disable your Digital Store, Portfolio, and Official Links sections on your public Bio Link page.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  {/* Digital Store Toggle */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    theme.showStoreLink ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/70'
+                  } space-y-2`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Store className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block leading-tight">Digital Store</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Products & Catalog</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection('showStoreLink', !theme.showStoreLink)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
+                          theme.showStoreLink ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={theme.showStoreLink ? 'Store section enabled on Bio Link' : 'Store section disabled on Bio Link'}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform shadow-xs ${
+                            theme.showStoreLink ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      {theme.showStoreLink ? '✅ Shown on Bio Link' : '❌ Hidden from Bio Link'}
+                    </p>
+                  </div>
+
+                  {/* Portfolio Toggle */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    theme.showPortfolioLink ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 bg-slate-50/70'
+                  } space-y-2`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                          <Briefcase className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block leading-tight">Work Portfolio</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Showcase & Projects</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection('showPortfolioLink', !theme.showPortfolioLink)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
+                          theme.showPortfolioLink ? 'bg-indigo-600' : 'bg-slate-300'
+                        }`}
+                        title={theme.showPortfolioLink ? 'Portfolio section enabled on Bio Link' : 'Portfolio section disabled on Bio Link'}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform shadow-xs ${
+                            theme.showPortfolioLink ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      {theme.showPortfolioLink ? '✅ Shown on Bio Link' : '❌ Hidden from Bio Link'}
+                    </p>
+                  </div>
+
+                  {/* Official Links Badge Toggle */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    theme.showOfficialLinksBadge ? 'border-purple-300 bg-purple-50/50' : 'border-slate-200 bg-slate-50/70'
+                  } space-y-2`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block leading-tight">Official Links</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Header Verified Text</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection('showOfficialLinksBadge', !theme.showOfficialLinksBadge)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
+                          theme.showOfficialLinksBadge ? 'bg-purple-600' : 'bg-slate-300'
+                        }`}
+                        title={theme.showOfficialLinksBadge ? 'Official links header text enabled' : 'Official links header text disabled'}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform shadow-xs ${
+                            theme.showOfficialLinksBadge ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      {theme.showOfficialLinksBadge ? '✅ Shown in Header' : '❌ Hidden from Header'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Existing Links List */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between">
@@ -1342,6 +1501,110 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                     />
                     <p className="text-[11px] text-slate-400 mt-1">
                       Supports emojis, new lines, and handles. Changes preview instantly on the right.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Linked Sections & Header Navigation (Store, Portfolio, Official Links Badge) */}
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-emerald-600" />
+                      <span>Linked Sections & Navigation Controls</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Turn Store and Portfolio buttons on or off on your public Bio Link page. When turned off, they will not appear.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  {/* Digital Store Toggle */}
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Store className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-xs text-slate-900">Store Button</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection('showStoreLink', !theme.showStoreLink)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
+                          theme.showStoreLink ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        title={theme.showStoreLink ? 'Store button enabled' : 'Store button disabled'}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform shadow-xs ${
+                            theme.showStoreLink ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Show top header button linking to your Digital Store ({business.slug}/store).
+                    </p>
+                  </div>
+
+                  {/* Portfolio Toggle */}
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                          <Briefcase className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-xs text-slate-900">Portfolio Button</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection('showPortfolioLink', !theme.showPortfolioLink)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
+                          theme.showPortfolioLink ? 'bg-indigo-600' : 'bg-slate-300'
+                        }`}
+                        title={theme.showPortfolioLink ? 'Portfolio button enabled' : 'Portfolio button disabled'}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform shadow-xs ${
+                            theme.showPortfolioLink ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Show top header button linking to your Work Portfolio ({business.slug}/portfolio).
+                    </p>
+                  </div>
+
+                  {/* Official Links Badge Toggle */}
+                  <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-xs text-slate-900">Official Links Badge</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSection('showOfficialLinksBadge', !theme.showOfficialLinksBadge)}
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
+                          theme.showOfficialLinksBadge ? 'bg-purple-600' : 'bg-slate-300'
+                        }`}
+                        title={theme.showOfficialLinksBadge ? 'Official links badge enabled' : 'Official links badge disabled'}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full bg-white transition-transform shadow-xs ${
+                            theme.showOfficialLinksBadge ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Show the top "Official Links" sparkle badge in the profile header.
                     </p>
                   </div>
                 </div>
@@ -2072,6 +2335,42 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                           <SocialBrandIcon type={s.icon} size={15} />
                         </div>
                       ))}
+                  </div>
+                )}
+
+                {/* Enabled Modules Showcase in Live Phone Preview */}
+                {((theme.showPortfolioLink && Boolean(business.modules?.work_portfolio || business.modules?.portfolio)) ||
+                  (theme.showStoreLink && Boolean(business.modules?.digital_products || business.modules?.products || business.modules?.catalog))) && (
+                  <div className="w-full mt-3 space-y-2 text-left">
+                    {theme.showPortfolioLink && (
+                      <div className="p-2.5 rounded-xl border border-white/20 bg-white/10 backdrop-blur-xs flex items-center justify-between text-left">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-500/30 text-indigo-300 border border-indigo-400/40 flex items-center justify-center shrink-0">
+                            <Briefcase className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-bold truncate">Curated Portfolio</div>
+                            <div className="text-[9px] opacity-70 truncate">Selected works & case studies</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                      </div>
+                    )}
+
+                    {theme.showStoreLink && (
+                      <div className="p-2.5 rounded-xl border border-white/20 bg-white/10 backdrop-blur-xs flex items-center justify-between text-left">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-bold truncate">Digital Store</div>
+                            <div className="text-[9px] opacity-70 truncate">Downloads & resources</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                      </div>
+                    )}
                   </div>
                 )}
 

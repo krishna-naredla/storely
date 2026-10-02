@@ -23,6 +23,12 @@ import {
   FileCheck,
   Video,
   FileText,
+  Mail,
+  Copy,
+  Check,
+  CreditCard,
+  Tag,
+  ExternalLink,
 } from 'lucide-react';
 import { BusinessProfile, Order, OrderStatus } from '../../types';
 import { getOrders, updateOrderStatus, subscribeToOrders, deleteOrder } from '../../services/firebaseService';
@@ -30,6 +36,7 @@ import { auth } from '../../config/firebase';
 import { SwipeToDelete } from '../common/SwipeToDelete';
 import { exportToCSV } from '../../utils/export';
 import { isCreatorProfile } from '../../utils/profileHelper';
+import { ShippingLabelModal } from './ShippingLabelModal';
 
 interface OrderManagerProps {
   business: BusinessProfile;
@@ -45,6 +52,44 @@ export const OrderManager: React.FC<any> = ({ business }) => {
   // Selected Order for Details View
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [copiedInvoice, setCopiedInvoice] = useState(false);
+
+  // 4x6 Shipping Label Modal
+  const [shippingLabelOrder, setShippingLabelOrder] = useState<Order | null>(null);
+  const [isShippingLabelOpen, setIsShippingLabelOpen] = useState(false);
+
+  const handleOpenShippingLabel = (order: Order) => {
+    setShippingLabelOrder(order);
+    setIsShippingLabelOpen(true);
+  };
+
+  const handleCopyInvoice = (order: Order) => {
+    try {
+      const itemsText = order.items.map(i => `- ${i.name}${i.variantName ? ` (${i.variantName})` : ''} x${i.quantity}: ${business.currencySymbol}${i.price * i.quantity}`).join('\n');
+      const invoiceText = `*INVOICE: ${business.name}*\n` +
+        `Order #: ${order.orderNumber}\n` +
+        `Date: ${new Date(order.createdAt).toLocaleString()}\n` +
+        `Customer: ${order.customerName} (${order.customerPhone})\n` +
+        (order.customerEmail ? `Email: ${order.customerEmail}\n` : '') +
+        (order.customerAddress ? `Address: ${order.customerAddress}${order.customerCity ? `, ${order.customerCity}` : ''}${order.customerPincode ? ` - ${order.customerPincode}` : ''}\n` : '') +
+        (order.tableNumber ? `Table: ${order.tableNumber}\n` : '') +
+        `\n*ITEMS:*\n${itemsText}\n\n` +
+        `Subtotal: ${business.currencySymbol}${order.subtotal}\n` +
+        (order.deliveryFee ? `Delivery: ${business.currencySymbol}${order.deliveryFee}\n` : '') +
+        (order.tax ? `Tax: ${business.currencySymbol}${order.tax}\n` : '') +
+        (order.discount ? `Discount: -${business.currencySymbol}${order.discount}\n` : '') +
+        `*TOTAL: ${business.currencySymbol}${order.total}*\n` +
+        `Payment: ${order.paymentMethod?.toUpperCase() || 'COD'} (${order.paymentStatus?.toUpperCase() || 'PENDING'})\n` +
+        (order.razorpayPaymentId ? `Transaction Ref: ${order.razorpayPaymentId}\n` : '') +
+        (order.notes ? `Customer Notes: ${order.notes}\n` : '');
+
+      navigator.clipboard.writeText(invoiceText);
+      setCopiedInvoice(true);
+      setTimeout(() => setCopiedInvoice(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy invoice:', err);
+    }
+  };
 
   useEffect(() => {
     if (!business?.id || !auth?.currentUser) {
@@ -309,6 +354,18 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {order.orderType === 'delivery' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenShippingLabel(order)}
+                        className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-[var(--r8)] transition flex items-center gap-1 cursor-pointer border border-slate-200"
+                        title="Print 4x6 Courier Shipping Label"
+                      >
+                        <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="hidden sm:inline">Label</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handleSendWhatsAppUpdate(order)}
@@ -417,7 +474,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                   <label className="block text-xs font-bold text-[var(--t1)] uppercase tracking-wider font-heading">
                     Update Fulfilment Status
                   </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
                     {(['pending', 'pending-verification', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'] as OrderStatus[]).map(
                       (st) => (
                         <button
@@ -425,7 +482,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                           type="button"
                           disabled={isUpdatingStatus}
                           onClick={() => handleStatusChange(selectedOrder, st)}
-                          className={`py-1.5 px-2 rounded-[var(--r8)] text-xs font-bold capitalize transition ${
+                          className={`py-1.5 px-2 rounded-[var(--r8)] text-[11px] font-bold capitalize transition cursor-pointer ${
                             selectedOrder.status === st
                               ? 'bg-[var(--g600)] text-white shadow-[var(--shadow-xs)]'
                               : 'bg-[var(--card)] text-[var(--t2)] hover:bg-[var(--bg)] border border-[var(--border)]'
@@ -439,42 +496,150 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                 </div>
               )}
 
-              {/* Customer Details */}
+              {/* Customer & Order Metadata Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3.5 rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg)] space-y-1.5">
+                {/* Customer Information Card */}
+                <div className="p-3.5 rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg)] space-y-2">
                   <span className="font-bold uppercase text-[10px] tracking-wider block text-[var(--t3)]">
                     Customer Information
                   </span>
                   <div className="font-bold text-[var(--t1)] flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-[var(--t3)]" />
-                    {selectedOrder.customerName}
+                    <span>{selectedOrder.customerName}</span>
                   </div>
-                  <div className="text-[var(--t2)] flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-[var(--t3)]" />
-                    {selectedOrder.customerPhone}
-                  </div>
-                </div>
 
-                <div className="p-3.5 rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg)] space-y-1.5">
-                  <span className="font-bold uppercase text-[10px] tracking-wider block text-[var(--t3)]">
-                    Delivery / Fulfilment
-                  </span>
-                  <div className="font-semibold text-[var(--t1)] capitalize">
-                    {selectedOrder.orderType.replace('_', ' ')}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[var(--t2)] flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-[var(--t3)]" />
+                      <span>{selectedOrder.customerPhone}</span>
+                    </div>
+                    <div className="flex items-center gap-1 print-hide">
+                      <a
+                        href={`tel:${selectedOrder.customerPhone}`}
+                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition"
+                        title="Call Customer"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleSendWhatsAppUpdate(selectedOrder)}
+                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition cursor-pointer"
+                        title="Message on WhatsApp"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  {selectedOrder.customerAddress && (
-                    <div className="text-[var(--t2)] text-[11px] leading-relaxed flex items-start gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-[var(--t3)] shrink-0 mt-0.5" />
-                      <span>{selectedOrder.customerAddress}</span>
+
+                  {selectedOrder.customerEmail && (
+                    <div className="text-[var(--t2)] flex items-center gap-1.5 truncate">
+                      <Mail className="w-3.5 h-3.5 text-[var(--t3)] shrink-0" />
+                      <a href={`mailto:${selectedOrder.customerEmail}`} className="hover:underline truncate">
+                        {selectedOrder.customerEmail}
+                      </a>
                     </div>
                   )}
+
+                  {selectedOrder.customerAddress && (
+                    <div className="text-[var(--t2)] text-[11px] leading-relaxed flex items-start gap-1 pt-1 border-t border-[var(--border)]">
+                      <MapPin className="w-3.5 h-3.5 text-[var(--t3)] shrink-0 mt-0.5" />
+                      <span>
+                        {selectedOrder.customerAddress}
+                        {selectedOrder.customerCity ? `, ${selectedOrder.customerCity}` : ''}
+                        {selectedOrder.customerPincode ? ` - ${selectedOrder.customerPincode}` : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedOrder.notes && (
+                    <div className="pt-1.5 border-t border-[var(--border)] text-[11px] text-amber-800 bg-amber-50/70 p-2 rounded-[var(--r8)] border border-amber-200">
+                      <span className="font-bold block">Customer Note:</span>
+                      {selectedOrder.notes}
+                    </div>
+                  )}
+                </div>
+
+                {/* Fulfilment & Payment Information Card */}
+                <div className="p-3.5 rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg)] space-y-2">
+                  <span className="font-bold uppercase text-[10px] tracking-wider block text-[var(--t3)]">
+                    Fulfilment & Payment
+                  </span>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--t3)]">Order Channel:</span>
+                    <span className="font-bold text-[var(--t1)] capitalize">
+                      {selectedOrder.orderType.replace('_', ' ')}
+                    </span>
+                  </div>
+
                   {selectedOrder.tableNumber && (
-                    <div className="text-[var(--g700)] font-bold">
-                      Table: {selectedOrder.tableNumber}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[var(--t3)]">Dine-in Table:</span>
+                      <span className="text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        Table {selectedOrder.tableNumber}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--t3)]">Payment Method:</span>
+                    <span className="font-semibold text-[var(--t1)] uppercase">
+                      {selectedOrder.paymentMethod?.replace(/_/g, ' ') || 'COD'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--t3)]">Payment Status:</span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                        selectedOrder.paymentStatus === 'paid'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : selectedOrder.paymentStatus === 'failed'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}
+                    >
+                      {selectedOrder.paymentStatus || 'Pending'}
+                    </span>
+                  </div>
+
+                  {selectedOrder.razorpayPaymentId && (
+                    <div className="pt-1 border-t border-[var(--border)] text-[10px] text-[var(--t3)]">
+                      <span className="font-semibold block text-[var(--t2)]">Transaction Ref:</span>
+                      <span className="font-mono text-[var(--t1)]">{selectedOrder.razorpayPaymentId}</span>
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* Digital Product Delivery Card (if applicable) */}
+              {(selectedOrder.orderType === 'digital' || selectedOrder.digitalAccessUrl) && (
+                <div className="p-3.5 rounded-[var(--r12)] border border-purple-200 bg-purple-50/60 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-purple-900">
+                      <Download className="w-4 h-4 text-purple-600" />
+                      <span>Digital Product Fulfillment</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-200 text-purple-900 uppercase">
+                      {selectedOrder.downloadStatus === 'completed' ? 'Delivered' : 'Ready for Access'}
+                    </span>
+                  </div>
+                  {selectedOrder.digitalAccessUrl && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <a
+                        href={selectedOrder.digitalAccessUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Open Digital File</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Items Breakdown */}
               <div>
@@ -483,23 +648,32 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                 </h4>
                 <div className="border border-[var(--border)] rounded-[var(--r12)] overflow-hidden divide-y divide-[var(--border)]">
                   {selectedOrder.items.map((item, idx) => (
-                    <div key={idx} className="p-3 flex items-center justify-between text-xs bg-[var(--card)]">
-                      <div>
-                        <div className="font-bold text-[var(--t1)]">{item.name}</div>
-                        {item.variantName && (
-                          <div className="text-[11px] text-[var(--g700)]">Option: {item.variantName}</div>
+                    <div key={idx} className="p-3 flex items-center justify-between text-xs bg-[var(--card)] gap-3">
+                      <div className="flex items-center gap-3">
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-10 h-10 rounded-[var(--r8)] object-cover border border-[var(--border)] shrink-0"
+                          />
                         )}
-                        {item.addons && item.addons.length > 0 && (
-                          <div className="text-[11px] text-[var(--t2)]">
-                            Add-ons: {item.addons.map((a) => a.name).join(', ')}
+                        <div>
+                          <div className="font-bold text-[var(--t1)]">{item.name}</div>
+                          {item.variantName && (
+                            <div className="text-[11px] text-[var(--g700)] font-medium">Variant: {item.variantName}</div>
+                          )}
+                          {item.addons && item.addons.length > 0 && (
+                            <div className="text-[11px] text-[var(--t2)]">
+                              Add-ons: {item.addons.map((a) => `${a.name} (+${business.currencySymbol}${a.price})`).join(', ')}
+                            </div>
+                          )}
+                          <div className="text-[var(--t3)] text-[11px]">
+                            {business.currencySymbol}{item.price} x {item.quantity}
                           </div>
-                        )}
-                        <div className="text-[var(--t3)] text-[11px]">
-                          {business.currencySymbol}{item.price} x {item.quantity}
                         </div>
                       </div>
 
-                      <div className="font-bold text-[var(--t1)]">
+                      <div className="font-bold text-[var(--t1)] shrink-0">
                         {business.currencySymbol}{item.price * item.quantity}
                       </div>
                     </div>
@@ -521,7 +695,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                 )}
                 {selectedOrder.tax > 0 && (
                   <div className="flex justify-between text-[var(--t2)]">
-                    <span>Tax</span>
+                    <span>Tax / GST</span>
                     <span>{business.currencySymbol}{selectedOrder.tax}</span>
                   </div>
                 )}
@@ -532,7 +706,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
                   </div>
                 )}
                 <div className="flex justify-between font-extrabold text-sm text-[var(--t1)] pt-2 border-t border-[var(--border)]">
-                  <span>Total Amount</span>
+                  <span>Grand Total</span>
                   <span>{business.currencySymbol}{selectedOrder.total}</span>
                 </div>
               </div>
@@ -545,22 +719,55 @@ export const OrderManager: React.FC<any> = ({ business }) => {
 
             {/* Footer actions */}
             <div className="p-4 border-t border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--bg)] flex-wrap gap-2 print-hide">
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="px-3.5 py-2 bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
-                title="Print simplified receipt invoice"
-              >
-                <Printer className="w-4 h-4 text-[var(--t2)]" />
-                <span>Print Receipt</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="px-3.5 py-2 bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
+                  title="Print official order receipt invoice"
+                >
+                  <Printer className="w-4 h-4 text-[var(--t2)]" />
+                  <span>Print Receipt</span>
+                </button>
+
+                {selectedOrder.orderType !== 'digital' && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenShippingLabel(selectedOrder)}
+                    className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    title="Print 4x6 Courier Shipping Label"
+                  >
+                    <Truck className="w-4 h-4 text-emerald-400" />
+                    <span>Print Shipping Label (4×6)</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleCopyInvoice(selectedOrder)}
+                  className="px-3 py-2 bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border border-[var(--border)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer"
+                  title="Copy formatted invoice text to clipboard"
+                >
+                  {copiedInvoice ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span className="text-emerald-700">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-[var(--t2)]" />
+                      <span>Copy Invoice</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleShareOrderToMerchant(selectedOrder)}
                   className="px-3 py-2 bg-[var(--g100)] hover:bg-[var(--g200)] text-[var(--g800)] border border-[var(--g200)] font-bold text-xs rounded-[var(--r8)] transition flex items-center gap-1.5 cursor-pointer"
-                  title="Share order details to WhatsApp"
+                  title="Share order summary to WhatsApp"
                 >
                   <Send className="w-4 h-4 text-[var(--g600)]" />
                   <span>Share Order</span>
@@ -579,6 +786,22 @@ export const OrderManager: React.FC<any> = ({ business }) => {
           </div>
         </div>
       )}
+
+      {/* 4x6 Shipping Label Modal */}
+      <ShippingLabelModal
+        isOpen={isShippingLabelOpen}
+        onClose={() => {
+          setIsShippingLabelOpen(false);
+          setShippingLabelOrder(null);
+        }}
+        order={shippingLabelOrder}
+        business={business}
+        onUpdateStatusToShipped={async (orderId) => {
+          if (shippingLabelOrder) {
+            await handleStatusChange(shippingLabelOrder, 'shipped');
+          }
+        }}
+      />
     </div>
   );
 };
