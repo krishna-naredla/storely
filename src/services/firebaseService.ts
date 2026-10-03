@@ -87,6 +87,7 @@ import {
   EventStatus,
   EventFormat,
   QuoteRequestStatus,
+  AffiliateProductItem,
 } from '../types';
 
 /**
@@ -3134,7 +3135,7 @@ export async function cleanupStaleEventHolds(businessId: string, eventId: string
  * Secure utility to delete a creator asset recursively,
  * removing documents and associated cloud storage files.
  */
-export async function deleteCreatorAsset(businessId: string, assetId: string, assetType: 'biolink' | 'portfolio' | 'product' | 'event' | 'quote'): Promise<void> {
+export async function deleteCreatorAsset(businessId: string, assetId: string, assetType: 'biolink' | 'portfolio' | 'product' | 'event' | 'quote' | 'affiliate'): Promise<void> {
   try {
     switch (assetType) {
       case 'biolink':
@@ -3186,9 +3187,141 @@ export async function deleteCreatorAsset(businessId: string, assetId: string, as
         await deleteDoc(doc(db, 'businesses', businessId, 'quote_requests', assetId));
         break;
       }
+      case 'affiliate': {
+        const affRef = doc(db, 'businesses', businessId, 'affiliate_products', assetId);
+        const affSnap = await getDoc(affRef);
+        if (affSnap.exists()) {
+          const affData = affSnap.data() as AffiliateProductItem;
+          if (affData.imageUrl) await deleteImageFromStorage(affData.imageUrl);
+          await deleteDoc(affRef);
+        }
+        break;
+      }
     }
   } catch (err) {
     console.error(`Failed to delete ${assetType} ${assetId}:`, err);
     throw err;
+  }
+}
+
+// ==========================================
+// MODULE 8: AFFILIATE & RECOMMENDED PRODUCTS
+// ==========================================
+
+/**
+ * Fetch all affiliate recommendations for a business
+ */
+export async function getAffiliateProducts(businessId: string): Promise<AffiliateProductItem[]> {
+  try {
+    const q = query(
+      collection(db, 'businesses', businessId, 'affiliate_products'),
+      orderBy('createdAt', 'desc')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AffiliateProductItem));
+  } catch (err) {
+    console.warn('Error fetching affiliate products:', err);
+    return [];
+  }
+}
+
+/**
+ * Real-time subscription to affiliate recommendations
+ */
+export function subscribeToAffiliateProducts(
+  businessId: string,
+  callback: (items: AffiliateProductItem[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'businesses', businessId, 'affiliate_products'),
+    orderBy('createdAt', 'desc')
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AffiliateProductItem));
+      callback(items);
+    },
+    (err) => {
+      console.warn('Affiliate products subscription notice:', err);
+      callback([]);
+    }
+  );
+}
+
+/**
+ * Create a new affiliate / recommended product item
+ */
+export async function createAffiliateProduct(
+  businessId: string,
+  itemData: Omit<AffiliateProductItem, 'id' | 'businessId' | 'createdAt'>
+): Promise<AffiliateProductItem> {
+  const colRef = collection(db, 'businesses', businessId, 'affiliate_products');
+  const docRef = doc(colRef);
+  const now = Date.now();
+
+  const newItem: AffiliateProductItem = {
+    id: docRef.id,
+    businessId,
+    title: itemData.title.trim(),
+    category: itemData.category?.trim() || 'General',
+    description: itemData.description?.trim(),
+    imageUrl: itemData.imageUrl,
+    affiliateUrl: itemData.affiliateUrl.trim(),
+    platform: itemData.platform?.trim(),
+    priceDisplay: itemData.priceDisplay?.trim(),
+    badgeText: itemData.badgeText?.trim(),
+    discountCode: itemData.discountCode?.trim(),
+    clicks: 0,
+    featured: itemData.featured || false,
+    order: itemData.order || 0,
+    status: itemData.status || 'active',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const clean = sanitizeForFirestore(newItem);
+  await setDoc(docRef, clean);
+  return newItem;
+}
+
+/**
+ * Update an existing affiliate / recommended product item
+ */
+export async function updateAffiliateProduct(
+  businessId: string,
+  itemId: string,
+  updates: Partial<AffiliateProductItem>
+): Promise<void> {
+  const docRef = doc(db, 'businesses', businessId, 'affiliate_products', itemId);
+  const clean = sanitizeForFirestore({
+    ...updates,
+    updatedAt: Date.now(),
+  });
+  await updateDoc(docRef, clean);
+}
+
+/**
+ * Delete an affiliate recommendation
+ */
+export async function deleteAffiliateProduct(businessId: string, itemId: string): Promise<void> {
+  await deleteCreatorAsset(businessId, itemId, 'affiliate');
+}
+
+/**
+ * Atomically record click event for an affiliate recommendation link
+ */
+export async function recordAffiliateProductClick(businessId: string, itemId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'businesses', businessId, 'affiliate_products', itemId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(docRef);
+      if (snap.exists()) {
+        const curClicks = Number(snap.data().clicks) || 0;
+        tx.update(docRef, { clicks: curClicks + 1, updatedAt: Date.now() });
+      }
+    });
+  } catch (err) {
+    console.warn('Non-blocking affiliate click tracking notice:', err);
   }
 }

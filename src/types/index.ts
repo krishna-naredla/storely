@@ -39,6 +39,7 @@ export type ModuleKey =
   | 'work_portfolio'
   | 'events_ticketing'
   | 'custom_quotes'
+  | 'affiliate_products'
   | 'analytics';
 
 export interface BusinessModuleConfig {
@@ -63,6 +64,8 @@ export interface BusinessModuleConfig {
   portfolio?: boolean;
   events_ticketing?: boolean;
   custom_quotes?: boolean;
+  affiliate_products?: boolean;
+  recommendations?: boolean;
   analytics?: boolean;
 
   
@@ -902,6 +905,30 @@ export interface CustomQuoteRequest {
   rejectionReason?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+// ==========================================
+// MODULE 8: AFFILIATE & RECOMMENDED PRODUCTS
+// ==========================================
+
+export interface AffiliateProductItem {
+  id: string;
+  businessId: string;
+  title: string;
+  category: string; // e.g. 'Tech & Gear', 'Books', 'Software & Tools', 'Photography', 'Courses', 'Other'
+  description?: string;
+  imageUrl?: string;
+  affiliateUrl: string; // Outbound link
+  platform?: string; // e.g. 'Amazon', 'AppSumo', 'Notion', 'Custom', 'Other'
+  priceDisplay?: string; // e.g. "₹2,499", "$49", "Free Trial"
+  badgeText?: string; // e.g. "Daily Driver", "Top Pick", "10% OFF Code", "Must Have"
+  discountCode?: string; // Optional coupon code e.g. "MANI10"
+  clicks?: number;
+  featured?: boolean;
+  order?: number;
+  status?: 'active' | 'archived';
+  createdAt: number;
+  updatedAt?: number;
 }
 
 

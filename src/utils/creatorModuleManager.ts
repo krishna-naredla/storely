@@ -7,6 +7,7 @@ import {
   FileText,
   Ticket,
   Star,
+  Tag,
 } from 'lucide-react';
 import { BusinessProfile, CreatorModuleState } from '../types';
 import { getBaseUrl, updateBusinessProfile } from '../services/firebaseService';
@@ -18,7 +19,8 @@ export type CreatorModuleId =
   | 'booking_appointments'
   | 'custom_quotes'
   | 'events_tickets'
-  | 'reviews';
+  | 'reviews'
+  | 'affiliate_products';
 
 export type CanonicalCreatorPublicRouteType =
   | 'bio'
@@ -27,7 +29,8 @@ export type CanonicalCreatorPublicRouteType =
   | 'consultations'
   | 'quotes'
   | 'events'
-  | 'reviews';
+  | 'reviews'
+  | 'recommendations';
 
 export type ModulePublishState = 'DISABLED' | 'ENABLED_UNPUBLISHED' | 'ENABLED_PUBLISHED';
 
@@ -38,12 +41,12 @@ export interface CreatorModuleRegistryEntry {
   title: string;
   shortTitle: string;
   description: string;
-  tabId: 'portfolio' | 'biolink' | 'catalog' | 'bookings' | 'quotes' | 'events' | 'reviews';
+  tabId: 'portfolio' | 'biolink' | 'catalog' | 'bookings' | 'quotes' | 'events' | 'reviews' | 'recommendations';
   tabLabel: string;
   icon: React.ElementType;
   badgeColor: string;
   activeBg: string;
-  accentColor: 'indigo' | 'emerald' | 'purple' | 'blue' | 'rose' | 'amber';
+  accentColor: 'indigo' | 'emerald' | 'purple' | 'blue' | 'rose' | 'amber' | 'teal';
   publicPathPrefix: string;
 }
 
@@ -81,7 +84,7 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
   {
     id: 'digital_products',
     canonicalRouteType: 'store',
-    dbKeys: ['digital_products', 'digitalProducts', 'digital'],
+    dbKeys: ['digital_products', 'digitalProducts', 'digital', 'catalog', 'store'],
     title: 'Digital Store & Downloads',
     shortTitle: 'Digital Store',
     description: 'Sell downloadable assets, PDFs, design templates, software, and presets.',
@@ -96,7 +99,7 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
   {
     id: 'booking_appointments',
     canonicalRouteType: 'consultations',
-    dbKeys: ['booking_appointments', 'consultations'],
+    dbKeys: ['booking_appointments', 'consultations', 'bookings', 'consult'],
     title: '1:1 Consultations & Mentorship',
     shortTitle: 'Consultations',
     description: 'Paid video calls, portfolio reviews, advice sessions, and appointment slots.',
@@ -111,7 +114,7 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
   {
     id: 'custom_quotes',
     canonicalRouteType: 'quotes',
-    dbKeys: ['custom_quotes', 'quotes'],
+    dbKeys: ['custom_quotes', 'quotes', 'quote'],
     title: 'Custom Project Quotes',
     shortTitle: 'Project Quotes',
     description: 'Receive project briefs and send customized estimates, scopes & payment links.',
@@ -126,7 +129,7 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
   {
     id: 'events_tickets',
     canonicalRouteType: 'events',
-    dbKeys: ['events_tickets', 'events_ticketing', 'events'],
+    dbKeys: ['events_tickets', 'events_ticketing', 'events', 'event'],
     title: 'Events, Workshops & Webinars',
     shortTitle: 'Events & Tickets',
     description: 'Sell tickets for live masterclasses, cohort meetups, bootcamps, and workshops.',
@@ -141,7 +144,7 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
   {
     id: 'reviews',
     canonicalRouteType: 'reviews',
-    dbKeys: ['reviews'],
+    dbKeys: ['reviews', 'testimonials'],
     title: 'Client Testimonials & Ratings',
     shortTitle: 'Testimonials',
     description: 'Collect and display verified client feedback, ratings, and social proof.',
@@ -152,6 +155,21 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
     activeBg: 'bg-amber-100 text-amber-700',
     accentColor: 'amber',
     publicPathPrefix: '/reviews',
+  },
+  {
+    id: 'affiliate_products',
+    canonicalRouteType: 'recommendations',
+    dbKeys: ['affiliate_products', 'recommendations', 'affiliate'],
+    title: 'Affiliate & Recommended Products',
+    shortTitle: 'Recommendations',
+    description: 'Curate recommended gear, books, software tools, discounts, and monetized affiliate links.',
+    tabId: 'recommendations',
+    tabLabel: 'Manage Recommendations',
+    icon: Tag,
+    badgeColor: 'bg-teal-50 text-teal-700 border-teal-200',
+    activeBg: 'bg-teal-100 text-teal-700',
+    accentColor: 'teal',
+    publicPathPrefix: '/recommendations',
   },
 ];
 
@@ -192,6 +210,7 @@ export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId
     case 'consultations':
     case 'bookings':
     case 'consult':
+    case 'book':
       return 'booking_appointments';
 
     case 'custom_quotes':
@@ -208,6 +227,12 @@ export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId
     case 'reviews':
     case 'testimonials':
       return 'reviews';
+
+    case 'affiliate_products':
+    case 'recommendations':
+    case 'affiliate':
+    case 'recs':
+      return 'affiliate_products';
 
     default:
       return 'portfolio';
@@ -264,19 +289,22 @@ export function getCreatorModuleState(
       isEnabled = Boolean(modules.universal_links || modules.bio_links || modules.biolink);
       break;
     case 'digital_products':
-      isEnabled = Boolean(modules.digital_products || modules.digitalProducts || modules.digital);
+      isEnabled = Boolean(modules.digital_products || modules.digitalProducts || modules.digital || modules.catalog || modules.store);
       break;
     case 'booking_appointments':
-      isEnabled = Boolean(modules.booking_appointments || modules.consultations);
+      isEnabled = Boolean(modules.booking_appointments || modules.consultations || modules.bookings || modules.consult);
       break;
     case 'custom_quotes':
-      isEnabled = Boolean(modules.custom_quotes || modules.quotes);
+      isEnabled = Boolean(modules.custom_quotes || modules.quotes || modules.quote);
       break;
     case 'events_tickets':
-      isEnabled = Boolean(modules.events_tickets || modules.events_ticketing || modules.events);
+      isEnabled = Boolean(modules.events_tickets || modules.events_ticketing || modules.events || modules.event);
       break;
     case 'reviews':
-      isEnabled = Boolean(modules.reviews);
+      isEnabled = Boolean(modules.reviews || modules.testimonials);
+      break;
+    case 'affiliate_products':
+      isEnabled = Boolean(modules.affiliate_products || modules.recommendations || modules.affiliate);
       break;
   }
 
@@ -318,6 +346,7 @@ export function isCreatorModulePublished(
  *      /events/siddipet-dandiya-night
  *      /quote/siddipet-dandiya-night
  *      /reviews/siddipet-dandiya-night
+ *      /recommendations/siddipet-dandiya-night
  */
 export function getCreatorModuleDisplayPath(
   businessOrSlug: any,
@@ -342,6 +371,7 @@ export function getCreatorModuleDisplayPath(
     case 'booking_appointments':
     case 'bookings':
     case 'consult':
+    case 'book':
       return `/consult/${encodeURIComponent(handle)}`;
 
     case 'events_tickets':
@@ -358,6 +388,12 @@ export function getCreatorModuleDisplayPath(
     case 'reviews':
     case 'testimonials':
       return `/reviews/${encodeURIComponent(handle)}`;
+
+    case 'affiliate_products':
+    case 'recommendations':
+    case 'affiliate':
+    case 'recs':
+      return `/recommendations/${encodeURIComponent(handle)}`;
 
     case 'digital_products':
     case 'digitalproducts':

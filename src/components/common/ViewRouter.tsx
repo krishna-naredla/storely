@@ -9,6 +9,7 @@ import { StandaloneEventsView } from '../events/StandaloneEventsView';
 import { StandaloneQuoteView } from '../quotes/StandaloneQuoteView';
 import { StandaloneReviewsView } from '../reviews/StandaloneReviewsView';
 import { StandaloneDigitalStoreView } from '../digital/StandaloneDigitalStoreView';
+import { StandaloneAffiliateView } from '../affiliate/StandaloneAffiliateView';
 import { PublicStatusView } from './PublicStatusView';
 import { evaluatePublicAvailability } from '../../utils/publicAvailability';
 import { CanonicalPublicView } from '../../utils/publicRouteResolver';
@@ -26,7 +27,9 @@ interface ViewRouterProps {
     | 'consultations'
     | 'events'
     | 'quotes'
-    | 'reviews';
+    | 'reviews'
+    | 'recommendations'
+    | 'affiliate';
   targetBusiness: BusinessProfile;
   isOwner?: boolean;
   isExplicitPreview?: boolean;
@@ -67,6 +70,8 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
       ? 'quotes'
       : viewMode === 'reviews'
       ? 'reviews'
+      : viewMode === 'recommendations' || viewMode === 'affiliate'
+      ? 'recommendations'
       : 'store';
 
   // 1. Universal Bio Link View
@@ -281,7 +286,36 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
     );
   }
 
-  // 8. Digital Store View (For Creators) OR Commerce Storefront View (For Vendors)
+  // 8. Affiliate & Recommended Products View
+  if (canonicalTargetView === 'recommendations') {
+    const result = evaluatePublicAvailability(targetBusiness, 'recommendations', activePreview);
+    if (!result.isAvailable) {
+      return (
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="recommendations"
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
+        />
+      );
+    }
+
+    return (
+      <StandaloneAffiliateView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 9. Digital Store View (For Creators) OR Commerce Storefront View (For Vendors)
   const isCreator = isCreatorProfile(targetBusiness);
   const result = evaluatePublicAvailability(targetBusiness, 'store', activePreview);
   if (!result.isAvailable) {

@@ -44,6 +44,7 @@ export type DashboardTab =
   | "portfolio"
   | "events"
   | "quotes"
+  | "recommendations"
   | "categories"
   | "orders"
   | "bookings"
@@ -140,6 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: "quotes", label: "Custom Quotes", icon: FileText, visible: isCreatorModuleEnabled(business, 'custom_quotes') },
         { id: "events", label: "Events & Workshops", icon: Ticket, visible: isCreatorModuleEnabled(business, 'events_tickets') },
         { id: "reviews", label: "Reviews", icon: Star, visible: isCreatorModuleEnabled(business, 'reviews') },
+        { id: "recommendations", label: "Recommendations", icon: Tag, visible: isCreatorModuleEnabled(business, 'affiliate_products') },
         { id: "analytics", label: "Traffic & Sales", icon: BarChart3, visible: true },
         { id: "payments", label: "Payments", icon: CreditCard, visible: true },
         { id: "notifications", label: "Activity", icon: Bell, visible: true },

@@ -108,6 +108,7 @@ const DigitalCardPreview = lazy(() => import('./components/common/DigitalCardPre
 const MasterAdminDashboard = lazy(() => import('./components/admin/MasterAdminDashboard').then(m => ({ default: m.MasterAdminDashboard })));
 const MasterAdminLogin = lazy(() => import('./components/admin/MasterAdminLogin').then(m => ({ default: m.MasterAdminLogin })));
 const OnboardingWizard = lazy(() => import('./components/auth/OnboardingWizard').then(m => ({ default: m.OnboardingWizard })));
+const AffiliateManager = lazy(() => import('./components/dashboard/AffiliateManager').then(m => ({ default: m.AffiliateManager })));
 
 /**
  * Mobile-optimized tab loading placeholder

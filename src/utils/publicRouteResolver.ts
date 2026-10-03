@@ -12,6 +12,7 @@ export type CanonicalPublicView =
   | 'events'
   | 'quotes'
   | 'reviews'
+  | 'recommendations'
   | null;
 
 export interface PublicRouteInfo {
@@ -49,6 +50,8 @@ export const RESERVED_SYSTEM_PATHS = new Set([
   'quotes',
   'reviews',
   'testimonials',
+  'recommendations',
+  'affiliate',
   'catalog',
   'categories',
   'orders',
@@ -164,7 +167,23 @@ export function resolvePublicRouteFromUrl(
     };
   }
 
-  // 6. Creator Bio: /@:slug
+  // 6. Creator Recommendations & Affiliate Route: /recommendations/:slug, /affiliate/:slug
+  const recsMatch = pathname.match(/^\/(?:recommendations|affiliate)\/([^/?#]+)/i);
+  if (recsMatch && recsMatch[1]) {
+    const slug = decodeURIComponent(recsMatch[1]).trim();
+    return {
+      isPublicRoute: true,
+      slug,
+      explicitView: 'recommendations',
+      quotePayInfo: null,
+      isExplicitPreview,
+      canonicalPath: `/recommendations/${slug}`,
+      itemDeepLink,
+      categoryDeepLink,
+    };
+  }
+
+  // 7. Creator Bio: /@:slug
   const bioMatch = pathname.match(/^\/@([^/?#]+)/i);
   if (bioMatch && bioMatch[1]) {
     const slug = decodeURIComponent(bioMatch[1]).trim();
@@ -179,6 +198,8 @@ export function resolvePublicRouteFromUrl(
       explicitView = 'quotes';
     } else if (queryView === 'reviews' || queryView === 'testimonials') {
       explicitView = 'reviews';
+    } else if (queryView === 'recommendations' || queryView === 'affiliate') {
+      explicitView = 'recommendations';
     }
 
     return {
@@ -694,6 +715,18 @@ export function verifyModuleAvailability(
         message: !isEnabled
           ? `Customer reviews for ${business.name} are currently inactive.`
           : `Customer reviews for ${business.name} are not currently published.`,
+      };
+    }
+
+    case 'recommendations': {
+      const isEnabled = isCreatorModuleEnabled(business, 'affiliate_products');
+      const isPublished = isCreatorModulePublished(business, 'affiliate_products');
+      return {
+        isAvailable: (isEnabled && isPublished) || isExplicitOwnerPreview,
+        title: !isEnabled ? 'Recommendations Inactive' : 'Recommendations Unpublished',
+        message: !isEnabled
+          ? `Recommended products for ${business.name} are currently not active.`
+          : `Recommended products for ${business.name} have not yet been published.`,
       };
     }
 

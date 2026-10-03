@@ -185,6 +185,14 @@ service cloud.firestore {
         allow write: if isBusinessOwner(businessId);
       }
 
+      // --- Affiliate & Recommended Products ---
+      match /affiliate_products/{itemId} {
+        allow read: if true;
+        allow create, delete: if isBusinessOwner(businessId);
+        allow update: if isBusinessOwner(businessId) || 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks', 'updatedAt']));
+      }
+
       // --- Events & Ticketing Subcollections ---
       match /events/{eventId} {
         allow read: if true;

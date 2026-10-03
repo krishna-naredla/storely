@@ -247,7 +247,7 @@ export function evaluatePublicAvailability(
         isAvailable: false,
         title: 'Reviews Inactive',
         message: `Customer reviews for ${business.name} are currently not public.`,
-        helperNote: 'You can enable this module from your Creator Modules dashboard.',
+        helperNote: isExplicitOwnerPreview ? 'You can enable this module from your Creator Modules dashboard.' : undefined,
         business,
       };
     }
@@ -257,7 +257,29 @@ export function evaluatePublicAvailability(
         isAvailable: false,
         title: 'Reviews Unpublished',
         message: `Customer reviews for ${business.name} are currently unpublished.`,
-        helperNote: 'The creator has not yet published customer testimonials.',
+        helperNote: isExplicitOwnerPreview ? 'The creator has not yet published customer testimonials.' : undefined,
+        business,
+      };
+    }
+  } else if (targetView === 'recommendations') {
+    const state = getCreatorModuleState(business, 'affiliate_products');
+    if (!state.enabled) {
+      return {
+        status: 'DISABLED',
+        isAvailable: false,
+        title: 'Recommendations Inactive',
+        message: `Recommended products for ${business.name} are currently not active.`,
+        helperNote: isExplicitOwnerPreview ? 'You can enable this module from your Creator Modules dashboard.' : undefined,
+        business,
+      };
+    }
+    if (!state.published && !isExplicitOwnerPreview) {
+      return {
+        status: 'UNPUBLISHED',
+        isAvailable: false,
+        title: 'Recommendations Unpublished',
+        message: `Recommended products for ${business.name} are currently unpublished.`,
+        helperNote: isExplicitOwnerPreview ? 'The creator has not yet published their recommendations.' : undefined,
         business,
       };
     }
