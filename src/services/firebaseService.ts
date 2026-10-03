@@ -1373,6 +1373,46 @@ export async function upsertCustomerFromBooking(businessId: string, booking: Boo
   }
 }
 
+export async function upsertCustomerFromEventTicket(businessId: string, ticket: EventTicket): Promise<void> {
+  if (!ticket.customerPhone) return;
+  const cleanPhone = ticket.customerPhone.replace(/\D/g, '');
+  const custId = 'cust_' + cleanPhone;
+  const docRef = doc(db, 'businesses', businessId, 'customers', custId);
+
+  try {
+    const snap = await getDoc(docRef);
+    const now = Date.now();
+    if (snap.exists()) {
+      const existing = snap.data() as Customer;
+      const updatePayload = sanitizeForFirestore({
+        name: ticket.customerName || existing.name,
+        email: ticket.customerEmail || existing.email,
+        totalBookings: (existing.totalBookings || 0) + 1,
+        totalSpent: (existing.totalSpent || 0) + (ticket.price || 0),
+        lastInteractionAt: now,
+      });
+      await updateDoc(docRef, updatePayload);
+    } else {
+      const newCust: Customer = {
+        id: custId,
+        businessId,
+        name: ticket.customerName,
+        phone: ticket.customerPhone,
+        whatsapp: ticket.customerPhone,
+        email: ticket.customerEmail,
+        totalOrders: 0,
+        totalBookings: 1,
+        totalSpent: ticket.price || 0,
+        firstInteractionAt: now,
+        lastInteractionAt: now,
+      };
+      await setDoc(docRef, sanitizeForFirestore(newCust));
+    }
+  } catch (e) {
+    console.warn('Customer event ticket upsert notice:', e);
+  }
+}
+
 /**
  * Reviews & Ratings
  */
@@ -1485,9 +1525,13 @@ export async function createNotification(
 
     // If an idempotencyKey was provided, check if document already exists
     if (data.idempotencyKey) {
-      const existingSnap = await getDoc(docRef);
-      if (existingSnap.exists()) {
-        return existingSnap.data() as Notification;
+      try {
+        const existingSnap = await getDoc(docRef);
+        if (existingSnap.exists()) {
+          return existingSnap.data() as Notification;
+        }
+      } catch (checkErr) {
+        // Non-blocking: proceed with deterministic setDoc without crashing
       }
     }
 
@@ -2615,17 +2659,30 @@ export async function purchaseEventTicketTransaction(
     return { ticket: newTicket, updatedEvent };
   });
 
-  // Create notification
-  await createNotification(businessId, {
-    type: 'event',
-    title: 'New Ticket Purchased',
-    message: `${buyerDetails.customerName} bought a ticket for ${result.ticket.eventTitle}.`,
-    link: '/dashboard/events',
-    entityType: 'event',
-    entityId: result.ticket.eventId,
-    idempotencyKey: `ticket_${result.ticket.id}`,
-    metadata: { ticketId: result.ticket.id, eventId: result.ticket.eventId }
-  });
+  // Create notification (non-blocking)
+  try {
+    await createNotification(businessId, {
+      type: 'event',
+      title: 'New Ticket Purchased',
+      message: `${buyerDetails.customerName} bought a ticket for ${result.ticket.eventTitle}.`,
+      link: '/dashboard/events',
+      entityType: 'event',
+      entityId: result.ticket.eventId,
+      idempotencyKey: `ticket_${result.ticket.id}`,
+      metadata: { ticketId: result.ticket.id, eventId: result.ticket.eventId }
+    });
+  } catch (notifErr) {
+    console.warn('Non-blocking notification warning:', notifErr);
+  }
+
+  // Upsert customer for CRM (non-blocking)
+  try {
+    if (buyerDetails.customerPhone) {
+      await upsertCustomerFromEventTicket(businessId, result.ticket);
+    }
+  } catch (custErr) {
+    console.warn('Customer upsert non-blocking notice:', custErr);
+  }
 
   return result;
 }

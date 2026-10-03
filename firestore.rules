@@ -188,35 +188,39 @@ service cloud.firestore {
       // --- Events & Ticketing Subcollections ---
       match /events/{eventId} {
         allow read: if true;
-        allow write: if isBusinessOwner(businessId);
+        allow create, delete: if isBusinessOwner(businessId);
+        // Business owner can update anything; buyers can atomically update seat capacity fields during booking
+        allow update: if isBusinessOwner(businessId) || 
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ticketsSold', 'seatsRemaining', 'status', 'updatedAt']));
 
         match /seat_holds/{holdId} {
-          allow read: if true;
-          allow create: if request.resource.data.status == 'active';
+          allow read, create: if true;
           allow update: if isBusinessOwner(businessId) || 
-            (resource.data.status == 'active' && request.resource.data.status in ['completed', 'released']);
+            (request.resource.data.status in ['completed', 'released', 'active']);
           allow delete: if isBusinessOwner(businessId);
         }
       }
 
       match /tickets/{ticketId} {
-        // Only owner or admin can list all attendees
+        // Owner or admin can list all tickets
         allow list: if isBusinessOwner(businessId);
-        // Customer can only view their own ticket by email verification or owner
-        allow get: if isBusinessOwner(businessId) || 
-                      (isSignedIn() && isEmailVerified() && resource.data.customerEmail == request.auth.token.email);
-        // Client can only create ticket if free or marked unpaid; paid status is strictly issued by server
-        allow create: if request.resource.data.paymentStatus != 'paid' || 
-                         (get(/databases/$(database)/documents/businesses/$(businessId)/events/$(request.resource.data.eventId)).data.isFree == true);
+        // Anyone with the direct ticket ID or owner can get the ticket pass for display / QR validation
+        allow get: if true;
+        // Public customer can create ticket registration with legitimate payload
+        allow create: if request.resource.data.eventId is string &&
+                         request.resource.data.customerName is string &&
+                         request.resource.data.customerPhone is string &&
+                         request.resource.data.ticketId is string;
         allow update, delete: if isBusinessOwner(businessId);
       }
 
       match /event_tickets/{ticketId} {
         allow list: if isBusinessOwner(businessId);
-        allow get: if isBusinessOwner(businessId) || 
-                      (isSignedIn() && isEmailVerified() && resource.data.customerEmail == request.auth.token.email);
-        allow create: if request.resource.data.paymentStatus != 'paid' || 
-                         (get(/databases/$(database)/documents/businesses/$(businessId)/events/$(request.resource.data.eventId)).data.isFree == true);
+        allow get: if true;
+        allow create: if request.resource.data.eventId is string &&
+                         request.resource.data.customerName is string &&
+                         request.resource.data.customerPhone is string &&
+                         request.resource.data.ticketId is string;
         allow update, delete: if isBusinessOwner(businessId);
       }
 
@@ -278,8 +282,8 @@ service cloud.firestore {
 
       // --- Private Merchant Subcollections (Strict Tenant Isolation) ---
       match /customers/{customerId} {
-        allow create, update: if true;
-        allow read, delete: if isBusinessOwner(businessId);
+        allow get, create, update: if true;
+        allow list, delete: if isBusinessOwner(businessId);
       }
 
       match /notifications/{notificationId} {

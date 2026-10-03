@@ -42,6 +42,7 @@ import {
   getModuleDeepUrl,
 } from '../../services/firebaseService';
 import { uploadToCloudinary } from '../../services/cloudinary';
+import { ImageUploadInput } from '../common/ImageUploadInput';
 import { isCreatorProfile } from '../../utils/profileHelper';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
@@ -778,54 +779,15 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
 
               {/* Cover Image */}
               <div className="space-y-2">
-                <label className="font-bold text-slate-800 flex items-center justify-between">
-                  <span>Cover Banner Image</span>
-                  {uploadingImage && (
-                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3 animate-spin" /> Uploading image...
-                    </span>
-                  )}
-                </label>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-24 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                    <img
-                      src={formCoverImage}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-
-                  <div className="flex-1 space-y-2">
-                    <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold transition cursor-pointer shadow-xs">
-                      <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Upload Custom Cover</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-
-                    {/* Presets */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                      {PRESET_EVENT_COVERS.map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setFormCoverImage(preset)}
-                          className={`w-10 h-7 rounded-lg overflow-hidden border-2 shrink-0 transition cursor-pointer ${
-                            formCoverImage === preset ? 'border-emerald-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
-                          }`}
-                        >
-                          <img src={preset} alt="preset" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <ImageUploadInput
+                  label="Cover Banner Image"
+                  value={formCoverImage}
+                  onChange={(val) => setFormCoverImage(val)}
+                  aspectRatio="banner"
+                  suggestedPresetType="banner"
+                  placeholder="Enter event banner URL (HTTPS/HTTP) or upload..."
+                  helperText="Event cover banner displayed on event ticket pages, public registrations, and shares."
+                />
               </div>
 
               {/* Date, Time & Duration */}

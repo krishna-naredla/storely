@@ -48,7 +48,8 @@ import {
   PortfolioServicePackage,
 } from '../../types';
 import { PORTFOLIO_PRESETS, PortfolioPreset } from '../../data/portfolioPresets';
-import { updatePortfolioSettings } from '../../services/firebaseService';
+import { updatePortfolioSettings, updateBusinessProfile } from '../../services/firebaseService';
+import { ImageUploadInput } from '../common/ImageUploadInput';
 import {
   PORTFOLIO_THEME_PALETTES,
   PORTFOLIO_FONT_OPTIONS,
@@ -127,6 +128,13 @@ export const PortfolioAppearanceTab: React.FC<PortfolioAppearanceTabProps> = ({
     settings.tertiaryCtaText || PORTFOLIO_PRESETS[selectedProfession]?.tertiaryCtaText || 'View Packages'
   );
   const [tertiaryCtaUrl, setTertiaryCtaUrl] = useState(settings.tertiaryCtaUrl || '');
+
+  const [bannerUrl, setBannerUrl] = useState<string>(
+    settings.bannerImage || business.banner || business.coverImage || ''
+  );
+  const [avatarUrl, setAvatarUrl] = useState<string>(
+    settings.avatarUrl || business.logo || ''
+  );
 
   // Theme & Styling
   const [themeColor, setThemeColor] = useState<PortfolioThemeColor>(
@@ -278,6 +286,8 @@ export const PortfolioAppearanceTab: React.FC<PortfolioAppearanceTabProps> = ({
 
       const updatedPortfolioSettings: PortfolioSettings = {
         ...settings,
+        bannerImage: bannerUrl,
+        avatarUrl,
         profession: selectedProfession,
         professionTitle,
         specializations,
@@ -304,9 +314,18 @@ export const PortfolioAppearanceTab: React.FC<PortfolioAppearanceTabProps> = ({
 
       await updatePortfolioSettings(business.id, updatedPortfolioSettings);
 
+      // Keep business profile's banner, coverImage, and logo in sync
+      const businessPatch: Partial<BusinessProfile> = {
+        banner: bannerUrl || undefined,
+        coverImage: bannerUrl || undefined,
+        logo: avatarUrl || undefined,
+      };
+      await updateBusinessProfile(business.id, businessPatch);
+
       if (onBusinessUpdated) {
         onBusinessUpdated({
           ...business,
+          ...businessPatch,
           portfolioSettings: updatedPortfolioSettings,
           updatedAt: Date.now(),
         });
@@ -447,6 +466,29 @@ export const PortfolioAppearanceTab: React.FC<PortfolioAppearanceTabProps> = ({
         <div className="flex items-center gap-2 text-slate-900 font-heading font-black text-base">
           <PenTool className="w-4 h-4 text-indigo-600" />
           <span>Profile & Bio Identity</span>
+        </div>
+
+        {/* Cover Banner & Profile Photo */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 border-b border-slate-100">
+          <ImageUploadInput
+            label="Profile Photo / Avatar"
+            value={avatarUrl || business.logo || ''}
+            onChange={(val) => setAvatarUrl(val)}
+            aspectRatio="square"
+            suggestedPresetType="logo"
+            placeholder="Enter avatar URL (HTTPS/HTTP) or upload..."
+            helperText="1:1 square profile photo displayed on your portfolio website and header."
+          />
+
+          <ImageUploadInput
+            label="Cover Banner Image"
+            value={bannerUrl || business.banner || business.coverImage || ''}
+            onChange={(val) => setBannerUrl(val)}
+            aspectRatio="banner"
+            suggestedPresetType="banner"
+            placeholder="Enter cover banner URL (HTTPS/HTTP) or upload..."
+            helperText="Wide cover banner displayed across the top of your portfolio website hero."
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">

@@ -50,6 +50,7 @@ import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { DashboardTab } from './Sidebar';
 import { SafeImage } from '../common/SafeImage';
 import { isCreatorProfile, getPrimaryPublicUrl, getPublicDestinations } from '../../utils/profileHelper';
+import { getEnabledCreatorModules, isCreatorModuleEnabled } from '../../utils/creatorModuleManager';
 import { VendorTrustShareModal } from '../common/VendorTrustShareModal';
 
 interface DashboardOverviewProps {
@@ -586,11 +587,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <BarChart3 className="w-4 h-4" />
               </div>
               <h3 className="text-sm sm:text-base font-bold text-[var(--t1)] font-heading">
-                Weekly Order Volume &amp; Completion Rate
+                {isCreator && !isCreatorModuleEnabled(business, 'digital_products')
+                  ? 'Weekly Profile Views & Audience Reach'
+                  : 'Weekly Order Volume & Completion Rate'}
               </h3>
             </div>
             <p className="text-xs text-[var(--t2)]">
-              7-day order fulfillment velocity and completion percentage for {business.name}.
+              {isCreator && !isCreatorModuleEnabled(business, 'digital_products')
+                ? `7-day visitor interaction and engagement trends for ${business.name}.`
+                : `7-day order fulfillment velocity and completion percentage for ${business.name}.`}
             </p>
           </div>
 
@@ -748,67 +753,38 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
             {isCreator ? (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('portfolio')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
-                >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
-                      Portfolio
+                {getEnabledCreatorModules(business).map((mod) => (
+                  <button
+                    key={mod.id}
+                    type="button"
+                    onClick={() => setActiveTab(mod.tabId)}
+                    className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  >
+                    <div className={`w-7 h-7 rounded-[var(--r8)] ${mod.activeBg} flex items-center justify-center`}>
+                      <mod.icon className="w-4 h-4" />
                     </div>
-                    <div className="text-[10px] text-[var(--t3)]">Case studies &amp; art</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('biolink')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
-                >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-                    <LinkIcon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
-                      Bio Link
+                    <div>
+                      <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
+                        {mod.shortTitle}
+                      </div>
+                      <div className="text-[10px] text-[var(--t3)] truncate">{mod.tabLabel}</div>
                     </div>
-                    <div className="text-[10px] text-[var(--t3)]">Links &amp; socials</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('catalog')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
-                >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-                    <ShoppingBag className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
-                      Digital Store
-                    </div>
-                    <div className="text-[10px] text-[var(--t3)]">PDFs, code &amp; kits</div>
-                  </div>
-                </button>
+                  </button>
+                ))}
 
                 <button
                   type="button"
                   onClick={() => setActiveTab('modules')}
-                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
+                  className="p-3 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--g100)] hover:border-[var(--g300)] border border-dashed border-[var(--border)] text-left transition flex flex-col justify-between gap-2 group cursor-pointer shadow-[var(--shadow-xs)]"
                 >
-                  <div className="w-7 h-7 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-[var(--r8)] bg-slate-100 text-slate-600 flex items-center justify-center">
+                    <Plus className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="text-xs font-bold text-[var(--t1)] group-hover:text-[var(--g700)]">
-                      Modules
+                      + Add Module
                     </div>
-                    <div className="text-[10px] text-[var(--t3)]">Toggle features</div>
+                    <div className="text-[10px] text-[var(--t3)]">Customize tools</div>
                   </div>
                 </button>
               </div>

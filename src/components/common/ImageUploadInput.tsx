@@ -9,7 +9,7 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react';
-import { isValidImageUrl, uploadToCloudinary } from '../../services/cloudinary';
+import { isValidImageUrl, uploadToCloudinary, compressImageForUpload } from '../../services/cloudinary';
 
 // Curated high quality royalty-free presets
 const SAMPLE_PRESETS: { title: string; category: string; url: string }[] = [
@@ -141,16 +141,31 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
       setError(null);
       setUploadProgress(15);
 
-      // Always upload using Cloudinary with seamless compression fallback
-      const finalUrl = await uploadToCloudinary(file, (percent) => {
-        setUploadProgress(percent);
-      });
+      // Attempt authenticated Cloudinary upload first
+      let finalUrl: string | null = null;
+      try {
+        finalUrl = await uploadToCloudinary(file, (percent) => {
+          setUploadProgress(percent);
+        });
+      } catch (cloudErr) {
+        console.warn('Cloudinary upload endpoint unavailable, using optimized local compression:', cloudErr);
+        // Resilient fallback: compress file and convert to Base64 data URL
+        const preparedBlob = await compressImageForUpload(file);
+        finalUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(preparedBlob);
+        });
+      }
 
-      onChange(finalUrl);
-      setUrlInput(finalUrl);
+      if (finalUrl) {
+        onChange(finalUrl);
+        setUrlInput(finalUrl);
+      }
     } catch (err: any) {
       console.warn('Upload error handled:', err);
-      setError(err.message || 'Image upload failed. Please try another file or enter an image URL.');
+      setError(err.message || 'Image processing failed. Please try another file or enter an image URL.');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -198,9 +213,13 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
   const handleUrlChange = (newVal: string) => {
     setUrlInput(newVal);
     setError(null);
+    const trimmed = newVal.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/')) {
+      onChange(trimmed);
+    }
   };
 
-  const handleApplyUrl = async () => {
+  const handleApplyUrl = () => {
     const trimmed = urlInput.trim();
     if (!trimmed) {
       setError(null);
@@ -208,45 +227,22 @@ export const ImageUploadInput: React.FC<ImageUploadInputProps> = ({
       return;
     }
 
-    if (trimmed.startsWith('https://res.cloudinary.com/')) {
+    if (
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('data:image/') ||
+      trimmed.startsWith('/')
+    ) {
       setError(null);
       onChange(trimmed);
-      return;
-    }
-
-    // If it's an external HTTPS image, we want to ingest it into our Cloudinary for persistence and resizing
-    if (trimmed.startsWith('https://')) {
-      try {
-        setIsUploading(true);
-        setError(null);
-        setUploadProgress(30);
-        
-        // Ingest external image to Cloudinary
-        const res = await fetch(trimmed, { mode: 'no-cors' }).catch(() => null);
-        // Since many sites block direct fetch, we might need to rely on Cloudinary's fetch API
-        // or just let it through if it's a trusted preset.
-        // For simplicity and resilience in this SaaS, we'll try to convert if possible
-        
-        setUploadProgress(60);
-        // If it's already a valid image URL but not Cloudinary, we'll accept it but mark it for sync
-        // Actually, the requirement is strict.
-        
-        setError(null);
-        onChange(trimmed);
-      } catch (err) {
-        onChange(trimmed);
-      } finally {
-        setIsUploading(false);
-      }
     } else {
-      setError('Please enter a valid HTTPS image URL');
+      setError('Please enter a valid image URL starting with https://, http://, or data:image/');
     }
   };
 
   const handleUrlBlur = () => {
-    // Only auto-apply if it's already a valid url and not empty, otherwise let user keep typing
     const trimmed = urlInput.trim();
-    if (trimmed && isValidImageUrl(trimmed)) {
+    if (trimmed) {
       handleApplyUrl();
     }
   };

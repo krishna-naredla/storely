@@ -306,10 +306,10 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
       }}
     >
       {/* Decorative Cover / Top Banner if Available */}
-      {business.banner ? (
+      {(business.banner || business.coverImage) ? (
         <div className="w-full h-44 sm:h-56 md:h-64 relative overflow-hidden">
           <img
-            src={business.banner}
+            src={business.banner || business.coverImage}
             alt={business.name}
             className="w-full h-full object-cover"
           />
@@ -444,7 +444,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
       {/* Profile Header Container - Device Friendly & Fluid Scaling */}
       <div className="w-full max-w-lg sm:max-w-xl md:max-w-3xl lg:max-w-4xl px-3.5 xs:px-4 sm:px-6 md:px-8 lg:px-10 pt-2 sm:pt-4 pb-28 z-10 flex flex-col items-center text-center bio-viewport-container">
         {/* Profile Avatar with Verified Badge */}
-        <div className={`relative mb-4 sm:mb-5 group ${business.banner ? '-mt-16 sm:-mt-20 md:-mt-24' : 'mt-2 sm:mt-4'}`}>
+        <div className={`relative mb-4 sm:mb-5 group ${(business.banner || business.coverImage) ? '-mt-16 sm:-mt-20 md:-mt-24' : 'mt-2 sm:mt-4'}`}>
           <div
             className={`w-28 h-28 xs:w-32 xs:h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 p-1 sm:p-1.5 backdrop-blur-md transition-transform duration-300 group-hover:scale-105 bio-avatar-fluid ${getAvatarRadiusClass()} ${
               theme.avatarBorder ? 'bg-white/30 ring-4 sm:ring-6 ring-white/25 shadow-2xl' : 'bg-transparent'

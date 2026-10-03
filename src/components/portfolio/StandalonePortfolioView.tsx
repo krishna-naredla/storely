@@ -543,6 +543,7 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
           // 1. HERO BLOCK
           // ----------------------------------------------------
           if (block.type === 'hero') {
+            const bannerImg = settings.bannerImage || business.banner || business.coverImage;
             return (
               <section
                 key={block.id}
@@ -551,6 +552,19 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   templateId === 'bento_grid' ? 'rounded-3xl border-2' : ''
                 } ${templateId === 'dark_luxury' ? 'bg-slate-900/90 border-slate-800 shadow-2xl' : ''}`}
               >
+                {/* Hero Cover Banner if configured */}
+                {bannerImg && (
+                  <div className="w-full h-36 xs:h-44 sm:h-52 md:h-64 rounded-2xl overflow-hidden border border-black/5 dark:border-white/10 relative shadow-sm group">
+                    <img
+                      src={bannerImg}
+                      alt={`${business.name} Cover Banner`}
+                      className="w-full h-full object-cover object-center group-hover:scale-[1.01] transition-transform duration-500"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                )}
+
                 {/* Top Profile Info Row */}
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 xs:gap-6 sm:gap-8 text-center sm:text-left">
                   {/* Circular Profile Avatar */}

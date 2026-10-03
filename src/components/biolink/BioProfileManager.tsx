@@ -14,6 +14,7 @@ import {
 import { DashboardEmptyState } from '../common/DashboardEmptyState';
 import { DashboardSkeleton } from '../common/DashboardSkeleton';
 import { ConfirmActionModal } from '../common/ConfirmActionModal';
+import { ImageUploadInput } from '../common/ImageUploadInput';
 import {
   Loader2,
   MoveUp,
@@ -106,6 +107,8 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
   const [isDeletingLink, setIsDeletingLink] = useState(false);
 
   // Appearance & Theme State
+  const [bannerImage, setBannerImage] = useState(business.banner || business.coverImage || '');
+  const [logoImage, setLogoImage] = useState(business.logo || business.profileImage || '');
   const rawTheme = business.bioTheme || {};
   const currentPresetId = rawTheme.themePreset || 'classic_green';
   const defaultPreset = BIO_THEME_PRESETS[currentPresetId] || BIO_THEME_PRESETS.classic_green;
@@ -415,6 +418,10 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
       };
       const updatedBiz: BusinessProfile = {
         ...business,
+        banner: bannerImage || undefined,
+        coverImage: bannerImage || undefined,
+        logo: logoImage || undefined,
+        profileImage: logoImage || undefined,
         bio: bioText,
         description: bioText,
         tagline: theme.profession,
@@ -427,6 +434,10 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
         updatedAt: Date.now(),
       };
       await updateBusinessProfile(business.id, {
+        banner: bannerImage || undefined,
+        coverImage: bannerImage || undefined,
+        logo: logoImage || undefined,
+        profileImage: logoImage || undefined,
         bio: bioText,
         description: bioText,
         tagline: theme.profession,
@@ -1389,8 +1400,37 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 space-y-5">
                 <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-emerald-600" />
-                  <span>Profile Identity & Avatar</span>
+                  <span>Profile Identity & Cover Banner</span>
                 </h3>
+
+                {/* Profile Photo & Cover Banner Upload Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-3 border-b border-slate-100">
+                  <ImageUploadInput
+                    label="Profile Photo / Avatar"
+                    value={logoImage || business.logo || ''}
+                    onChange={(val) => {
+                      setLogoImage(val);
+                      setHasUnsavedChanges(true);
+                    }}
+                    aspectRatio="square"
+                    suggestedPresetType="logo"
+                    placeholder="Enter avatar URL (HTTPS/HTTP) or upload..."
+                    helperText="1:1 square profile picture shown in your bio header."
+                  />
+
+                  <ImageUploadInput
+                    label="Cover Banner Image"
+                    value={bannerImage || business.banner || business.coverImage || ''}
+                    onChange={(val) => {
+                      setBannerImage(val);
+                      setHasUnsavedChanges(true);
+                    }}
+                    aspectRatio="banner"
+                    suggestedPresetType="banner"
+                    placeholder="Enter cover banner URL (HTTPS/HTTP) or upload..."
+                    helperText="Wide cover banner displayed at the very top of your Bio Link page."
+                  />
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Profession / Tagline */}

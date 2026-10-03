@@ -231,11 +231,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [initialItemStock, setInitialItemStock] = useState<number>(50);
   const [initialItemUnit, setInitialItemUnit] = useState<string>('pcs');
 
-  // Creator-Specific Module Toggles
+  // Creator-Specific Module Toggles (all start unselected so creator chooses only what they need)
   const [creatorModules, setCreatorModules] = useState<BusinessModuleConfig>({
-    universal_links: true,
-    work_portfolio: true,
-    portfolio: true,
+    universal_links: false,
+    work_portfolio: false,
+    portfolio: false,
     digital_products: false,
     booking_appointments: false,
     custom_quotes: false,
@@ -288,9 +288,47 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   const handleCreatorModuleToggle = (key: keyof BusinessModuleConfig) => {
+    setCreatorModules((prev) => {
+      const isCurrentlyActive = (key === 'work_portfolio' || key === 'portfolio')
+        ? Boolean(prev.work_portfolio || prev.portfolio)
+        : Boolean(prev[key]);
+      const nextVal = !isCurrentlyActive;
+      const updated = { ...prev };
+      if (key === 'work_portfolio' || key === 'portfolio') {
+        updated.work_portfolio = nextVal;
+        updated.portfolio = nextVal;
+      } else {
+        updated[key] = nextVal;
+      }
+      return updated;
+    });
+  };
+
+  const handleSelectAllCreatorModules = () => {
     setCreatorModules((prev) => ({
       ...prev,
-      [key]: !prev[key],
+      work_portfolio: true,
+      portfolio: true,
+      universal_links: true,
+      digital_products: true,
+      booking_appointments: true,
+      events_tickets: true,
+      custom_quotes: true,
+      reviews: true,
+    }));
+  };
+
+  const handleClearAllCreatorModules = () => {
+    setCreatorModules((prev) => ({
+      ...prev,
+      work_portfolio: false,
+      portfolio: false,
+      universal_links: false,
+      digital_products: false,
+      booking_appointments: false,
+      events_tickets: false,
+      custom_quotes: false,
+      reviews: false,
     }));
   };
 
@@ -318,21 +356,41 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       const isCreator = selectedProfileType === 'creator';
 
       let finalModules: BusinessModuleConfig;
+      let creatorModulesConfig: Record<string, any> | undefined = undefined;
 
       if (isCreator) {
+        const isBio = Boolean(creatorModules.universal_links);
+        const isPort = Boolean(creatorModules.work_portfolio || creatorModules.portfolio);
+        const isDigital = Boolean(creatorModules.digital_products);
+        const isConsult = Boolean(creatorModules.booking_appointments);
+        const isQuotes = Boolean(creatorModules.custom_quotes);
+        const isEvents = Boolean(creatorModules.events_tickets);
+        const isReviews = Boolean(creatorModules.reviews);
+
         finalModules = {
-          universal_links: Boolean(creatorModules.universal_links),
-          work_portfolio: Boolean(creatorModules.work_portfolio || creatorModules.portfolio),
-          portfolio: Boolean(creatorModules.work_portfolio || creatorModules.portfolio),
-          digital_products: Boolean(creatorModules.digital_products),
-          booking_appointments: Boolean(creatorModules.booking_appointments),
-          custom_quotes: Boolean(creatorModules.custom_quotes),
-          events_tickets: Boolean(creatorModules.events_tickets),
-          reviews: Boolean(creatorModules.reviews),
+          universal_links: isBio,
+          work_portfolio: isPort,
+          portfolio: isPort,
+          digital_products: isDigital,
+          booking_appointments: isConsult,
+          custom_quotes: isQuotes,
+          events_tickets: isEvents,
+          reviews: isReviews,
           products: false,
           cart_ordering: false,
           table_delivery: false,
           analytics: true,
+        };
+
+        const now = Date.now();
+        creatorModulesConfig = {
+          portfolio: { enabled: isPort, published: isPort, updatedAt: now },
+          universal_links: { enabled: isBio, published: isBio, updatedAt: now },
+          digital_products: { enabled: isDigital, published: isDigital, updatedAt: now },
+          booking_appointments: { enabled: isConsult, published: isConsult, updatedAt: now },
+          custom_quotes: { enabled: isQuotes, published: isQuotes, updatedAt: now },
+          events_tickets: { enabled: isEvents, published: isEvents, updatedAt: now },
+          reviews: { enabled: isReviews, published: isReviews, updatedAt: now },
         };
       } else {
         // Strict Vendor module saving:
@@ -395,6 +453,23 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         currencySymbol: currencySymbol || '₹',
         deliveryAvailable: isCreator ? false : Boolean(finalModules.table_delivery || finalModules.cart_ordering),
         modules: finalModules,
+        creatorModulesConfig,
+        moduleStates: creatorModulesConfig,
+        primaryDestination: isCreator
+          ? (creatorModules.work_portfolio || creatorModules.portfolio
+              ? 'portfolio'
+              : creatorModules.universal_links
+              ? 'biolink'
+              : creatorModules.digital_products
+              ? 'store'
+              : creatorModules.booking_appointments
+              ? 'consultations'
+              : creatorModules.events_tickets
+              ? 'events'
+              : creatorModules.custom_quotes
+              ? 'quotes'
+              : 'portfolio')
+          : undefined,
         status: 'active',
         socials: {
           instagram: instagramHandle ? `https://instagram.com/${instagramHandle.replace('@', '')}` : '',
@@ -1527,13 +1602,42 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               {/* CREATOR STEP 2 */}
               {step === 2 && (
                 <div className="space-y-5 animate-in fade-in duration-200">
-                  <div className="border-b border-slate-100 pb-4">
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
-                      Select Your Creator Modules
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                      Choose the features you want active on your creator workspace.
-                    </p>
+                  <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                        Select Your Creator Modules
+                      </h2>
+                      <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                        Click any card to select, or unclick to deselect. You choose only what you want active.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-200 text-indigo-700">
+                        {[
+                          creatorModules.work_portfolio || creatorModules.portfolio,
+                          creatorModules.universal_links,
+                          creatorModules.digital_products,
+                          creatorModules.booking_appointments,
+                          creatorModules.events_tickets,
+                          creatorModules.custom_quotes,
+                          creatorModules.reviews,
+                        ].filter(Boolean).length} of 7 Selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleClearAllCreatorModules}
+                        className="px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSelectAllCreatorModules}
+                        className="px-2.5 py-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition cursor-pointer"
+                      >
+                        Select All
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1657,7 +1761,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           </div>
                           <div>
                             <h3 className="font-bold text-sm text-slate-900">1:1 Consultations</h3>
-                            <span className="text-[10px] text-blue-700 font-bold uppercase">Paid Calls</span>
+                            <span className="text-[10px] text-blue-700 font-bold uppercase">/consult/{slug || 'username'}</span>
                           </div>
                         </div>
                         <span
@@ -1672,6 +1776,108 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                       </div>
                       <p className="text-xs text-slate-500 mt-3">
                         Offer 1-on-1 mentorship, strategy audits, and consultation appointments.
+                      </p>
+                    </div>
+
+                    {/* Events & Workshops */}
+                    <div
+                      onClick={() => handleCreatorModuleToggle('events_tickets')}
+                      className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                        creatorModules.events_tickets
+                          ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                            <Ticket className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-900">Events &amp; Workshops</h3>
+                            <span className="text-[10px] text-rose-700 font-bold uppercase">/events/{slug || 'username'}</span>
+                          </div>
+                        </div>
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                            creatorModules.events_tickets
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-200 text-slate-400'
+                          }`}
+                        >
+                          {creatorModules.events_tickets && <Check className="w-3 h-3 stroke-[3]" />}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-3">
+                        Sell tickets for live masterclasses, webinars, cohorts, and meetups.
+                      </p>
+                    </div>
+
+                    {/* Custom Project Quotes */}
+                    <div
+                      onClick={() => handleCreatorModuleToggle('custom_quotes')}
+                      className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                        creatorModules.custom_quotes
+                          ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-900">Custom Project Quotes</h3>
+                            <span className="text-[10px] text-amber-700 font-bold uppercase">/quote/{slug || 'username'}</span>
+                          </div>
+                        </div>
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                            creatorModules.custom_quotes
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-200 text-slate-400'
+                          }`}
+                        >
+                          {creatorModules.custom_quotes && <Check className="w-3 h-3 stroke-[3]" />}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-3">
+                        Receive client project briefs, send custom estimates, and accept proposals.
+                      </p>
+                    </div>
+
+                    {/* Client Reviews */}
+                    <div
+                      onClick={() => handleCreatorModuleToggle('reviews')}
+                      className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                        creatorModules.reviews
+                          ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                            <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-900">Client Reviews &amp; Ratings</h3>
+                            <span className="text-[10px] text-amber-700 font-bold uppercase">/reviews/{slug || 'username'}</span>
+                          </div>
+                        </div>
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                            creatorModules.reviews
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-200 text-slate-400'
+                          }`}
+                        >
+                          {creatorModules.reviews && <Check className="w-3 h-3 stroke-[3]" />}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-3">
+                        Collect and display verified client feedback, star ratings, and social proof.
                       </p>
                     </div>
                   </div>

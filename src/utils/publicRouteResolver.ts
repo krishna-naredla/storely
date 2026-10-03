@@ -467,18 +467,30 @@ export function resolveTargetViewForBusiness(
     return { targetView: 'card', canonicalPath: `/card/${slug}` };
   }
   if (route.explicitView === 'store') {
-    // Single-module creator bio redirect:
-    // When a creator has ONLY universal_links enabled (no digital products, portfolio, consultations, events),
-    // visiting /store/:slug safely redirects to their active /@:slug bio-link page.
+    // Creator smart resolution:
+    // If a creator hasn't enabled the digital products module, gracefully route visitors
+    // to their active creator experience (Portfolio, Bio Link, Consultations, Events, etc.)
     if (isCreator && !route.isExplicitPreview) {
       const hasDigitalStore = isCreatorModuleEnabled(business, 'digital_products');
-      const hasPortfolio = isCreatorModuleEnabled(business, 'portfolio');
-      const hasConsultations = isCreatorModuleEnabled(business, 'booking_appointments');
-      const hasEvents = isCreatorModuleEnabled(business, 'events_tickets');
-      const hasBio = isCreatorModuleEnabled(business, 'universal_links');
-
-      if (!hasDigitalStore && !hasPortfolio && !hasConsultations && !hasEvents && hasBio) {
-        return { targetView: 'bio', canonicalPath: `/@${slug}` };
+      if (!hasDigitalStore) {
+        if (isCreatorModuleEnabled(business, 'portfolio')) {
+          return { targetView: 'portfolio', canonicalPath: `/portfolio/${slug}` };
+        }
+        if (isCreatorModuleEnabled(business, 'universal_links')) {
+          return { targetView: 'bio', canonicalPath: `/@${slug}` };
+        }
+        if (isCreatorModuleEnabled(business, 'booking_appointments')) {
+          return { targetView: 'consultations', canonicalPath: `/consult/${slug}` };
+        }
+        if (isCreatorModuleEnabled(business, 'events_tickets')) {
+          return { targetView: 'events', canonicalPath: `/events/${slug}` };
+        }
+        if (isCreatorModuleEnabled(business, 'custom_quotes')) {
+          return { targetView: 'quotes', canonicalPath: `/quote/${slug}` };
+        }
+        if (isCreatorModuleEnabled(business, 'reviews')) {
+          return { targetView: 'reviews', canonicalPath: `/reviews/${slug}` };
+        }
       }
     }
     return { targetView: 'store', canonicalPath: `/store/${slug}` };

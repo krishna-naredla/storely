@@ -4,9 +4,15 @@ import { StorefrontView } from '../storefront/StorefrontView';
 import { BioProfileView } from '../biolink/BioProfileView';
 import { StandalonePortfolioView } from '../portfolio/StandalonePortfolioView';
 import { StandaloneTrustCardView } from './StandaloneTrustCardView';
+import { StandaloneConsultationView } from '../consultation/StandaloneConsultationView';
+import { StandaloneEventsView } from '../events/StandaloneEventsView';
+import { StandaloneQuoteView } from '../quotes/StandaloneQuoteView';
+import { StandaloneReviewsView } from '../reviews/StandaloneReviewsView';
+import { StandaloneDigitalStoreView } from '../digital/StandaloneDigitalStoreView';
 import { PublicStatusView } from './PublicStatusView';
 import { evaluatePublicAvailability } from '../../utils/publicAvailability';
 import { CanonicalPublicView } from '../../utils/publicRouteResolver';
+import { isCreatorProfile } from '../../utils/profileHelper';
 
 interface ViewRouterProps {
   viewMode:
@@ -159,17 +165,134 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
     );
   }
 
-  // 4. Module-specific or Storefront Views (consultations, events, quotes, reviews, digital store, vendor storefront)
-  const moduleResult = evaluatePublicAvailability(targetBusiness, canonicalTargetView, activePreview);
-  if (!moduleResult.isAvailable) {
+  // 4. 1:1 Consultations & Mentorship View
+  if (canonicalTargetView === 'consultations') {
+    const result = evaluatePublicAvailability(targetBusiness, 'consultations', activePreview);
+    if (!result.isAvailable) {
+      return (
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="consultations"
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
+        />
+      );
+    }
+
+    return (
+      <StandaloneConsultationView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 5. Events, Workshops & Webinars View
+  if (canonicalTargetView === 'events') {
+    const result = evaluatePublicAvailability(targetBusiness, 'events', activePreview);
+    if (!result.isAvailable) {
+      return (
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="events"
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
+        />
+      );
+    }
+
+    return (
+      <StandaloneEventsView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 6. Custom Project Quotes View
+  if (canonicalTargetView === 'quotes') {
+    const result = evaluatePublicAvailability(targetBusiness, 'quotes', activePreview);
+    if (!result.isAvailable) {
+      return (
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="quotes"
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
+        />
+      );
+    }
+
+    return (
+      <StandaloneQuoteView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 7. Client Reviews & Testimonials View
+  if (canonicalTargetView === 'reviews') {
+    const result = evaluatePublicAvailability(targetBusiness, 'reviews', activePreview);
+    if (!result.isAvailable) {
+      return (
+        <PublicStatusView
+          status={result.status}
+          title={result.title}
+          message={result.message}
+          helperNote={result.helperNote}
+          requestedSlug={targetBusiness.slug}
+          targetView="reviews"
+          isExplicitPreview={activePreview}
+          onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+          onGoToHome={() => { window.location.href = '/'; }}
+          onRetry={() => { window.location.reload(); }}
+        />
+      );
+    }
+
+    return (
+      <StandaloneReviewsView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // 8. Digital Store View (For Creators) OR Commerce Storefront View (For Vendors)
+  const isCreator = isCreatorProfile(targetBusiness);
+  const result = evaluatePublicAvailability(targetBusiness, 'store', activePreview);
+  if (!result.isAvailable) {
     return (
       <PublicStatusView
-        status={moduleResult.status}
-        title={moduleResult.title}
-        message={moduleResult.message}
-        helperNote={moduleResult.helperNote}
+        status={result.status}
+        title={result.title}
+        message={result.message}
+        helperNote={result.helperNote}
         requestedSlug={targetBusiness.slug}
-        targetView={canonicalTargetView}
+        targetView="store"
         isExplicitPreview={activePreview}
         onBackToDashboard={activePreview ? onBackToDashboard : undefined}
         onGoToHome={() => { window.location.href = '/'; }}
@@ -178,10 +301,21 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
     );
   }
 
+  if (isCreator) {
+    return (
+      <StandaloneDigitalStoreView
+        business={targetBusiness}
+        onBackToDashboard={activePreview ? onBackToDashboard : undefined}
+        isOwner={activePreview}
+      />
+    );
+  }
+
+  // Vendor Commerce Storefront (Retail, Restaurant, Bakery, Hotel, Rental, etc.)
   return (
     <StorefrontView
       business={targetBusiness}
-      initialView={canonicalTargetView}
+      initialView="store"
       onBackToDashboard={activePreview ? onBackToDashboard : undefined}
       onOpenDigitalCard={onOpenDigitalCard}
     />

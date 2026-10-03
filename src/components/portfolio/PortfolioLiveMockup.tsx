@@ -314,6 +314,16 @@ export const PortfolioLiveMockup: React.FC<PortfolioLiveMockupProps> = ({
           >
             {/* HERO SECTION */}
             <div className={`p-4 border space-y-3.5 shadow-2xs ${getCardRadiusClass()} ${getCardClass()}`}>
+              {(settings.bannerImage || business.banner || business.coverImage) && (
+                <div className="w-full h-24 rounded-xl overflow-hidden border border-black/5 dark:border-white/10 relative shadow-2xs">
+                  <img
+                    src={settings.bannerImage || business.banner || business.coverImage}
+                    alt="Cover Banner"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-md bg-slate-100 shrink-0">
                   {business.logo || business.profileImage ? (
@@ -590,6 +600,16 @@ export const PortfolioLiveMockup: React.FC<PortfolioLiveMockupProps> = ({
           >
             {/* Desktop Hero */}
             <div className={`p-6 border space-y-4 shadow-xs ${getCardRadiusClass()} ${getCardClass()}`}>
+              {(settings.bannerImage || business.banner || business.coverImage) && (
+                <div className="w-full h-36 rounded-2xl overflow-hidden border border-black/5 dark:border-white/10 relative shadow-2xs">
+                  <img
+                    src={settings.bannerImage || business.banner || business.coverImage}
+                    alt="Cover Banner"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md bg-slate-100 shrink-0">
