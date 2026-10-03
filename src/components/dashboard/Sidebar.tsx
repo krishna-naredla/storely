@@ -34,6 +34,7 @@ import { BUSINESS_TYPES, getRelevantModulesForVertical } from "../../services/bu
 import { subscribeToOrders, getStorefrontUrl } from "../../services/firebaseService";
 import { auth } from "../../config/firebase";
 import { isCreatorProfile, getProfileTypeLabel } from "../../utils/profileHelper";
+import { isCreatorModuleEnabled } from "../../utils/creatorModuleManager";
 import { SafeImage } from "../common/SafeImage";
 import { getBusinessLogo } from "../../utils/branding";
 
@@ -131,14 +132,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: "overview", label: "Overview", icon: LayoutDashboard, visible: true },
         { id: "share", label: "Profile Link & QR", icon: Share2, badge: "Public", visible: true },
         { id: "modules", label: "Creator Modules", icon: Layers, badge: "Modules", visible: true },
-        { id: "portfolio", label: "Portfolio", icon: Briefcase, badge: "Showcase", visible: (relevantModules.has('work_portfolio') || relevantModules.has('portfolio')) && (!!modules?.work_portfolio || !!modules?.portfolio) },
-        { id: "biolink", label: "Bio Link", icon: Link, badge: "@link", visible: relevantModules.has('universal_links') && (!!modules?.universal_links || !!modules?.biolink) },
-        { id: "catalog", label: "Digital Products", icon: ShoppingBag, visible: relevantModules.has('digital_products') && (!!modules?.digital_products || !!modules?.digitalProducts) },
-        { id: "orders", label: "Digital Sales", icon: Package, visible: (relevantModules.has('digital_products') || relevantModules.has('cart_ordering')) && (!!modules?.digital_products || !!modules?.digitalProducts || !!modules?.cart_ordering) },
-        { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: relevantModules.has('booking_appointments') && !!modules?.booking_appointments },
-        { id: "quotes", label: "Custom Quotes", icon: FileText, visible: relevantModules.has('custom_quotes') && !!modules?.custom_quotes },
-        { id: "events", label: "Events & Workshops", icon: Ticket, visible: (relevantModules.has('events_tickets') || relevantModules.has('events_ticketing')) && (!!modules?.events_tickets || !!modules?.events_ticketing) },
-        { id: "reviews", label: "Reviews", icon: Star, visible: relevantModules.has('reviews') && !!modules?.reviews },
+        { id: "portfolio", label: "Portfolio", icon: Briefcase, badge: "Showcase", visible: isCreatorModuleEnabled(business, 'portfolio') },
+        { id: "biolink", label: "Bio Link", icon: Link, badge: "@link", visible: isCreatorModuleEnabled(business, 'universal_links') },
+        { id: "catalog", label: "Digital Products", icon: ShoppingBag, visible: isCreatorModuleEnabled(business, 'digital_products') },
+        { id: "orders", label: "Digital Sales", icon: Package, visible: isCreatorModuleEnabled(business, 'digital_products') },
+        { id: "bookings", label: "1:1 Consultations", icon: CalendarCheck, visible: isCreatorModuleEnabled(business, 'booking_appointments') },
+        { id: "quotes", label: "Custom Quotes", icon: FileText, visible: isCreatorModuleEnabled(business, 'custom_quotes') },
+        { id: "events", label: "Events & Workshops", icon: Ticket, visible: isCreatorModuleEnabled(business, 'events_tickets') },
+        { id: "reviews", label: "Reviews", icon: Star, visible: isCreatorModuleEnabled(business, 'reviews') },
         { id: "analytics", label: "Traffic & Sales", icon: BarChart3, visible: true },
         { id: "payments", label: "Payments", icon: CreditCard, visible: true },
         { id: "notifications", label: "Activity", icon: Bell, visible: true },

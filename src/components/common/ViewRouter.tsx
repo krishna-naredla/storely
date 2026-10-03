@@ -6,9 +6,21 @@ import { StandalonePortfolioView } from '../portfolio/StandalonePortfolioView';
 import { StandaloneTrustCardView } from './StandaloneTrustCardView';
 import { PublicStatusView } from './PublicStatusView';
 import { evaluatePublicAvailability } from '../../utils/publicAvailability';
+import { CanonicalPublicView } from '../../utils/publicRouteResolver';
 
 interface ViewRouterProps {
-  viewMode: 'dashboard' | 'storefront' | 'store' | 'portfolio' | 'biolink' | 'bio' | 'card';
+  viewMode:
+    | 'dashboard'
+    | 'storefront'
+    | 'store'
+    | 'portfolio'
+    | 'biolink'
+    | 'bio'
+    | 'card'
+    | 'consultations'
+    | 'events'
+    | 'quotes'
+    | 'reviews';
   targetBusiness: BusinessProfile;
   isOwner?: boolean;
   isExplicitPreview?: boolean;
@@ -33,8 +45,26 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
     targetBusiness.status !== 'deleted'
   );
 
+  // Normalize canonical target view
+  const canonicalTargetView: CanonicalPublicView =
+    viewMode === 'biolink' || viewMode === 'bio'
+      ? 'bio'
+      : viewMode === 'portfolio'
+      ? 'portfolio'
+      : viewMode === 'card'
+      ? 'card'
+      : viewMode === 'consultations'
+      ? 'consultations'
+      : viewMode === 'events'
+      ? 'events'
+      : viewMode === 'quotes'
+      ? 'quotes'
+      : viewMode === 'reviews'
+      ? 'reviews'
+      : 'store';
+
   // 1. Universal Bio Link View
-  if (viewMode === 'biolink' || viewMode === 'bio') {
+  if (canonicalTargetView === 'bio') {
     const result = evaluatePublicAvailability(targetBusiness, 'bio', activePreview);
     if (!result.isAvailable) {
       return (
@@ -67,7 +97,7 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   }
 
   // 2. Professional Portfolio View
-  if (viewMode === 'portfolio') {
+  if (canonicalTargetView === 'portfolio') {
     const result = evaluatePublicAvailability(targetBusiness, 'portfolio', activePreview);
     if (!result.isAvailable) {
       return (
@@ -96,7 +126,7 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   }
 
   // 3. Digital Trust Card View
-  if (viewMode === 'card') {
+  if (canonicalTargetView === 'card') {
     const result = evaluatePublicAvailability(targetBusiness, 'card', activePreview);
     if (!result.isAvailable) {
       return (
@@ -129,17 +159,17 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
     );
   }
 
-  // 4. Default Storefront View (Vendor storefront or Creator digital store)
-  const storeResult = evaluatePublicAvailability(targetBusiness, 'store', activePreview);
-  if (!storeResult.isAvailable) {
+  // 4. Module-specific or Storefront Views (consultations, events, quotes, reviews, digital store, vendor storefront)
+  const moduleResult = evaluatePublicAvailability(targetBusiness, canonicalTargetView, activePreview);
+  if (!moduleResult.isAvailable) {
     return (
       <PublicStatusView
-        status={storeResult.status}
-        title={storeResult.title}
-        message={storeResult.message}
-        helperNote={storeResult.helperNote}
+        status={moduleResult.status}
+        title={moduleResult.title}
+        message={moduleResult.message}
+        helperNote={moduleResult.helperNote}
         requestedSlug={targetBusiness.slug}
-        targetView="store"
+        targetView={canonicalTargetView}
         isExplicitPreview={activePreview}
         onBackToDashboard={activePreview ? onBackToDashboard : undefined}
         onGoToHome={() => { window.location.href = '/'; }}
@@ -151,6 +181,7 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   return (
     <StorefrontView
       business={targetBusiness}
+      initialView={canonicalTargetView}
       onBackToDashboard={activePreview ? onBackToDashboard : undefined}
       onOpenDigitalCard={onOpenDigitalCard}
     />

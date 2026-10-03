@@ -1,5 +1,11 @@
 import { BusinessProfile, ProfileType } from '../types';
 import { getBioLinkUrl, getPortfolioUrl, getDigitalStoreUrl } from '../services/firebaseService';
+import {
+  getCreatorModulePublicUrl,
+  getCreatorModuleDisplayPath,
+  isCreatorModulePublished,
+  isCreatorModuleEnabled,
+} from './creatorModuleManager';
 
 /**
  * Determine if a business profile is a Creator profile or a Vendor profile.
@@ -71,76 +77,122 @@ export function getPublicDestinations(business: BusinessProfile): PublicDestinat
   const destinations: PublicDestination[] = [];
 
   if (isCreator) {
-    const portfolioEnabled = Boolean(
-      business.modules?.work_portfolio || business.modules?.portfolio
-    );
-    const bioEnabled = Boolean(
-      business.modules?.universal_links || business.modules?.bio_links || business.modules?.biolink
-    );
-    const digitalEnabled = Boolean(
-      business.modules?.digital_products ||
-      business.modules?.digitalProducts ||
-      business.modules?.products ||
-      business.modules?.catalog
-    );
-
-    const userPreferredPrimary = business.primaryDestination;
-
     // 1. Work Portfolio
-    if (portfolioEnabled) {
+    if (isCreatorModulePublished(business, 'portfolio')) {
       destinations.push({
         id: 'portfolio',
         moduleKey: 'work_portfolio',
         title: 'Work Portfolio',
         badgeLabel: 'Portfolio',
         description: 'Showcase your work samples, case studies, galleries, and client outcomes.',
-        url: getPortfolioUrl(slug),
-        displayPath: `/portfolio/${slug}`,
+        url: getCreatorModulePublicUrl(business, 'portfolio'),
+        displayPath: getCreatorModuleDisplayPath(business, 'portfolio'),
         isPrimary: false,
         enabled: true,
       });
     }
 
     // 2. Universal Bio Link
-    if (bioEnabled) {
+    if (isCreatorModulePublished(business, 'universal_links')) {
       destinations.push({
         id: 'biolink',
         moduleKey: 'universal_links',
         title: 'Universal Bio Link',
         badgeLabel: 'Bio Link',
         description: 'One professional link for all your socials, projects, and contact channels.',
-        url: getBioLinkUrl(slug),
-        displayPath: `/@${slug}`,
+        url: getCreatorModulePublicUrl(business, 'universal_links'),
+        displayPath: getCreatorModuleDisplayPath(business, 'universal_links'),
         isPrimary: false,
         enabled: true,
       });
     }
 
-    // 3. Digital Store
-    if (digitalEnabled) {
+    // 3. Digital Store & Downloads
+    if (isCreatorModulePublished(business, 'digital_products')) {
       destinations.push({
         id: 'digital_store',
         moduleKey: 'digital_products',
         title: 'Digital Products Store',
         badgeLabel: 'Digital Store',
         description: 'Sell downloadable PDFs, templates, software, and products on WhatsApp.',
-        url: getDigitalStoreUrl(slug),
-        displayPath: `/store/${slug}`,
+        url: getCreatorModulePublicUrl(business, 'digital_products'),
+        displayPath: getCreatorModuleDisplayPath(business, 'digital_products'),
         isPrimary: false,
         enabled: true,
       });
     }
 
-    // Fallback if none explicitly enabled
-    if (destinations.length === 0) {
+    // 4. 1:1 Consultations & Mentorship
+    if (isCreatorModulePublished(business, 'booking_appointments')) {
       destinations.push({
-        id: 'portfolio',
-        moduleKey: 'work_portfolio',
-        title: 'Work Portfolio',
-        badgeLabel: 'Portfolio',
-        description: 'Showcase your work samples, projects, and creative services.',
-        url: getPortfolioUrl(slug),
-        displayPath: `/portfolio/${slug}`,
+        id: 'consultations',
+        moduleKey: 'booking_appointments',
+        title: '1:1 Consultations & Mentorship',
+        badgeLabel: 'Consultations',
+        description: 'Book 1:1 video calls, portfolio reviews, and mentorship sessions.',
+        url: getCreatorModulePublicUrl(business, 'booking_appointments'),
+        displayPath: getCreatorModuleDisplayPath(business, 'booking_appointments'),
+        isPrimary: false,
+        enabled: true,
+      });
+    }
+
+    // 5. Events, Workshops & Webinars
+    if (isCreatorModulePublished(business, 'events_tickets')) {
+      destinations.push({
+        id: 'events',
+        moduleKey: 'events_tickets',
+        title: 'Events & Masterclasses',
+        badgeLabel: 'Events',
+        description: 'Attend live workshops, webinars, meetups, and conferences.',
+        url: getCreatorModulePublicUrl(business, 'events_tickets'),
+        displayPath: getCreatorModuleDisplayPath(business, 'events_tickets'),
+        isPrimary: false,
+        enabled: true,
+      });
+    }
+
+    // 6. Custom Project Quotes
+    if (isCreatorModulePublished(business, 'custom_quotes')) {
+      destinations.push({
+        id: 'quotes',
+        moduleKey: 'custom_quotes',
+        title: 'Custom Project Quotes',
+        badgeLabel: 'Quotes',
+        description: 'Request tailored pricing and submit customized project briefs.',
+        url: getCreatorModulePublicUrl(business, 'custom_quotes'),
+        displayPath: getCreatorModuleDisplayPath(business, 'custom_quotes'),
+        isPrimary: false,
+        enabled: true,
+      });
+    }
+
+    // 7. Client Reviews
+    if (isCreatorModulePublished(business, 'reviews')) {
+      destinations.push({
+        id: 'reviews',
+        moduleKey: 'reviews',
+        title: 'Client Reviews & Ratings',
+        badgeLabel: 'Reviews',
+        description: 'Read testimonials and submit verified client reviews.',
+        url: getCreatorModulePublicUrl(business, 'reviews'),
+        displayPath: getCreatorModuleDisplayPath(business, 'reviews'),
+        isPrimary: false,
+        enabled: true,
+      });
+    }
+
+    // Fallback if none explicitly published: check enabled or default portfolio
+    if (destinations.length === 0) {
+      const firstEnabled = ['portfolio', 'universal_links', 'digital_products', 'booking_appointments', 'events_tickets'].find(k => isCreatorModuleEnabled(business, k)) || 'portfolio';
+      destinations.push({
+        id: firstEnabled === 'universal_links' ? 'biolink' : firstEnabled === 'digital_products' ? 'digital_store' : firstEnabled,
+        moduleKey: firstEnabled,
+        title: firstEnabled === 'universal_links' ? 'Universal Bio Link' : firstEnabled === 'digital_products' ? 'Digital Products Store' : 'Work Portfolio',
+        badgeLabel: firstEnabled === 'universal_links' ? 'Bio Link' : firstEnabled === 'digital_products' ? 'Digital Store' : 'Portfolio',
+        description: 'Public creator profile destination.',
+        url: getCreatorModulePublicUrl(business, firstEnabled),
+        displayPath: getCreatorModuleDisplayPath(business, firstEnabled),
         isPrimary: true,
         enabled: true,
       });
@@ -148,11 +200,16 @@ export function getPublicDestinations(business: BusinessProfile): PublicDestinat
 
     // Resolve primary destination:
     let primarySet = false;
+    const userPreferredPrimary = business.primaryDestination;
     if (userPreferredPrimary) {
-      const match = destinations.find((d) => 
-        (userPreferredPrimary === 'portfolio' && d.id === 'portfolio') ||
-        (userPreferredPrimary === 'biolink' && d.id === 'biolink') ||
-        (userPreferredPrimary === 'store' && d.id === 'digital_store')
+      const match = destinations.find(
+        (d) =>
+          (userPreferredPrimary === 'portfolio' && d.id === 'portfolio') ||
+          (userPreferredPrimary === 'biolink' && d.id === 'biolink') ||
+          (userPreferredPrimary === 'store' && d.id === 'digital_store') ||
+          (userPreferredPrimary === 'consultations' && d.id === 'consultations') ||
+          (userPreferredPrimary === 'events' && d.id === 'events') ||
+          (userPreferredPrimary === 'quotes' && d.id === 'quotes')
       );
       if (match) {
         match.isPrimary = true;
@@ -161,7 +218,7 @@ export function getPublicDestinations(business: BusinessProfile): PublicDestinat
     }
 
     if (!primarySet) {
-      // Default priority for creator: Portfolio -> BioLink -> Digital Store
+      // Default priority for creator: Portfolio -> BioLink -> Digital Store -> Consultations -> Events
       destinations[0].isPrimary = true;
     }
   } else {

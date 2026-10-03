@@ -200,16 +200,48 @@ export function getCategoryDeepUrl(businessOrSlug: any, categoryIdOrSlug: string
   return `${storeUrl}${separator}category=${encodeURIComponent(categoryIdOrSlug)}`;
 }
 
-export function getModuleDeepUrl(businessOrSlug: any, moduleType: 'catalog' | 'digital' | 'services' | 'portfolio' | 'events' | 'quotes' | 'reviews' | 'card' | 'biolink'): string {
+export function getModuleDeepUrl(
+  businessOrSlug: any,
+  moduleType:
+    | 'catalog'
+    | 'digital'
+    | 'services'
+    | 'portfolio'
+    | 'events'
+    | 'quotes'
+    | 'reviews'
+    | 'consultations'
+    | 'bookings'
+    | 'card'
+    | 'biolink'
+): string {
+  const handle =
+    typeof businessOrSlug === 'object' && businessOrSlug !== null
+      ? (businessOrSlug.username || businessOrSlug.slug || businessOrSlug.id || '')
+      : (businessOrSlug || '');
+
   if (moduleType === 'biolink') {
-    return getBioLinkUrl(businessOrSlug);
+    return `${getBaseUrl()}/@${encodeURIComponent(handle)}`;
   }
   if (moduleType === 'portfolio') {
-    return getPortfolioUrl(businessOrSlug);
+    return `${getBaseUrl()}/portfolio/${encodeURIComponent(handle)}`;
   }
-  const storeUrl = getDigitalStoreUrl(businessOrSlug);
-  const separator = storeUrl.includes('?') ? '&' : '?';
-  return `${storeUrl}${separator}view=${encodeURIComponent(moduleType)}`;
+  if (moduleType === 'consultations' || moduleType === 'bookings') {
+    return `${getBaseUrl()}/consult/${encodeURIComponent(handle)}`;
+  }
+  if (moduleType === 'events') {
+    return `${getBaseUrl()}/events/${encodeURIComponent(handle)}`;
+  }
+  if (moduleType === 'quotes') {
+    return `${getBaseUrl()}/quote/${encodeURIComponent(handle)}`;
+  }
+  if (moduleType === 'reviews') {
+    return `${getBaseUrl()}/reviews/${encodeURIComponent(handle)}`;
+  }
+  if (moduleType === 'card') {
+    return `${getBaseUrl()}/card/${encodeURIComponent(handle)}`;
+  }
+  return `${getBaseUrl()}/store/${encodeURIComponent(handle)}`;
 }
 
 export function getTrustCardUrl(businessOrSlug: any): string {

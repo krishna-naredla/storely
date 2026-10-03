@@ -84,6 +84,14 @@ export type BusinessModules = BusinessModuleConfig;
 
 export type ProfileType = 'vendor' | 'creator';
 
+export interface CreatorModuleState {
+  enabled: boolean;
+  published: boolean;
+  updatedAt?: number;
+}
+
+export type CreatorModulesConfig = Record<string, CreatorModuleState>;
+
 export interface BusinessProfile {
   id: string;
   ownerId: string;
@@ -137,7 +145,7 @@ export interface BusinessProfile {
     branchName?: string;
   };
   paymentInstructions?: string;
-  primaryDestination?: 'portfolio' | 'biolink' | 'store';
+  primaryDestination?: 'portfolio' | 'biolink' | 'store' | 'consultations' | 'events' | 'quotes' | 'reviews';
   socialLinks?:
     | {
         instagram?: string;
@@ -177,6 +185,8 @@ export interface BusinessProfile {
   showPortfolioOnBio?: boolean;
   showOfficialLinksBadge?: boolean;
   portfolioSettings?: PortfolioSettings;
+  creatorModulesConfig?: CreatorModulesConfig;
+  moduleStates?: Record<string, CreatorModuleState>;
   trustCardSettings?: StoreTrustCardSettings;
   createdAt: number;
   updatedAt: number;

@@ -84,16 +84,19 @@ import { DigitalCheckoutModal } from './DigitalCheckoutModal';
 import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
+import { EventsShowcase } from './EventsShowcase';
 import { resolveItemAction } from '../../utils/itemActionResolver';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
+  initialView?: 'store' | 'events' | 'consultations' | 'quotes' | 'reviews';
   onBackToDashboard?: () => void;
   onOpenDigitalCard?: () => void;
 }
 
 export const StorefrontView: React.FC<StorefrontViewProps> = ({
   business,
+  initialView = 'store',
   onBackToDashboard,
   onOpenDigitalCard,
 }) => {
@@ -463,57 +466,61 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   }, [business.id, JSON.stringify(business.modules)]);
 
   useEffect(() => {
-    if (catalogItems.length > 0 || categories.length > 0) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const itemId = urlParams.get('item') || urlParams.get('product');
-      const categoryParam = urlParams.get('category');
-      const viewParam = urlParams.get('view');
-      const tableParam = urlParams.get('table');
+    const urlParams = new URLSearchParams(window.location.search);
+    const itemId = urlParams.get('item') || urlParams.get('product');
+    const categoryParam = urlParams.get('category');
+    const viewParam = urlParams.get('view');
+    const tableParam = urlParams.get('table');
 
-      if (tableParam && business.modules.table_delivery) {
-        // Save table to local storage for persistence across the session
-        localStorage.setItem(`storelly_table_${business.id}`, tableParam);
-      }
+    if (tableParam && business.modules.table_delivery) {
+      // Save table to local storage for persistence across the session
+      localStorage.setItem(`storelly_table_${business.id}`, tableParam);
+    }
 
-      // Deep link to a specific item (gated by module flag)
-      if (itemId) {
-        const item = catalogItems.find(i => i.id === itemId || i.slug === itemId);
-        if (item) {
-          if (item.productType === 'digital_file') {
-            if (isDigitalProductsEnabled) {
-              setSelectedItemForDigital(item);
-            }
-          } else {
-            setSelectedItemForDetail(item);
+    // Deep link to a specific item (gated by module flag)
+    if (itemId && catalogItems.length > 0) {
+      const item = catalogItems.find(i => i.id === itemId || i.slug === itemId);
+      if (item) {
+        if (item.productType === 'digital_file') {
+          if (isDigitalProductsEnabled) {
+            setSelectedItemForDigital(item);
           }
+        } else {
+          setSelectedItemForDetail(item);
         }
-      }
-
-      // Deep link to a specific category
-      if (categoryParam) {
-        const cat = categories.find(
-          c => c.id === categoryParam || c.slug === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
-        );
-        if (cat) {
-          setSelectedCategory(cat.id);
-        }
-      }
-
-      // Deep link to a specific view/action
-      if (viewParam === 'quotes') {
-        setIsQuoteModalOpen(true);
-      } else if (viewParam === 'reviews') {
-        const el = document.getElementById('reviews-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      } else if (viewParam === 'portfolio' && isPortfolioEnabled) {
-        const el = document.getElementById('portfolio-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      } else if (viewParam === 'events') {
-        const el = document.getElementById('events-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
     }
-  }, [catalogItems, categories]);
+
+    // Deep link to a specific category
+    if (categoryParam && categories.length > 0) {
+      const cat = categories.find(
+        c => c.id === categoryParam || c.slug === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
+      );
+      if (cat) {
+        setSelectedCategory(cat.id);
+      }
+    }
+
+    // Deep link to a specific view/action
+    const effectiveView = viewParam || initialView;
+    if (effectiveView === 'quotes') {
+      setIsQuoteModalOpen(true);
+    } else if (effectiveView === 'reviews') {
+      const el = document.getElementById('reviews-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else if (effectiveView === 'portfolio' && isPortfolioEnabled) {
+      const el = document.getElementById('portfolio-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else if (effectiveView === 'events') {
+      const el = document.getElementById('events-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else if (effectiveView === 'consultations') {
+      const consultSlot = catalogItems.find(i => i.productType === 'consultation_slot' || i.type === 'service' || i.productType === 'service');
+      if (consultSlot) {
+        setSelectedItemForBooking(consultSlot);
+      }
+    }
+  }, [catalogItems, categories, initialView, isPortfolioEnabled, isDigitalProductsEnabled, business.id]);
 
   // Calculate average rating
   const averageRating =
@@ -1296,6 +1303,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Live Events, Workshops & Masterclasses Showcase */}
+        {(events.length > 0 || business.modules?.events_tickets || business.modules?.events_ticketing) && (
+          <div id="events-section">
+            <EventsShowcase events={events} business={business} />
+          </div>
+        )}
 
         {/* Customer Reviews & Trust Section */}
         <section id="reviews-section" className="rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] p-6 sm:p-8 shadow-[var(--shadow-xs)] space-y-6">
