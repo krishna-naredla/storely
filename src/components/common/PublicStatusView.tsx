@@ -124,41 +124,24 @@ export const PublicStatusView: React.FC<PublicStatusViewProps> = ({
 
           {/* Action CTAs */}
           <div className="flex flex-col gap-2.5 pt-2">
-            {onBackToDashboard && (
+            {isExplicitPreview && onBackToDashboard && (
               <button
                 type="button"
                 onClick={onBackToDashboard}
-                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Briefcase className="w-4 h-4" />
-                <span>Go to Creator Dashboard to Enable Modules</span>
+                <span>Open Dashboard to Manage</span>
               </button>
-            )}
-
-            {requestedSlug && (
-              <div className="flex items-center justify-center gap-3 pt-1 pb-1 flex-wrap text-xs font-semibold">
-                <a
-                  href={`/portfolio/${requestedSlug}`}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition"
-                >
-                  Visit Portfolio
-                </a>
-                <a
-                  href={`/@${requestedSlug}`}
-                  className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition"
-                >
-                  Visit Bio Link
-                </a>
-              </div>
             )}
 
             <button
               type="button"
               onClick={handleGoHome}
-              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 active:bg-black text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Home className="w-4 h-4" />
-              <span>Go to Storelly</span>
+              <span>Return to Homepage</span>
             </button>
 
             <button
@@ -167,7 +150,7 @@ export const PublicStatusView: React.FC<PublicStatusViewProps> = ({
               className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Try Again</span>
+              <span>Refresh Page</span>
             </button>
           </div>
         </main>

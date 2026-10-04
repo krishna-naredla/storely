@@ -23,7 +23,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { BusinessProfile, EventItem } from '../../types';
-import { getEvents, cleanupStaleEventHolds } from '../../services/firebaseService';
+import { getEvents, cleanupStaleEventHolds, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 import { EventCheckoutModal } from '../storefront/EventCheckoutModal';
 
@@ -52,6 +52,7 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
     async function loadEvents() {
       setIsLoading(true);
       try {
+        recordAnalyticsEvent(business.id, 'event_view', { slug: business.slug }).catch(() => {});
         const fetchedEvents = await getEvents(business.id);
         if (!isMounted) return;
         const active = (fetchedEvents || []).filter((e) => e.status !== 'cancelled');
@@ -99,8 +100,8 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
 
   const getEventShareUrl = (event: EventItem) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://storelly.com';
-    const storePath = business.slug ? `/store/${encodeURIComponent(business.slug)}` : `/store/${business.id}`;
-    return `${origin}${storePath}?event=${encodeURIComponent(event.id)}#event-${event.id}`;
+    const eventPath = business.slug ? `/events/${encodeURIComponent(business.slug)}` : `/events/${business.id}`;
+    return `${origin}${eventPath}?event=${encodeURIComponent(event.id)}#event-${event.id}`;
   };
 
   const handleShare = async (event: EventItem, e: React.MouseEvent) => {
@@ -153,6 +154,8 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
 
   const bannerImage = business.banner || business.coverImage;
 
+  const isProfileVerified = Boolean(business.isVerified || (business as any).verified);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
       {/* Explicit Owner Preview Header */}
@@ -194,10 +197,10 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
         {/* Profile Info Overlay */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 relative -mt-16 sm:-mt-20 pb-8">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white border-4 border-white p-1 shrink-0 shadow-xl overflow-hidden relative z-10">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white border-4 border-white p-1 shrink-0 shadow-xl overflow-hidden relative z-10 flex items-center justify-center">
               <SafeImage
                 fallbackType="avatar"
-                src={business.logo || business.profileImage || '/cteatorlink.jpeg'}
+                src={business.logo || business.profileImage || ''}
                 alt={business.name}
                 className="w-full h-full object-cover rounded-2xl"
               />
@@ -209,10 +212,12 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
                   <Ticket className="w-3.5 h-3.5 text-emerald-700" />
                   Live Events &amp; Masterclasses
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  Verified Host
-                </span>
+                {isProfileVerified && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Verified Host
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-slate-900">

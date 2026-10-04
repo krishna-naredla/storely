@@ -2105,10 +2105,10 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                     <span>Total Clicks</span>
                   </div>
                   <div className="text-3xl font-black text-slate-900">
-                    {analytics.clicks > 0 ? analytics.clicks.toLocaleString() : '12,380'}
+                    {analytics.clicks.toLocaleString()}
                   </div>
                   <p className="text-[11px] text-emerald-700 font-semibold mt-1">
-                    ▲ +14.2% vs last 30 days
+                    Direct outbound link interactions
                   </p>
                 </div>
 
@@ -2118,25 +2118,25 @@ export const BioProfileManager: React.FC<Props> = ({ business, onBusinessUpdated
                     <span>Total Views</span>
                   </div>
                   <div className="text-3xl font-black text-slate-900">
-                    {analytics.views > 0 ? analytics.views.toLocaleString() : '24,590'}
+                    {analytics.views.toLocaleString()}
                   </div>
                   <p className="text-[11px] text-blue-700 font-semibold mt-1">
-                    Unique visitor impressions
+                    Unique bio link impressions
                   </p>
                 </div>
 
                 <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50/40 border border-purple-100">
                   <div className="flex items-center gap-2 text-purple-800 text-xs font-bold uppercase tracking-wider mb-2">
                     <Zap className="w-4 h-4 text-purple-600" />
-                    <span>Conversion Rate</span>
+                    <span>Click-Through Rate (CTR)</span>
                   </div>
                   <div className="text-3xl font-black text-slate-900">
                     {analytics.views > 0
                       ? `${Math.round((analytics.clicks / analytics.views) * 100)}%`
-                      : '50.3%'}
+                      : '0%'}
                   </div>
                   <p className="text-[11px] text-purple-700 font-semibold mt-1">
-                    Visitors who clicked links
+                    Percentage of visitors clicking links
                   </p>
                 </div>
               </div>

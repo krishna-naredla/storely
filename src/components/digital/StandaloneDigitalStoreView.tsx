@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { BusinessProfile, CatalogItem } from '../../types';
-import { getCatalogItems } from '../../services/firebaseService';
+import { getCatalogItems, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 import { DigitalCheckoutModal } from '../storefront/DigitalCheckoutModal';
 
@@ -38,21 +38,23 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
     async function loadProducts() {
       setIsLoading(true);
       try {
+        recordAnalyticsEvent(business.id, 'digital_product_view', { slug: business.slug }).catch(() => {});
         const catalog = await getCatalogItems(business.id);
         if (!isMounted) return;
 
-        // Filter for digital items or active catalog items
+        // Strictly filter for active and published digital items only (no physical product fallback)
         const digitalItems = (catalog || []).filter(
           (item) =>
-            item.productType === 'digital_file' ||
-            item.type === 'course' ||
-            Boolean(item.digitalFileUrl && item.digitalFileUrl.trim().length > 0) ||
-            item.productType !== 'physical'
+            item.isActive !== false &&
+            (item.productType === 'digital_file' ||
+              item.type === 'course' ||
+              Boolean(item.digitalFileUrl && item.digitalFileUrl.trim().length > 0))
         );
 
-        setItems(digitalItems.length > 0 ? digitalItems : catalog || []);
+        setItems(digitalItems);
       } catch (err) {
         console.error('Error fetching digital products:', err);
+        setItems([]);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -65,6 +67,7 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
   }, [business.id]);
 
   const currencySymbol = business.currencySymbol || '₹';
+  const isProfileVerified = Boolean(business.isVerified || (business as any).verified);
 
   const getFormatBadge = (item: CatalogItem) => {
     if (item.type === 'course' || (item.productType as any) === 'course') {
@@ -107,10 +110,10 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-emerald-50 border-2 border-emerald-100 p-1 shrink-0 shadow-sm overflow-hidden">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-emerald-50 border-2 border-emerald-100 p-1 shrink-0 shadow-sm overflow-hidden flex items-center justify-center">
               <SafeImage
                 fallbackType="avatar"
-                src={business.logo || business.profileImage || '/cteatorlink.jpeg'}
+                src={business.logo || business.profileImage || ''}
                 alt={business.name}
                 className="w-full h-full object-cover rounded-xl"
               />
@@ -122,10 +125,12 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
                   <ShoppingBag className="w-3 h-3 text-emerald-600" />
                   Digital Store &amp; Downloads
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Verified Creator
-                </span>
+                {isProfileVerified && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    Verified Creator
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-slate-900">
@@ -189,15 +194,15 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
                     className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between group"
                   >
                     {/* Item Cover Image */}
-                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
-                      <img
-                        src={item.images?.[0] || '/cteatorlink.jpeg'}
+                    <div className="relative aspect-video w-full overflow-hidden bg-slate-100 flex items-center justify-center">
+                      <SafeImage
+                        fallbackType="product"
+                        src={item.images?.[0] || ''}
                         alt={item.name}
-                        referrerPolicy="no-referrer"
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
 
-                      <div className="absolute top-3 left-3">
+                      <div className="absolute top-3 left-3 z-10">
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs ${badge.color}`}>
                           <BadgeIcon className="w-3 h-3" />
                           <span>{badge.label}</span>

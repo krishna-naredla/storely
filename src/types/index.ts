@@ -460,9 +460,117 @@ export interface Customer {
   totalOrders: number;
   totalBookings: number;
   totalSpent: number;
+  sourceModule?: 'digital_store' | 'consultation' | 'event' | 'quote' | 'review' | 'storefront' | string;
+  sourceModules?: string[];
   firstInteractionAt: number;
   lastInteractionAt: number;
   notes?: string;
+}
+
+export type CanonicalAnalyticsEventType =
+  | 'profile_view'
+  | 'bio_view'
+  | 'bio_click'
+  | 'portfolio_view'
+  | 'project_view'
+  | 'digital_product_view'
+  | 'digital_purchase'
+  | 'digital_download'
+  | 'consultation_view'
+  | 'consultation_booking'
+  | 'event_view'
+  | 'event_registration'
+  | 'event_ticket_purchase'
+  | 'quote_view'
+  | 'quote_request'
+  | 'quote_paid'
+  | 'review_view'
+  | 'review_submitted'
+  | 'affiliate_impression'
+  | 'affiliate_click'
+  | 'whatsapp_click'
+  | 'share'
+  | 'qr_scan'
+  | 'store_view'
+  | 'cart_add';
+
+export interface CreatorAnalyticsSummary {
+  timeRange: 'today' | '7d' | '30d' | '90d' | 'all';
+  totalViews: number;
+  totalClicks: number;
+  overallCtr: number;
+  totalRevenue: number;
+  totalConversions: number;
+  
+  bioLink: {
+    views: number;
+    clicks: number;
+    ctr: number;
+    clicksPerLink: Record<string, number>;
+  };
+  portfolio: {
+    views: number;
+    projectViews: number;
+    enquiries: number;
+    viewsPerProject: Record<string, number>;
+  };
+  digitalStore: {
+    productsCount: number;
+    salesCount: number;
+    revenue: number;
+    downloadsCount: number;
+    conversionRate: number;
+    salesPerProduct: Record<string, { title: string; count: number; revenue: number }>;
+  };
+  consultations: {
+    totalBookings: number;
+    pendingBookings: number;
+    completedBookings: number;
+    revenue: number;
+  };
+  events: {
+    eventsCount: number;
+    ticketsSold: number;
+    attendanceCount: number;
+    revenue: number;
+  };
+  quotes: {
+    enquiriesCount: number;
+    quotesSent: number;
+    quotesAccepted: number;
+    quotesPaid: number;
+    revenue: number;
+  };
+  reviews: {
+    total: number;
+    published: number;
+    pending: number;
+    averageRating: number;
+  };
+  affiliate: {
+    impressions: number;
+    outboundClicks: number;
+    ctr: number;
+    clicksPerProduct: Record<string, { title: string; clicks: number }>;
+  };
+
+  dailyTrends: Array<{
+    dateStr: string;
+    day: string;
+    views: number;
+    clicks: number;
+    conversions: number;
+    revenue: number;
+  }>;
+
+  recentEvents: Array<{
+    id: string;
+    eventType: CanonicalAnalyticsEventType;
+    timestamp: number;
+    title: string;
+    subtitle?: string;
+    metadata?: Record<string, any>;
+  }>;
 }
 
 export interface Review {
@@ -475,7 +583,7 @@ export interface Review {
   reply?: string;
   replyAt?: number;
   isVerifiedPurchase?: boolean;
-  status: 'published' | 'hidden';
+  status: 'published' | 'hidden' | 'pending';
   createdAt: number;
 }
 

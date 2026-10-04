@@ -18,13 +18,20 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { BusinessProfile, AnalyticsSummary } from '../../types';
-import { getAnalyticsSummary, getOrders } from '../../services/firebaseService';
+import { getAnalyticsSummary } from '../../services/firebaseService';
+import { CreatorAnalyticsView } from './CreatorAnalyticsView';
 
 interface AnalyticsViewProps {
   business: BusinessProfile;
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ business }) => {
+  const isCreator = isCreatorProfile(business);
+
+  if (isCreator) {
+    return <CreatorAnalyticsView business={business} />;
+  }
+
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,8 +49,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ business }) => {
     }
     loadData();
   }, [business.id]);
-
-  const isCreator = isCreatorProfile(business);
 
   const avgOrderValue =
     summary && summary.totalOrders > 0

@@ -88,6 +88,8 @@ import {
   EventFormat,
   QuoteRequestStatus,
   AffiliateProductItem,
+  CreatorAnalyticsSummary,
+  CanonicalAnalyticsEventType,
 } from '../types';
 
 /**
@@ -1385,11 +1387,15 @@ export async function upsertCustomerFromEventTicket(businessId: string, ticket: 
     const now = Date.now();
     if (snap.exists()) {
       const existing = snap.data() as Customer;
+      const modules = new Set(existing.sourceModules || []);
+      modules.add('event');
       const updatePayload = sanitizeForFirestore({
         name: ticket.customerName || existing.name,
         email: ticket.customerEmail || existing.email,
         totalBookings: (existing.totalBookings || 0) + 1,
         totalSpent: (existing.totalSpent || 0) + (ticket.price || 0),
+        sourceModule: 'event',
+        sourceModules: Array.from(modules),
         lastInteractionAt: now,
       });
       await updateDoc(docRef, updatePayload);
@@ -1404,6 +1410,8 @@ export async function upsertCustomerFromEventTicket(businessId: string, ticket: 
         totalOrders: 0,
         totalBookings: 1,
         totalSpent: ticket.price || 0,
+        sourceModule: 'event',
+        sourceModules: ['event'],
         firstInteractionAt: now,
         lastInteractionAt: now,
       };
@@ -1411,6 +1419,92 @@ export async function upsertCustomerFromEventTicket(businessId: string, ticket: 
     }
   } catch (e) {
     console.warn('Customer event ticket upsert notice:', e);
+  }
+}
+
+export async function upsertCustomerFromQuoteRequest(businessId: string, quote: CustomQuoteRequest): Promise<void> {
+  if (!quote.customerPhone) return;
+  const cleanPhone = quote.customerPhone.replace(/\D/g, '');
+  const custId = 'cust_' + cleanPhone;
+  const docRef = doc(db, 'businesses', businessId, 'customers', custId);
+
+  try {
+    const snap = await getDoc(docRef);
+    const now = Date.now();
+    if (snap.exists()) {
+      const existing = snap.data() as Customer;
+      const modules = new Set(existing.sourceModules || []);
+      modules.add('quote');
+      const updatePayload = sanitizeForFirestore({
+        name: quote.customerName || existing.name,
+        email: quote.customerEmail || existing.email,
+        sourceModule: 'quote',
+        sourceModules: Array.from(modules),
+        lastInteractionAt: now,
+      });
+      await updateDoc(docRef, updatePayload);
+    } else {
+      const newCust: Customer = {
+        id: custId,
+        businessId,
+        name: quote.customerName,
+        phone: quote.customerPhone,
+        whatsapp: quote.customerPhone,
+        email: quote.customerEmail,
+        totalOrders: 0,
+        totalBookings: 0,
+        totalSpent: 0,
+        sourceModule: 'quote',
+        sourceModules: ['quote'],
+        firstInteractionAt: now,
+        lastInteractionAt: now,
+      };
+      await setDoc(docRef, sanitizeForFirestore(newCust));
+    }
+  } catch (e) {
+    console.warn('Customer quote request upsert notice:', e);
+  }
+}
+
+export async function upsertCustomerFromReview(businessId: string, review: Review): Promise<void> {
+  if (!review.customerPhone) return;
+  const cleanPhone = review.customerPhone.replace(/\D/g, '');
+  const custId = 'cust_' + cleanPhone;
+  const docRef = doc(db, 'businesses', businessId, 'customers', custId);
+
+  try {
+    const snap = await getDoc(docRef);
+    const now = Date.now();
+    if (snap.exists()) {
+      const existing = snap.data() as Customer;
+      const modules = new Set(existing.sourceModules || []);
+      modules.add('review');
+      const updatePayload = sanitizeForFirestore({
+        name: review.customerName || existing.name,
+        sourceModule: 'review',
+        sourceModules: Array.from(modules),
+        lastInteractionAt: now,
+      });
+      await updateDoc(docRef, updatePayload);
+    } else {
+      const newCust: Customer = {
+        id: custId,
+        businessId,
+        name: review.customerName,
+        phone: review.customerPhone,
+        whatsapp: review.customerPhone,
+        totalOrders: 0,
+        totalBookings: 0,
+        totalSpent: 0,
+        sourceModule: 'review',
+        sourceModules: ['review'],
+        firstInteractionAt: now,
+        lastInteractionAt: now,
+      };
+      await setDoc(docRef, sanitizeForFirestore(newCust));
+    }
+  } catch (e) {
+    console.warn('Customer review upsert notice:', e);
   }
 }
 
@@ -1445,6 +1539,9 @@ export async function createReview(
 
   await setDoc(reviewDocRef, sanitizeForFirestore(review));
 
+  // Upsert customer CRM record
+  await upsertCustomerFromReview(businessId, review);
+
   // Create notification
   await createNotification(businessId, {
     type: 'review',
@@ -1468,12 +1565,17 @@ export async function replyToReview(businessId: string, reviewId: string, reply:
   }));
 }
 
-export async function updateReviewStatus(businessId: string, reviewId: string, status: 'published' | 'hidden'): Promise<void> {
+export async function updateReviewStatus(businessId: string, reviewId: string, status: 'published' | 'hidden' | 'pending'): Promise<void> {
   const docRef = doc(db, 'businesses', businessId, 'reviews', reviewId);
   await updateDoc(docRef, sanitizeForFirestore({
     status,
     updatedAt: Date.now(),
   }));
+}
+
+export async function deleteReview(businessId: string, reviewId: string): Promise<void> {
+  const docRef = doc(db, 'businesses', businessId, 'reviews', reviewId);
+  await deleteDoc(docRef);
 }
 
 /**
@@ -1670,7 +1772,7 @@ export async function deleteOffer(businessId: string, offerId: string): Promise<
  */
 export async function recordAnalyticsEvent(
   businessId: string,
-  eventType: 'store_view' | 'whatsapp_click' | 'catalog_view' | 'cart_add' | 'bio_views' | 'bio_clicks' | 'portfolio_views' | 'project_views' | 'social_clicks' | 'resume_downloads' | string,
+  eventType: CanonicalAnalyticsEventType | string,
   metadata?: Record<string, any>
 ): Promise<void> {
   try {
@@ -1704,8 +1806,8 @@ export async function getAnalyticsSummary(businessId: string): Promise<Analytics
     const events = eventsSnap.docs.map((d: any) => d.data());
     const storeViews = events.filter((e: any) => e.eventType === 'store_view').length;
     const whatsappClicks = events.filter((e: any) => e.eventType === 'whatsapp_click').length;
-    const bioLinkViews = events.filter((e: any) => e.eventType === 'biolink_view').length;
-    const bioLinkClicks = events.filter((e: any) => e.eventType === 'biolink_click').length;
+    const bioLinkViews = events.filter((e: any) => e.eventType === 'biolink_view' || e.eventType === 'bio_view').length;
+    const bioLinkClicks = events.filter((e: any) => e.eventType === 'biolink_click' || e.eventType === 'bio_click').length;
 
     const totalConversions = completedOrders.length + bookings.filter((b) => b.status !== 'cancelled').length;
     const conversionRate = storeViews > 0 ? (totalConversions / storeViews) * 100 : totalConversions > 0 ? 100 : 0;
@@ -1737,6 +1839,324 @@ export async function getAnalyticsSummary(businessId: string): Promise<Analytics
       conversionRate: 0,
       recentOrders: [],
       recentBookings: [],
+    };
+  }
+}
+
+export async function getCreatorAnalyticsSummary(
+  businessId: string,
+  timeRange: 'today' | '7d' | '30d' | '90d' | 'all' = '7d'
+): Promise<CreatorAnalyticsSummary> {
+  const now = Date.now();
+  let startTime = 0;
+  if (timeRange === 'today') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    startTime = today.getTime();
+  } else if (timeRange === '7d') {
+    startTime = now - 7 * 24 * 60 * 60 * 1000;
+  } else if (timeRange === '30d') {
+    startTime = now - 30 * 24 * 60 * 60 * 1000;
+  } else if (timeRange === '90d') {
+    startTime = now - 90 * 24 * 60 * 60 * 1000;
+  }
+
+  try {
+    const [
+      eventsSnap,
+      orders,
+      bookings,
+      eventsList,
+      ticketsList,
+      quotesSnap,
+      quoteReqsSnap,
+      reviewsList,
+      affiliatesList,
+      catalogList,
+    ] = await Promise.all([
+      getDocs(collection(db, 'businesses', businessId, 'analyticsEvents')).catch(() => ({ docs: [] } as any)),
+      getOrders(businessId).catch(() => []),
+      getBookings(businessId).catch(() => []),
+      getEvents(businessId).catch(() => []),
+      getEventTickets(businessId).catch(() => []),
+      getDocs(collection(db, 'businesses', businessId, 'quotes')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'businesses', businessId, 'quote_requests')).catch(() => ({ docs: [] } as any)),
+      getReviews(businessId).catch(() => []),
+      getAffiliateProducts(businessId).catch(() => []),
+      getCatalogItems(businessId).catch(() => []),
+    ]);
+
+    const rawEvents = eventsSnap.docs.map((d: any) => d.data());
+    const filteredEvents = startTime > 0 ? rawEvents.filter((e: any) => (e.timestamp || 0) >= startTime) : rawEvents;
+
+    const normalizeType = (type: string): CanonicalAnalyticsEventType => {
+      if (type === 'biolink_view' || type === 'bio_views') return 'bio_view';
+      if (type === 'biolink_click' || type === 'bio_clicks' || type === 'bio_link_click') return 'bio_click';
+      if (type === 'portfolio_views') return 'portfolio_view';
+      if (type === 'project_views') return 'project_view';
+      if (type === 'resume_downloads') return 'digital_download';
+      return type as CanonicalAnalyticsEventType;
+    };
+
+    let totalViews = 0;
+    let totalClicks = 0;
+    
+    let bioViews = 0;
+    let bioClicks = 0;
+    const clicksPerLink: Record<string, number> = {};
+
+    let portfolioViews = 0;
+    let projectViews = 0;
+    let portfolioEnquiries = 0;
+    const viewsPerProject: Record<string, number> = {};
+
+    let digitalViews = 0;
+    let digitalDownloads = 0;
+
+    let affiliateImpressions = 0;
+    let affiliateClicks = 0;
+    const clicksPerProduct: Record<string, { title: string; clicks: number }> = {};
+
+    filteredEvents.forEach((ev: any) => {
+      const norm = normalizeType(ev.eventType);
+      if (['profile_view', 'bio_view', 'portfolio_view', 'digital_product_view', 'consultation_view', 'event_view', 'quote_view', 'review_view', 'affiliate_impression', 'store_view'].includes(norm)) {
+        totalViews++;
+      }
+      if (['bio_click', 'affiliate_click', 'whatsapp_click', 'project_view', 'share', 'qr_scan'].includes(norm)) {
+        totalClicks++;
+      }
+
+      if (norm === 'bio_view') bioViews++;
+      if (norm === 'bio_click') {
+        bioClicks++;
+        const linkId = ev.metadata?.linkId;
+        if (linkId) {
+          clicksPerLink[linkId] = (clicksPerLink[linkId] || 0) + 1;
+        }
+      }
+
+      if (norm === 'portfolio_view') portfolioViews++;
+      if (norm === 'project_view') {
+        projectViews++;
+        const projectId = ev.metadata?.projectId || ev.metadata?.itemId;
+        if (projectId) {
+          viewsPerProject[projectId] = (viewsPerProject[projectId] || 0) + 1;
+        }
+      }
+      if (norm === 'whatsapp_click' && ev.metadata?.source === 'portfolio') {
+        portfolioEnquiries++;
+      }
+
+      if (norm === 'digital_product_view') digitalViews++;
+      if (norm === 'digital_download') digitalDownloads++;
+
+      if (norm === 'affiliate_impression') affiliateImpressions++;
+      if (norm === 'affiliate_click') {
+        affiliateClicks++;
+        const itemId = ev.metadata?.itemId || ev.metadata?.productId;
+        const title = ev.metadata?.title || 'Affiliate Item';
+        if (itemId) {
+          if (!clicksPerProduct[itemId]) {
+            clicksPerProduct[itemId] = { title, clicks: 0 };
+          }
+          clicksPerProduct[itemId].clicks += 1;
+        }
+      }
+    });
+
+    const digitalOrders = orders.filter((o) => {
+      if (startTime > 0 && (o.createdAt || 0) < startTime) return false;
+      return o.status !== 'cancelled';
+    });
+    const digitalSalesCount = digitalOrders.length;
+    const digitalRevenue = digitalOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const digitalProductsCount = catalogList.filter((c: any) => c.itemType === 'course' || c.downloadUrl || (c.digitalFiles && c.digitalFiles.length > 0)).length;
+
+    const filteredBookings = bookings.filter((b) => {
+      if (startTime > 0 && (b.createdAt || 0) < startTime) return false;
+      return true;
+    });
+    const pendingBookings = filteredBookings.filter((b) => b.status === 'pending').length;
+    const completedBookings = filteredBookings.filter((b) => b.status === 'completed' || b.status === 'confirmed').length;
+    const consultationRevenue = filteredBookings
+      .filter((b) => b.status !== 'cancelled')
+      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+
+    const filteredTickets = ticketsList.filter((t) => {
+      if (startTime > 0 && (t.createdAt || 0) < startTime) return false;
+      return t.status !== 'cancelled';
+    });
+    const eventRevenue = filteredTickets.reduce((sum, t) => sum + (t.price || 0), 0);
+
+    const quoteReqs = quoteReqsSnap.docs.map((d: any) => d.data()).filter((q: any) => startTime === 0 || (q.createdAt || 0) >= startTime);
+    const quotes = quotesSnap.docs.map((d: any) => d.data()).filter((q: any) => startTime === 0 || (q.createdAt || 0) >= startTime);
+    const quotesSent = quotes.length;
+    const quotesAccepted = quotes.filter((q: any) => q.status === 'accepted' || q.status === 'paid').length;
+    const quotesPaidList = quotes.filter((q: any) => q.status === 'paid' || q.paymentStatus === 'paid');
+    const quoteRevenue = quotesPaidList.reduce((sum: number, q: any) => sum + (q.totalAmount || q.amount || 0), 0);
+
+    const filteredReviews = reviewsList.filter((r) => startTime === 0 || (r.createdAt || 0) >= startTime);
+    const publishedReviews = filteredReviews.filter((r) => r.status === 'published');
+    const pendingReviews = filteredReviews.filter((r) => r.status === 'pending');
+    const avgRating = publishedReviews.length > 0
+      ? Number((publishedReviews.reduce((sum, r) => sum + r.rating, 0) / publishedReviews.length).toFixed(1))
+      : 0;
+
+    const totalConversions = digitalSalesCount + completedBookings + filteredTickets.length + quotesPaidList.length;
+    const totalRevenue = digitalRevenue + consultationRevenue + eventRevenue + quoteRevenue;
+    const overallCtr = totalViews > 0 ? Number(((totalClicks / totalViews) * 100).toFixed(1)) : 0;
+    const bioCtr = bioViews > 0 ? Number(((bioClicks / bioViews) * 100).toFixed(1)) : 0;
+    const affiliateCtr = affiliateImpressions > 0 ? Number(((affiliateClicks / affiliateImpressions) * 100).toFixed(1)) : 0;
+    const digitalConversionRate = digitalViews > 0 ? Number(((digitalSalesCount / digitalViews) * 100).toFixed(1)) : 0;
+
+    const daysCount = timeRange === 'today' ? 1 : timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 14;
+    const dailyTrends: Array<{ dateStr: string; day: string; views: number; clicks: number; conversions: number; revenue: number }> = [];
+
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
+      const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+      const dayName = d.toLocaleDateString(undefined, { weekday: 'short' });
+      const dateFormatted = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+      const dayEvents = rawEvents.filter((e: any) => (e.timestamp || 0) >= startOfDay && (e.timestamp || 0) <= endOfDay);
+      const dayViews = dayEvents.filter((e: any) => ['profile_view', 'bio_view', 'portfolio_view', 'digital_product_view', 'consultation_view', 'event_view', 'quote_view', 'review_view', 'affiliate_impression', 'store_view'].includes(normalizeType(e.eventType))).length;
+      const dayClicks = dayEvents.filter((e: any) => ['bio_click', 'affiliate_click', 'whatsapp_click', 'project_view', 'share', 'qr_scan'].includes(normalizeType(e.eventType))).length;
+
+      const dayOrders = digitalOrders.filter((o) => (o.createdAt || 0) >= startOfDay && (o.createdAt || 0) <= endOfDay);
+      const dayBookings = filteredBookings.filter((b) => (b.createdAt || 0) >= startOfDay && (b.createdAt || 0) <= endOfDay && b.status !== 'cancelled');
+      const dayTickets = filteredTickets.filter((t) => (t.createdAt || 0) >= startOfDay && (t.createdAt || 0) <= endOfDay);
+      const dayQuotesPaid = quotesPaidList.filter((q: any) => (q.updatedAt || q.createdAt || 0) >= startOfDay && (q.updatedAt || q.createdAt || 0) <= endOfDay);
+
+      const dayConversions = dayOrders.length + dayBookings.length + dayTickets.length + dayQuotesPaid.length;
+      const dayRevenue = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0) +
+        dayBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0) +
+        dayTickets.reduce((sum, t) => sum + (t.price || 0), 0) +
+        dayQuotesPaid.reduce((sum: number, q: any) => sum + (q.totalAmount || q.amount || 0), 0);
+
+      dailyTrends.push({
+        dateStr: dateFormatted,
+        day: dayName,
+        views: dayViews,
+        clicks: dayClicks,
+        conversions: dayConversions,
+        revenue: dayRevenue,
+      });
+    }
+
+    const recentEvents = filteredEvents
+      .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0))
+      .slice(0, 15)
+      .map((e: any) => {
+        const norm = normalizeType(e.eventType);
+        let title = 'Interaction';
+        let subtitle = e.metadata?.title || e.metadata?.url || 'Direct visitor';
+        if (norm === 'bio_view') title = 'Bio Link Viewed';
+        else if (norm === 'bio_click') title = `Bio Link Clicked: ${e.metadata?.title || 'Link'}`;
+        else if (norm === 'portfolio_view') title = 'Portfolio Viewed';
+        else if (norm === 'project_view') title = `Project Showcase Viewed: ${e.metadata?.title || 'Case Study'}`;
+        else if (norm === 'digital_product_view') title = `Digital Product Viewed: ${e.metadata?.title || 'Product'}`;
+        else if (norm === 'digital_purchase') title = `Digital Purchase: ${e.metadata?.productName || 'Asset'}`;
+        else if (norm === 'digital_download') title = `Digital Asset Downloaded: ${e.metadata?.productName || 'File'}`;
+        else if (norm === 'consultation_booking') title = `1:1 Consultation Booked: ${e.metadata?.customerName || 'Client'}`;
+        else if (norm === 'event_registration' || norm === 'event_ticket_purchase') title = `Event Ticket Confirmed: ${e.metadata?.eventName || 'Pass'}`;
+        else if (norm === 'quote_request') title = `Quote Requested by ${e.metadata?.customerName || 'Client'}`;
+        else if (norm === 'quote_paid') title = `Quote Payment Received: #${e.metadata?.quoteNumber || ''}`;
+        else if (norm === 'review_submitted') title = `Review Submitted (${e.metadata?.rating || 5} Stars)`;
+        else if (norm === 'affiliate_click') title = `Affiliate Outbound Click: ${e.metadata?.title || 'Product'}`;
+        else if (norm === 'whatsapp_click') title = 'WhatsApp Direct Inquiry';
+
+        return {
+          id: e.id || `ev_${e.timestamp}_${Math.random().toString(36).slice(2, 6)}`,
+          eventType: norm,
+          timestamp: e.timestamp || Date.now(),
+          title,
+          subtitle,
+          metadata: e.metadata,
+        };
+      });
+
+    return {
+      timeRange,
+      totalViews,
+      totalClicks,
+      overallCtr,
+      totalRevenue,
+      totalConversions,
+      bioLink: {
+        views: bioViews,
+        clicks: bioClicks,
+        ctr: bioCtr,
+        clicksPerLink,
+      },
+      portfolio: {
+        views: portfolioViews,
+        projectViews,
+        enquiries: portfolioEnquiries,
+        viewsPerProject,
+      },
+      digitalStore: {
+        productsCount: digitalProductsCount,
+        salesCount: digitalSalesCount,
+        revenue: digitalRevenue,
+        downloadsCount: digitalDownloads,
+        conversionRate: digitalConversionRate,
+        salesPerProduct: {},
+      },
+      consultations: {
+        totalBookings: filteredBookings.length,
+        pendingBookings,
+        completedBookings,
+        revenue: consultationRevenue,
+      },
+      events: {
+        eventsCount: eventsList.length,
+        ticketsSold: filteredTickets.length,
+        attendanceCount: filteredTickets.filter((t) => t.checkedIn).length,
+        revenue: eventRevenue,
+      },
+      quotes: {
+        enquiriesCount: quoteReqs.length,
+        quotesSent,
+        quotesAccepted,
+        quotesPaid: quotesPaidList.length,
+        revenue: quoteRevenue,
+      },
+      reviews: {
+        total: filteredReviews.length,
+        published: publishedReviews.length,
+        pending: pendingReviews.length,
+        averageRating: avgRating,
+      },
+      affiliate: {
+        impressions: affiliateImpressions,
+        outboundClicks: affiliateClicks,
+        ctr: affiliateCtr,
+        clicksPerProduct,
+      },
+      dailyTrends,
+      recentEvents,
+    };
+  } catch (err) {
+    console.error('Error computing creator analytics summary:', err);
+    return {
+      timeRange,
+      totalViews: 0,
+      totalClicks: 0,
+      overallCtr: 0,
+      totalRevenue: 0,
+      totalConversions: 0,
+      bioLink: { views: 0, clicks: 0, ctr: 0, clicksPerLink: {} },
+      portfolio: { views: 0, projectViews: 0, enquiries: 0, viewsPerProject: {} },
+      digitalStore: { productsCount: 0, salesCount: 0, revenue: 0, downloadsCount: 0, conversionRate: 0, salesPerProduct: {} },
+      consultations: { totalBookings: 0, pendingBookings: 0, completedBookings: 0, revenue: 0 },
+      events: { eventsCount: 0, ticketsSold: 0, attendanceCount: 0, revenue: 0 },
+      quotes: { enquiriesCount: 0, quotesSent: 0, quotesAccepted: 0, quotesPaid: 0, revenue: 0 },
+      reviews: { total: 0, published: 0, pending: 0, averageRating: 0 },
+      affiliate: { impressions: 0, outboundClicks: 0, ctr: 0, clicksPerProduct: {} },
+      dailyTrends: [],
+      recentEvents: [],
     };
   }
 }
@@ -2803,6 +3223,9 @@ export async function createCustomQuoteRequest(
 
   const cleanData = sanitizeForFirestore(newRequest);
   await setDoc(newDocRef, cleanData);
+
+  // Upsert customer CRM record
+  await upsertCustomerFromQuoteRequest(businessId, newRequest);
 
   // Create notification
   await createNotification(businessId, {

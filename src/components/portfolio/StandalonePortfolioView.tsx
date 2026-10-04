@@ -144,7 +144,8 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
         setTestimonials(fetchedTestimonials.filter((t) => t.isActive !== false));
 
         // Record page view analytics
-        recordAnalyticsEvent(business.id, 'portfolio_views', {
+        recordAnalyticsEvent(business.id, 'portfolio_view', {
+          slug: business.slug,
           timestamp: Date.now(),
         }).catch(() => {});
       } catch (err) {
@@ -189,6 +190,11 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
   const handleOpenItem = (item: PortfolioItem) => {
     setFullPageItem(item);
+    recordAnalyticsEvent(business.id, 'project_view', {
+      projectId: item.id,
+      title: item.title,
+      category: item.category,
+    }).catch(() => {});
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('project', item.id);
@@ -198,6 +204,11 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
 
   const handleOpenFullPageItem = (item: PortfolioItem) => {
     setFullPageItem(item);
+    recordAnalyticsEvent(business.id, 'project_view', {
+      projectId: item.id,
+      title: item.title,
+      category: item.category,
+    }).catch(() => {});
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('project', item.id);
@@ -318,34 +329,33 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
     return getBorderRadiusClass(themeConfig.borderRadius);
   };
 
-  // Services list
+  // Services list (Only real creator services, no fake preset services on public page)
   const servicesList: PortfolioServicePackage[] =
     settings.services && settings.services.length > 0
       ? settings.services
-      : preset.suggestedServices || [];
+      : [];
 
   // Profile data
   const professionTitle =
     settings.professionTitle ||
-    preset.professionTitle ||
-    (settings.profession ? settings.profession.replace('_', ' ').toUpperCase() : 'Creator');
+    (settings.profession ? settings.profession.replace('_', ' ').toUpperCase() : business.tagline || 'Creator');
 
-  const locationText = settings.location || preset.location || 'India';
-  const specializations = settings.specializations || preset.specializations || [];
-  const sloganText = settings.slogan || preset.slogan || settings.headline || preset.headline || '';
+  const locationText = settings.location || '';
+  const specializations = settings.specializations || [];
+  const sloganText = settings.slogan || settings.headline || '';
   const aboutStory =
     settings.aboutStory ||
-    preset.aboutStory ||
     business.description ||
+    business.bio ||
     settings.subheadline ||
-    preset.subheadline;
-  const skillsList = settings.skillsList || preset.skillsList || [];
-  const toolsList = settings.toolsList || preset.toolsList || [];
-  const experienceYears = settings.experienceYears || preset.experienceYears || '5+ Years';
+    '';
+  const skillsList = settings.skillsList || [];
+  const toolsList = settings.toolsList || [];
+  const experienceYears = settings.experienceYears || '';
 
-  const primaryBtnLabel = settings.primaryCtaText || preset.primaryCtaText || 'WhatsApp';
-  const secondaryBtnLabel = settings.secondaryCtaText || preset.secondaryCtaText || 'Hire Me';
-  const tertiaryBtnLabel = settings.tertiaryCtaText || preset.tertiaryCtaText || 'View Packages';
+  const primaryBtnLabel = settings.primaryCtaText || 'WhatsApp';
+  const secondaryBtnLabel = settings.secondaryCtaText || 'Hire Me';
+  const tertiaryBtnLabel = settings.tertiaryCtaText || 'View Packages';
 
   const baseBusinessSocials = normalizeSocialLinksToObject(business.socialLinks, business.socials);
   const social = {
@@ -357,6 +367,9 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
   // Platform Stats and Brand Collabs
   const platformStats: PlatformStat[] = settings.platformStats || [];
   const brandCollabs: BrandCollab[] = settings.brandCollabs || [];
+
+  // Verification state
+  const isProfileVerified = Boolean(business.isVerified || (business as any).verified);
 
   // Template and Modular Page Blocks
   const templateId: PortfolioTemplateId = settings.templateId || 'modern_showcase';
@@ -596,13 +609,15 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                       <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-black font-heading tracking-tight leading-tight bio-title-fluid">
                         {business.name}
                       </h1>
-                      {/* Verified Blue Tick */}
-                      <div
-                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white shadow-xs"
-                        title="Verified Creator"
-                      >
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      </div>
+                      {/* Verified Blue Tick (Only when creator profile is verified) */}
+                      {isProfileVerified && (
+                        <div
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white shadow-xs"
+                          title="Verified Creator"
+                        >
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Profession & Location */}
@@ -755,20 +770,32 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                   </div>
                 </div>
 
-                {/* Grid Showcase of Projects: Refactored with CSS Grid auto-fit and minmax */}
-                <div
-                  className={`grid gap-4 sm:gap-6 ${
-                    layoutMode === 'feed'
-                      ? 'grid-cols-1 max-w-2xl mx-auto'
-                      : 'grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]'
-                  } portfolio-grid-adaptive`}
-                  style={layoutMode !== 'feed' ? {
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
-                    gap: 'clamp(1rem, 2vw, 1.5rem)',
-                  } : undefined}
-                >
-                  {filteredItems.map((item) => (
+                {filteredItems.length === 0 ? (
+                  <div className={`col-span-full p-8 sm:p-12 text-center border space-y-3 ${getCardRadiusClass()} ${getCardClass()}`}>
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+                      <Briefcase className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-base font-bold font-heading">No projects published yet</h3>
+                    <p className="text-xs opacity-70 max-w-sm mx-auto">
+                      {selectedCategory !== 'all'
+                        ? `No work samples found in the "${selectedCategory}" category.`
+                        : 'Work samples and case studies will appear here once published.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className={`grid gap-4 sm:gap-6 ${
+                      layoutMode === 'feed'
+                        ? 'grid-cols-1 max-w-2xl mx-auto'
+                        : 'grid-cols-1 sm:[grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]'
+                    } portfolio-grid-adaptive`}
+                    style={layoutMode !== 'feed' ? {
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+                      gap: 'clamp(1rem, 2vw, 1.5rem)',
+                    } : undefined}
+                  >
+                    {filteredItems.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => handleOpenItem(item)}
@@ -869,7 +896,8 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     </div>
                   ))}
                 </div>
-              </section>
+              )}
+            </section>
             );
           }
 
@@ -893,34 +921,50 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     {aboutStory}
                   </p>
 
-                  {/* Key Milestones Performance Strip (CSS Grid auto-fit / minmax) */}
-                  <div
-                    className="grid gap-2.5 xs:gap-3 sm:gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 [grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))]"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
-                      gap: 'clamp(0.625rem, 1.5vw, 1rem)',
-                    }}
-                  >
-                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                      <div className="text-xl sm:text-2xl font-black font-heading">{experienceYears}</div>
-                      <div className="text-xs font-bold opacity-70">Experience</div>
+                  {/* Key Milestones Performance Strip (Computed dynamically from real creator data) */}
+                  {(experienceYears || items.length > 0 || testimonials.length > 0 || platformStats.length > 0) && (
+                    <div
+                      className="grid gap-2.5 xs:gap-3 sm:gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 [grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))]"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))',
+                        gap: 'clamp(0.625rem, 1.5vw, 1rem)',
+                      }}
+                    >
+                      {experienceYears && (
+                        <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                          <div className="text-xl sm:text-2xl font-black font-heading">{experienceYears}</div>
+                          <div className="text-xs font-bold opacity-70">Experience</div>
+                        </div>
+                      )}
+                      {items.length > 0 && (
+                        <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                          <div className="text-xl sm:text-2xl font-black font-heading">
+                            {items.length}+
+                          </div>
+                          <div className="text-xs font-bold opacity-70">Projects Shipped</div>
+                        </div>
+                      )}
+                      {testimonials.length > 0 && (
+                        <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                          <div className="text-xl sm:text-2xl font-black font-heading">
+                            {(testimonials.reduce((acc, t) => acc + (t.rating || 5), 0) / testimonials.length).toFixed(1)} ★
+                          </div>
+                          <div className="text-xs font-bold opacity-70">
+                            {testimonials.length} {testimonials.length === 1 ? 'Review' : 'Reviews'}
+                          </div>
+                        </div>
+                      )}
+                      {platformStats.length > 0 && (
+                        <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
+                          <div className="text-xl sm:text-2xl font-black font-heading text-indigo-600 dark:text-indigo-400">
+                            {platformStats[0].count || platformStats[0].label}
+                          </div>
+                          <div className="text-xs font-bold opacity-70">{platformStats[0].platform} Reach</div>
+                        </div>
+                      )}
                     </div>
-                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                      <div className="text-xl sm:text-2xl font-black font-heading">
-                        {items.length > 0 ? `${items.length}+` : '0'}
-                      </div>
-                      <div className="text-xs font-bold opacity-70">Projects Shipped</div>
-                    </div>
-                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                      <div className="text-xl sm:text-2xl font-black font-heading">99%</div>
-                      <div className="text-xs font-bold opacity-70">Client Satisfaction</div>
-                    </div>
-                    <div className="p-3.5 xs:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                      <div className="text-xl sm:text-2xl font-black font-heading">5.0 ★</div>
-                      <div className="text-xs font-bold opacity-70">Average Rating</div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </section>
             );
@@ -1013,69 +1057,75 @@ export const StandalonePortfolioView: React.FC<StandalonePortfolioViewProps> = (
                     gap: 'clamp(1rem, 2vw, 1.5rem)',
                   }}
                 >
-                  {servicesList.map((pkg) => (
-                    <div
-                      key={pkg.id}
-                      className={`p-5 xs:p-6 sm:p-7 border shadow-xs flex flex-col justify-between space-y-6 relative ${getCardRadiusClass()} ${getCardClass()} ${
-                        pkg.popular ? 'ring-2 ring-indigo-500 shadow-lg' : ''
-                      }`}
-                    >
-                      {pkg.badge && (
-                        <div className="absolute -top-3 right-5">
-                          <span
-                            className="px-3 py-1 rounded-full text-[10px] font-black text-white shadow-xs uppercase tracking-wider"
-                            style={{ backgroundColor: themeConfig.primaryColor }}
-                          >
-                            {pkg.badge}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="space-y-3.5">
-                        <h3 className="text-lg font-black font-heading">{pkg.title}</h3>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl sm:text-3xl font-black font-heading">
-                            {pkg.price}
-                          </span>
-                          {pkg.duration && (
-                            <span className="text-xs opacity-60 font-medium">/ {pkg.duration}</span>
-                          )}
-                        </div>
-                        <p className="text-xs opacity-80 leading-relaxed">{pkg.description}</p>
-
-                        {/* Deliverables Checklist */}
-                        {pkg.deliverables && pkg.deliverables.length > 0 && (
-                          <div className="space-y-2.5 pt-3.5 border-t border-slate-100 dark:border-slate-800">
-                            <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">
-                              What's Included:
+                  {servicesList.length > 0 ? (
+                    servicesList.map((pkg) => (
+                      <div
+                        key={pkg.id}
+                        className={`p-5 xs:p-6 sm:p-7 border shadow-xs flex flex-col justify-between space-y-6 relative ${getCardRadiusClass()} ${getCardClass()} ${
+                          pkg.popular ? 'ring-2 ring-indigo-500 shadow-lg' : ''
+                        }`}
+                      >
+                        {pkg.badge && (
+                          <div className="absolute -top-3 right-5">
+                            <span
+                              className="px-3 py-1 rounded-full text-[10px] font-black text-white shadow-xs uppercase tracking-wider"
+                              style={{ backgroundColor: themeConfig.primaryColor }}
+                            >
+                              {pkg.badge}
                             </span>
-                            <ul className="space-y-2 text-xs">
-                              {pkg.deliverables.map((deliv, idx) => (
-                                <li key={idx} className="flex items-start gap-2">
-                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                  <span className="opacity-90">{deliv}</span>
-                                </li>
-                              ))}
-                            </ul>
                           </div>
                         )}
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleDirectWhatsApp(
-                            `Hi ${business.name}, I am interested in booking your "${pkg.title}" package (${pkg.price}). Can we discuss scope and schedule?`
-                          )
-                        }
-                        className="w-full py-3.5 px-4 min-h-[48px] rounded-xl text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
-                        style={{ backgroundColor: themeConfig.primaryColor }}
-                      >
-                        <MessageCircle className="w-4 h-4 fill-current" />
-                        <span>Book on WhatsApp</span>
-                      </button>
+                        <div className="space-y-3.5">
+                          <h3 className="text-lg font-black font-heading">{pkg.title}</h3>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl sm:text-3xl font-black font-heading">
+                              {pkg.price}
+                            </span>
+                            {pkg.duration && (
+                              <span className="text-xs opacity-60 font-medium">/ {pkg.duration}</span>
+                            )}
+                          </div>
+                          <p className="text-xs opacity-80 leading-relaxed">{pkg.description}</p>
+
+                          {/* Deliverables Checklist */}
+                          {pkg.deliverables && pkg.deliverables.length > 0 && (
+                            <div className="space-y-2.5 pt-3.5 border-t border-slate-100 dark:border-slate-800">
+                              <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">
+                                What's Included:
+                              </span>
+                              <ul className="space-y-2 text-xs">
+                                {pkg.deliverables.map((deliv, idx) => (
+                                  <li key={idx} className="flex items-start gap-2">
+                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                    <span className="opacity-90">{deliv}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDirectWhatsApp(
+                              `Hi ${business.name}, I am interested in booking your "${pkg.title}" package (${pkg.price}). Can we discuss scope and schedule?`
+                            )
+                          }
+                          className="w-full py-3.5 px-4 min-h-[48px] rounded-xl text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] touch-manipulation"
+                          style={{ backgroundColor: themeConfig.primaryColor }}
+                        >
+                          <MessageCircle className="w-4 h-4 fill-current" />
+                          <span>Book on WhatsApp</span>
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-10 opacity-50 italic text-xs">
+                      No service packages configured yet.
                     </div>
-                  ))}
+                  )}
                 </div>
               </section>
             );

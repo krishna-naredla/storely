@@ -176,7 +176,11 @@ service cloud.firestore {
 
       match /reviews/{reviewId} {
         allow read: if true;
-        allow create: if true;
+        // Public customer creation strictly defaults to pending status and unverified
+        allow create: if isBusinessOwner(businessId) || (
+          (!('status' in request.resource.data) || request.resource.data.status in ['pending', 'hidden']) &&
+          (!('isVerified' in request.resource.data) || request.resource.data.isVerified == false)
+        );
         allow update, delete: if isBusinessOwner(businessId);
       }
 
@@ -284,13 +288,19 @@ service cloud.firestore {
       }
 
       match /analyticsEvents/{eventId} {
-        allow create: if true;
-        allow read, write: if isBusinessOwner(businessId);
+        // Public can create telemetry bound strictly to parent businessId
+        allow create: if request.resource.data.businessId == businessId &&
+                         request.resource.data.eventType is string;
+        // Only business owner can read or query analytics events
+        allow read: if isBusinessOwner(businessId);
+        // Events are immutable historical logs: no client update or delete
+        allow update, delete: if false;
       }
 
       // --- Private Merchant Subcollections (Strict Tenant Isolation) ---
       match /customers/{customerId} {
-        allow get, create, update: if true;
+        allow get: if true;
+        allow create, update: if request.resource.data.businessId == businessId;
         allow list, delete: if isBusinessOwner(businessId);
       }
 

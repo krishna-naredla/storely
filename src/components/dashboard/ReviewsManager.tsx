@@ -24,11 +24,13 @@ interface ReviewsManagerProps {
 export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'published' | 'hidden'>('all');
   const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Manual Review Form
   const [manualName, setManualName] = useState('');
@@ -71,6 +73,28 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
     }
   };
 
+  const handleApproveReview = async (reviewId: string) => {
+    try {
+      await updateReviewStatus(business.id, reviewId, 'published');
+      setReviews((prev) =>
+        prev.map((r) => (r.id === reviewId ? { ...r, status: 'published' } : r))
+      );
+    } catch (err) {
+      console.error('Error approving review:', err);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm('Are you sure you want to permanently delete this review?')) return;
+    try {
+      const { deleteReview } = await import('../../services/firebaseService');
+      await deleteReview(business.id, reviewId);
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    } catch (err) {
+      console.error('Error deleting review:', err);
+    }
+  };
+
   const handleAddManual = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualName.trim() || !manualComment.trim()) return;
@@ -96,9 +120,10 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
     }
   };
 
+  const publishedReviews = reviews.filter((r) => r.status === 'published' || !r.status);
   const avgRating =
-    reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    publishedReviews.length > 0
+      ? (publishedReviews.reduce((sum, r) => sum + r.rating, 0) / publishedReviews.length).toFixed(1)
       : '0.0';
 
   const toggleReviewVisibility = async (review: Review) => {
@@ -112,6 +137,14 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({ business }) => {
       console.error('Error toggling review visibility:', err);
     }
   };
+
+  const filteredReviews = reviews.filter((r) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'pending') return r.status === 'pending';
+    if (activeTab === 'published') return r.status === 'published' || !r.status;
+    if (activeTab === 'hidden') return r.status === 'hidden';
+    return true;
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

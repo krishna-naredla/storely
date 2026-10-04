@@ -13,7 +13,7 @@ import {
   Info,
 } from 'lucide-react';
 import { BusinessProfile, Review } from '../../types';
-import { getReviews, createReview } from '../../services/firebaseService';
+import { getReviews, createReview, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 
 interface StandaloneReviewsViewProps {
@@ -56,8 +56,9 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
   };
 
   useEffect(() => {
+    recordAnalyticsEvent(business.id, 'review_view', { slug: business.slug }).catch(() => {});
     fetchReviews();
-  }, [business.id]);
+  }, [business.id, business.slug]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,9 +80,14 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
         customerPhone: customerPhone.trim() || undefined,
         rating,
         comment: comment.trim(),
-        isVerifiedPurchase: true,
-        status: 'published',
+        isVerifiedPurchase: false,
+        status: 'pending',
       });
+
+      recordAnalyticsEvent(business.id, 'review_submitted', {
+        customerName: customerName.trim(),
+        rating,
+      }).catch(() => {});
 
       setSubmitSuccess(true);
       setCustomerName('');
@@ -97,10 +103,12 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
     }
   };
 
-  const averageRating =
-    reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-      : '5.0';
+  const hasReviews = reviews.length > 0;
+  const averageRating = hasReviews
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : null;
+
+  const isProfileVerified = Boolean(business.isVerified || (business as any).verified);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-amber-100 selection:text-amber-900">
@@ -126,10 +134,10 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-50 border-2 border-amber-100 p-1 shrink-0 shadow-sm overflow-hidden">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-50 border-2 border-amber-100 p-1 shrink-0 shadow-sm overflow-hidden flex items-center justify-center">
               <SafeImage
                 fallbackType="avatar"
-                src={business.logo || business.profileImage || '/cteatorlink.jpeg'}
+                src={business.logo || business.profileImage || ''}
                 alt={business.name}
                 className="w-full h-full object-cover rounded-xl"
               />
@@ -141,10 +149,12 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
                   <Star className="w-3 h-3 text-amber-700 fill-amber-600" />
                   Client Reviews &amp; Testimonials
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Verified Creator
-                </span>
+                {isProfileVerified && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    Verified Creator
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-slate-900">
@@ -156,13 +166,19 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
               </p>
 
               <div className="flex items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-slate-600 font-semibold">
-                <div className="flex items-center gap-1 text-amber-600">
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
-                  <span className="text-sm font-extrabold text-slate-900">{averageRating}</span>
-                  <span className="text-slate-400">/ 5.0</span>
-                </div>
-                <span>•</span>
-                <span>{reviews.length} Verified Review{reviews.length === 1 ? '' : 's'}</span>
+                {hasReviews ? (
+                  <>
+                    <div className="flex items-center gap-1 text-amber-600">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                      <span className="text-sm font-extrabold text-slate-900">{averageRating}</span>
+                      <span className="text-slate-400">/ 5.0</span>
+                    </div>
+                    <span>•</span>
+                    <span>{reviews.length} Verified Review{reviews.length === 1 ? '' : 's'}</span>
+                  </>
+                ) : (
+                  <span className="text-slate-500">No reviews yet</span>
+                )}
               </div>
             </div>
           </div>
@@ -174,26 +190,37 @@ export const StandaloneReviewsView: React.FC<StandaloneReviewsViewProps> = ({
         {/* Top Summary & Action Bar */}
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center sm:text-left">
-            <div className="text-3xl sm:text-4xl font-black text-slate-900 font-heading">
-              {averageRating}
-            </div>
-            <div>
-              <div className="flex items-center justify-center sm:justify-start gap-1 text-amber-400">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
-                    key={s}
-                    className={`w-4 h-4 ${
-                      s <= Math.round(Number(averageRating))
-                        ? 'fill-amber-400 text-amber-400'
-                        : 'text-slate-200 fill-slate-200'
-                    }`}
-                  />
-                ))}
+            {hasReviews ? (
+              <>
+                <div className="text-3xl sm:text-4xl font-black text-slate-900 font-heading">
+                  {averageRating}
+                </div>
+                <div>
+                  <div className="flex items-center justify-center sm:justify-start gap-1 text-amber-400">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-4 h-4 ${
+                          s <= Math.round(Number(averageRating))
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-slate-200 fill-slate-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Based on {reviews.length} client experience{reviews.length === 1 ? '' : 's'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <div className="text-base font-bold text-slate-900">No reviews yet</div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Be the first client to leave feedback for {business.name}
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Based on {reviews.length} client experience{reviews.length === 1 ? '' : 's'}
-              </p>
-            </div>
+            )}
           </div>
 
           <button

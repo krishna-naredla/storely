@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   User,
@@ -15,7 +15,7 @@ import {
   Info,
 } from 'lucide-react';
 import { BusinessProfile, CustomQuoteRequest } from '../../types';
-import { submitCustomQuoteRequest } from '../../services/firebaseService';
+import { submitCustomQuoteRequest, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 
 interface StandaloneQuoteViewProps {
@@ -50,6 +50,14 @@ export const StandaloneQuoteView: React.FC<StandaloneQuoteViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [submittedQuote, setSubmittedQuote] = useState<CustomQuoteRequest | null>(null);
 
+  const [deadline, setDeadline] = useState('');
+
+  const isProfileVerified = Boolean(business.isVerified || (business as any).verified);
+
+  useEffect(() => {
+    recordAnalyticsEvent(business.id, 'quote_view', { slug: business.slug }).catch(() => {});
+  }, [business.id, business.slug]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -70,12 +78,17 @@ export const StandaloneQuoteView: React.FC<StandaloneQuoteViewProps> = ({
         customerName: customerName.trim(),
         customerPhone: cleanPhone,
         customerEmail: customerEmail.trim() || undefined,
-        description: description.trim(),
+        description: deadline ? `${description.trim()}\n\nTarget Deadline: ${deadline}` : description.trim(),
         budgetRange,
         referenceImages: referenceUrl.trim() ? [referenceUrl.trim()] : [],
       });
 
       setSubmittedQuote(req);
+      recordAnalyticsEvent(business.id, 'quote_request', {
+        requestId: req.id,
+        customerName: customerName.trim(),
+        budgetRange,
+      }).catch(() => {});
     } catch (err: any) {
       console.error('Error submitting quote request:', err);
       setError(err?.message || 'Failed to submit quote request. Please try again.');
@@ -110,10 +123,10 @@ export const StandaloneQuoteView: React.FC<StandaloneQuoteViewProps> = ({
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-50 border-2 border-amber-100 p-1 shrink-0 shadow-sm overflow-hidden">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-50 border-2 border-amber-100 p-1 shrink-0 shadow-sm overflow-hidden flex items-center justify-center">
               <SafeImage
                 fallbackType="avatar"
-                src={business.logo || business.profileImage || '/cteatorlink.jpeg'}
+                src={business.logo || business.profileImage || ''}
                 alt={business.name}
                 className="w-full h-full object-cover rounded-xl"
               />
@@ -125,10 +138,12 @@ export const StandaloneQuoteView: React.FC<StandaloneQuoteViewProps> = ({
                   <FileText className="w-3 h-3 text-amber-700" />
                   Custom Project Quotes
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Verified Creator
-                </span>
+                {isProfileVerified && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    Verified Creator
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-slate-900">
@@ -299,6 +314,19 @@ export const StandaloneQuoteView: React.FC<StandaloneQuoteViewProps> = ({
                 rows={4}
                 className="w-full px-4 py-3 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Target Deadline / Timeline (Optional)
+              </label>
+              <input
+                type="text"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                placeholder="e.g. 2 weeks, by end of month, or ASAP"
+                className="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
               />
             </div>
 

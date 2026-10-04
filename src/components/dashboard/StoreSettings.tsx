@@ -923,9 +923,9 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                  <h4 className="text-xs font-bold text-slate-900">Mobile PWA (Android/iOS)</h4>
+                  <h4 className="text-xs font-bold text-slate-900">Mobile Web Browsers (Android/iOS)</h4>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Open device App Info / Notification Settings for Storelly &rarr; Ensure <strong>Allow Notifications</strong> is enabled.
+                    Open device browser Notification Settings &rarr; Ensure <strong>Allow Notifications</strong> is enabled for this site.
                   </p>
                 </div>
               </div>

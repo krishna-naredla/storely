@@ -1614,35 +1614,27 @@ app.post("/api/quotes/create-rzp", async (req, res) => {
     let rzpOrder: any = null;
     let isSimulation = false;
 
-    if (creds && creds.client) {
-      try {
-        rzpOrder = await creds.client.orders.create({
-          amount: Math.round(amount * 100),
-          currency: "INR",
-          receipt: `quote_${requestId.slice(-12)}`,
-          notes: {
-            businessId,
-            requestId,
-            type: "quote_payment"
-          }
-        });
-      } catch (rzpErr: any) {
-        console.warn("[Razorpay] Quote live order notice:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
-        isSimulation = true;
-      }
-    } else {
-      isSimulation = true;
+    if (!creds || !creds.client) {
+      return res.status(503).json({
+        error: "Payment gateway is currently not configured or unavailable on the server.",
+      });
     }
 
-    if (isSimulation || !rzpOrder) {
-      const simOrderId = `order_sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      return res.json({
-        success: true,
-        isTestMode: true,
-        rzpOrderId: simOrderId,
+    try {
+      rzpOrder = await creds.client.orders.create({
         amount: Math.round(amount * 100),
         currency: "INR",
-        keyId: creds?.keyId || RAZORPAY_KEY_ID || "rzp_test_simulated",
+        receipt: `quote_${requestId.slice(-12)}`,
+        notes: {
+          businessId,
+          requestId,
+          type: "quote_payment"
+        }
+      });
+    } catch (rzpErr: any) {
+      console.error("[Razorpay] Quote live order error:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
+      return res.status(502).json({
+        error: rzpErr?.error?.description || "Payment provider order creation failed.",
       });
     }
 
@@ -1651,7 +1643,7 @@ app.post("/api/quotes/create-rzp", async (req, res) => {
       rzpOrderId: rzpOrder.id,
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
-      keyId: creds?.keyId || RAZORPAY_KEY_ID,
+      keyId: creds.keyId,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1709,39 +1701,31 @@ app.post("/api/events/create-rzp", async (req, res) => {
     let rzpOrder: any = null;
     let isSimulation = false;
 
-    if (creds && creds.client) {
-      try {
-        // Razorpay receipts MUST be <= 40 chars
-        const safeReceipt = `evt_${eventId.slice(-12)}_${Date.now().toString().slice(-8)}`;
-        rzpOrder = await creds.client.orders.create({
-          amount: Math.round(amount * 100),
-          currency: "INR",
-          receipt: safeReceipt,
-          notes: {
-            businessId,
-            eventId,
-            customerName: (customerName || "").slice(0, 40),
-            customerPhone: (customerPhone || "").slice(0, 15),
-            type: "event_ticket"
-          }
-        });
-      } catch (rzpErr: any) {
-        console.warn("[Razorpay] Live order creation notice:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
-        isSimulation = true;
-      }
-    } else {
-      isSimulation = true;
+    if (!creds || !creds.client) {
+      return res.status(503).json({
+        error: "Payment gateway is currently not configured or unavailable on the server.",
+      });
     }
 
-    if (isSimulation || !rzpOrder) {
-      const simOrderId = `order_sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      return res.json({
-        success: true,
-        isTestMode: true,
-        rzpOrderId: simOrderId,
+    try {
+      // Razorpay receipts MUST be <= 40 chars
+      const safeReceipt = `evt_${eventId.slice(-12)}_${Date.now().toString().slice(-8)}`;
+      rzpOrder = await creds.client.orders.create({
         amount: Math.round(amount * 100),
         currency: "INR",
-        keyId: creds?.keyId || RAZORPAY_KEY_ID || "rzp_test_simulated",
+        receipt: safeReceipt,
+        notes: {
+          businessId,
+          eventId,
+          customerName: (customerName || "").slice(0, 40),
+          customerPhone: (customerPhone || "").slice(0, 15),
+          type: "event_ticket"
+        }
+      });
+    } catch (rzpErr: any) {
+      console.error("[Razorpay] Event live order creation error:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
+      return res.status(502).json({
+        error: rzpErr?.error?.description || "Payment provider order creation failed.",
       });
     }
 
@@ -1865,6 +1849,55 @@ app.post("/api/ai/chat", aiLimiter, async (req, res) => {
   } catch (err: any) {
     console.error("Gemini AI API error:", err);
     res.status(500).json({ error: "Failed to generate AI response. Please try again." });
+  }
+});
+
+// 11. Authoritative Backend Notification Trigger (Protected with Rate Limiting & Business Verification)
+const notifLimiter = createRateLimiter({ windowMs: 60 * 1000, maxRequests: 30, message: "Notification rate limit exceeded." });
+
+app.post("/api/notifications/trigger", notifLimiter, async (req: express.Request, res: express.Response) => {
+  try {
+    const { businessId, type, title, message, entityType, entityId, idempotencyKey, metadata } = req.body;
+    if (!businessId || !type || !title || !message) {
+      return res.status(400).json({ success: false, error: "Missing required notification fields." });
+    }
+
+    const bizSnap = await getDoc(doc(serverDb, "businesses", businessId));
+    if (!bizSnap.exists()) {
+      return res.status(404).json({ success: false, error: "Business profile not found." });
+    }
+    const biz = bizSnap.data();
+    const isCreator = biz.profileType === "creator" || biz.storeType === "creator" || biz.type === "digital_creator";
+    const profileType = isCreator ? "creator" : "vendor";
+
+    const notifId = idempotencyKey || `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const notifRef = doc(serverDb, "businesses", businessId, "notifications", notifId);
+
+    const existingSnap = await getDoc(notifRef);
+    if (existingSnap.exists()) {
+      return res.json({ success: true, notification: existingSnap.data() });
+    }
+
+    const notifData = {
+      id: notifId,
+      businessId,
+      ownerId: biz.ownerId,
+      profileType,
+      type: String(type).slice(0, 50),
+      title: String(title).slice(0, 200),
+      message: String(message).slice(0, 1000),
+      entityType: entityType ? String(entityType).slice(0, 50) : undefined,
+      entityId: entityId ? String(entityId).slice(0, 100) : undefined,
+      metadata: metadata || {},
+      read: false,
+      createdAt: Date.now(),
+    };
+
+    await setDoc(notifRef, notifData);
+    res.json({ success: true, notification: notifData });
+  } catch (err: any) {
+    console.error("Error triggering server notification:", err);
+    res.status(500).json({ success: false, error: err.message || "Failed to trigger notification." });
   }
 });
 

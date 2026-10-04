@@ -44,8 +44,8 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { BusinessProfile, AnalyticsSummary, Order, Booking } from '../../types';
-import { getStorefrontUrl, getAnalyticsSummary, getOrders } from '../../services/firebaseService';
+import { BusinessProfile, AnalyticsSummary, CreatorAnalyticsSummary, Order, Booking } from '../../types';
+import { getStorefrontUrl, getAnalyticsSummary, getCreatorAnalyticsSummary, getOrders } from '../../services/firebaseService';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import { DashboardTab } from './Sidebar';
 import { SafeImage } from '../common/SafeImage';
@@ -77,6 +77,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const { t } = useLanguage();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [creatorSummary, setCreatorSummary] = useState<CreatorAnalyticsSummary | null>(null);
   const [weeklyTrends, setWeeklyTrends] = useState<WeeklyTrendItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -115,51 +116,59 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     async function loadData() {
       setIsLoading(true);
       try {
-        const [summaryData, ordersData] = await Promise.all([
-          getAnalyticsSummary(business.id),
-          getOrders(business.id),
-        ]);
-
-        if (isMounted) {
-          setSummary(summaryData);
-
-          // Compute daily metrics for the last 7 days
-          const now = new Date();
-          const daysArr: WeeklyTrendItem[] = [];
-
-          for (let i = 6; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(now.getDate() - i);
-            const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
-            const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
-            const dayName = d.toLocaleDateString(undefined, { weekday: 'short' });
-            const dateFormatted = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-
-            const dayOrders = (ordersData || []).filter(
-              (o) => o.createdAt >= startOfDay && o.createdAt <= endOfDay
-            );
-            const totalOrders = dayOrders.length;
-            const completedOrders = dayOrders.filter(
-              (o) => o.status === 'delivered' || o.status === 'confirmed'
-            ).length;
-            const completionRate =
-              totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
-            const revenue = dayOrders
-              .filter((o) => o.status !== 'cancelled')
-              .reduce((sum, o) => sum + (o.total || 0), 0);
-
-            daysArr.push({
-              day: dayName,
-              dateStr: dateFormatted,
-              totalOrders,
-              completedOrders,
-              completionRate,
-              revenue,
-            });
+        if (isCreator) {
+          const creatorData = await getCreatorAnalyticsSummary(business.id, '7d');
+          if (isMounted) {
+            setCreatorSummary(creatorData);
+            setIsLoading(false);
           }
+        } else {
+          const [summaryData, ordersData] = await Promise.all([
+            getAnalyticsSummary(business.id),
+            getOrders(business.id),
+          ]);
 
-          setWeeklyTrends(daysArr);
-          setIsLoading(false);
+          if (isMounted) {
+            setSummary(summaryData);
+
+            // Compute daily metrics for the last 7 days from vendor orders
+            const now = new Date();
+            const daysArr: WeeklyTrendItem[] = [];
+
+            for (let i = 6; i >= 0; i--) {
+              const d = new Date(now);
+              d.setDate(now.getDate() - i);
+              const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
+              const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+              const dayName = d.toLocaleDateString(undefined, { weekday: 'short' });
+              const dateFormatted = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+              const dayOrders = (ordersData || []).filter(
+                (o) => o.createdAt >= startOfDay && o.createdAt <= endOfDay
+              );
+              const totalOrders = dayOrders.length;
+              const completedOrders = dayOrders.filter(
+                (o) => o.status === 'delivered' || o.status === 'confirmed'
+              ).length;
+              const completionRate =
+                totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
+              const revenue = dayOrders
+                .filter((o) => o.status !== 'cancelled')
+                .reduce((sum, o) => sum + (o.total || 0), 0);
+
+              daysArr.push({
+                day: dayName,
+                dateStr: dateFormatted,
+                totalOrders,
+                completedOrders,
+                completionRate,
+                revenue,
+              });
+            }
+
+            setWeeklyTrends(daysArr);
+            setIsLoading(false);
+          }
         }
       } catch (err) {
         console.error('Error loading dashboard analytics:', err);
@@ -170,7 +179,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [business.id]);
+  }, [business.id, isCreator]);
 
   const weeklyTotalOrders = weeklyTrends.reduce((sum, item) => sum + item.totalOrders, 0);
   const weeklyCompletedOrders = weeklyTrends.reduce((sum, item) => sum + item.completedOrders, 0);
@@ -500,124 +509,340 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       )}
 
       {/* =========================================================================
-          ANALYTICS METRIC CARDS
+          MODULE-AWARE ANALYTICS METRIC CARDS
          ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Views */}
-        <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+      {isCreator ? (
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isCreator ? 'Profile Views' : t('dashboard.totalOrders')}
-            </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-[var(--g100)] text-[var(--g600)]">
-              {isCreator ? <Eye className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
-            </div>
+            <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider font-heading">
+              Active Creator Module Metrics (Real-Time)
+            </h3>
+            <button
+              type="button"
+              onClick={() => setActiveTab('analytics')}
+              className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+            >
+              <span>View Full Analytics</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
-              {isLoading ? '...' : isCreator ? (summary?.bioLinkViews ?? 0) + (summary?.totalCustomers ?? 0) + 12 : summary?.totalOrders ?? 0}
-            </span>
-            <span className="text-[11px] text-[var(--t2)] font-medium">{isCreator ? 'views' : 'processed'}</span>
-          </div>
-        </div>
 
-        {/* Link Clicks / Inquiries */}
-        <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isCreator ? 'Link Clicks' : 'Customers'}
-            </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-              {isCreator ? <LinkIcon className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
-              {isLoading ? '...' : isCreator ? summary?.bioLinkClicks ?? 0 : summary?.totalCustomers ?? 0}
-            </span>
-            <span className="text-[11px] text-[var(--t2)] font-medium">interactions</span>
-          </div>
-        </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Bio Link Card */}
+            {isCreatorModuleEnabled(business, 'universal_bio_link') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Bio Link</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-purple-100 text-purple-600">
+                    <LinkIcon className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.bioLink.views ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">views</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Clicks: <strong className="text-[var(--t1)]">{creatorSummary?.bioLink.clicks ?? 0}</strong></span>
+                  <span>CTR: <strong className="text-purple-600">{creatorSummary?.bioLink.ctr ?? 0}%</strong></span>
+                </div>
+              </div>
+            )}
 
-        {/* Bookings / Consultations */}
-        <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isCreator ? '1:1 Bookings' : 'Bookings'}
-            </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-              <CalendarCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
-              {isLoading ? '...' : summary?.totalBookings ?? 0}
-            </span>
-            <span className="text-[11px] text-[var(--t2)] font-medium">scheduled</span>
-          </div>
-        </div>
+            {/* Portfolio Card */}
+            {isCreatorModuleEnabled(business, 'work_portfolio') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Portfolio</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-indigo-100 text-indigo-600">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.portfolio.views ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">showcase views</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Projects: <strong className="text-[var(--t1)]">{creatorSummary?.portfolio.projectViews ?? 0}</strong></span>
+                  <span>Enquiries: <strong className="text-indigo-600">{creatorSummary?.portfolio.enquiries ?? 0}</strong></span>
+                </div>
+              </div>
+            )}
 
-        {/* Listed Projects / Products */}
-        <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isCreator ? 'Listed Items' : bizMeta.itemPlural}
-            </span>
-            <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
-              {isCreator ? <Briefcase className="w-4 h-4" /> : <Package className="w-4 h-4" />}
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
-              {isLoading ? '...' : summary?.totalProducts ?? 0}
-            </span>
-            <span className="text-[11px] text-[var(--t2)] font-medium">published</span>
+            {/* Digital Store Card */}
+            {isCreatorModuleEnabled(business, 'digital_products') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Digital Store</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-emerald-100 text-emerald-600">
+                    <Download className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.digitalStore.salesCount ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">sales</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Revenue: <strong className="text-emerald-700">{business.currencySymbol}{creatorSummary?.digitalStore.revenue ?? 0}</strong></span>
+                  <span>Downloads: <strong className="text-[var(--t1)]">{creatorSummary?.digitalStore.downloadsCount ?? 0}</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Consultations Card */}
+            {isCreatorModuleEnabled(business, 'booking_appointments') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">1:1 Mentorship</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-blue-100 text-blue-600">
+                    <CalendarCheck className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.consultations.totalBookings ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">bookings</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Completed: <strong className="text-blue-600">{creatorSummary?.consultations.completedBookings ?? 0}</strong></span>
+                  <span>Pending: <strong className="text-amber-600">{creatorSummary?.consultations.pendingBookings ?? 0}</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Events Card */}
+            {isCreatorModuleEnabled(business, 'events_ticketing') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Events &amp; Tickets</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-amber-100 text-amber-700">
+                    <Ticket className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.events.ticketsSold ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">tickets sold</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Events: <strong className="text-[var(--t1)]">{creatorSummary?.events.eventsCount ?? 0}</strong></span>
+                  <span>Revenue: <strong className="text-amber-700">{business.currencySymbol}{creatorSummary?.events.revenue ?? 0}</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Custom Quotes Card */}
+            {isCreatorModuleEnabled(business, 'custom_quotes') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Custom Quotes</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-rose-100 text-rose-600">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.quotes.enquiriesCount ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">requests</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Accepted: <strong className="text-rose-600">{creatorSummary?.quotes.quotesAccepted ?? 0}</strong></span>
+                  <span>Paid: <strong className="text-emerald-700">{business.currencySymbol}{creatorSummary?.quotes.revenue ?? 0}</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Reviews Card */}
+            {isCreatorModuleEnabled(business, 'reviews') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Testimonials</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-amber-100 text-amber-600">
+                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : creatorSummary?.reviews.averageRating ? `${creatorSummary.reviews.averageRating} ★` : '0 ★'}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">avg rating</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Total: <strong className="text-[var(--t1)]">{creatorSummary?.reviews.total ?? 0}</strong></span>
+                  <span>Published: <strong className="text-emerald-600">{creatorSummary?.reviews.published ?? 0}</strong></span>
+                </div>
+              </div>
+            )}
+
+            {/* Affiliate Card */}
+            {isCreatorModuleEnabled(business, 'affiliate_products') && (
+              <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">Affiliate &amp; Deals</span>
+                  <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-teal-100 text-teal-700">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                    {isLoading ? '...' : (creatorSummary?.affiliate.outboundClicks ?? 0).toLocaleString()}
+                  </span>
+                  <span className="text-[11px] text-[var(--t2)] font-medium">referral clicks</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[var(--t2)] pt-1 border-t border-[var(--border)]">
+                  <span>Impressions: <strong className="text-[var(--t1)]">{creatorSummary?.affiliate.impressions ?? 0}</strong></span>
+                  <span>CTR: <strong className="text-teal-600">{creatorSummary?.affiliate.ctr ?? 0}%</strong></span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      ) : (
+        /* Vendor Metric Cards */
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
+                {t('dashboard.totalOrders')}
+              </span>
+              <div className="w-8 h-8 rounded-[var(--r8)] flex items-center justify-center bg-[var(--g100)] text-[var(--g600)]">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                {isLoading ? '...' : summary?.totalOrders ?? 0}
+              </span>
+              <span className="text-[11px] text-[var(--t2)] font-medium">processed</span>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
+                Direct Revenue
+              </span>
+              <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
+                {business.currencySymbol === '$' ? <DollarSign className="w-4 h-4" /> : <IndianRupee className="w-4 h-4" />}
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                {isLoading ? '...' : `${business.currencySymbol}${(summary?.totalRevenue ?? 0).toLocaleString()}`}
+              </span>
+              <span className="text-[11px] text-[var(--t2)] font-medium">gross</span>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
+                Customers
+              </span>
+              <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
+                <Users className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                {isLoading ? '...' : summary?.totalCustomers ?? 0}
+              </span>
+              <span className="text-[11px] text-[var(--t2)] font-medium">in CRM</span>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wider">
+                {bizMeta.itemPlural}
+              </span>
+              <div className="w-8 h-8 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center">
+                <Package className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-extrabold text-[var(--t1)] font-heading tabular-nums">
+                {isLoading ? '...' : summary?.totalProducts ?? 0}
+              </span>
+              <span className="text-[11px] text-[var(--t2)] font-medium">listed</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
-          RECHARTS: WEEKLY ORDER VOLUME TRENDS & COMPLETION RATES
+          RECHARTS: SEPARATE CREATOR & VENDOR 7-DAY PERFORMANCE CHARTS
          ========================================================================= */}
       <div className="p-5 sm:p-6 rounded-[var(--r16)] bg-[var(--card)] border border-[var(--border)] shadow-[var(--shadow-xs)] space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)]">
+              <div className={`p-2 rounded-[var(--r8)] ${isCreator ? 'bg-purple-100 text-purple-600' : 'bg-[var(--g100)] text-[var(--g600)]'}`}>
                 <BarChart3 className="w-4 h-4" />
               </div>
               <h3 className="text-sm sm:text-base font-bold text-[var(--t1)] font-heading">
-                {isCreator && !isCreatorModuleEnabled(business, 'digital_products')
-                  ? 'Weekly Profile Views & Audience Reach'
-                  : 'Weekly Order Volume & Completion Rate'}
+                {isCreator ? 'Weekly Profile Traffic, Clicks & Conversions' : 'Weekly Order Volume & Fulfillment Rate'}
               </h3>
             </div>
             <p className="text-xs text-[var(--t2)]">
-              {isCreator && !isCreatorModuleEnabled(business, 'digital_products')
-                ? `7-day visitor interaction and engagement trends for ${business.name}.`
-                : `7-day order fulfillment velocity and completion percentage for ${business.name}.`}
+              {isCreator
+                ? `7-day visitor engagement, link clicks, and bookings computed from live analytics events for ${business.name}.`
+                : `7-day order fulfillment velocity and delivery percentage for ${business.name}.`}
             </p>
           </div>
 
           {/* Quick Metrics Badges */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-3 py-1.5 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-center">
-              <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">Weekly Volume</span>
-              <span className="text-xs font-extrabold text-[var(--t1)]">{weeklyTotalOrders} orders</span>
-            </div>
-            <div className="px-3 py-1.5 rounded-[var(--r8)] border text-center bg-[var(--g100)] border-[var(--g200)] text-[var(--g700)]">
-              <span className="text-[10px] font-bold uppercase block opacity-75">Avg Completion</span>
-              <span className="text-xs font-extrabold flex items-center justify-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-[var(--g600)]" />
-                {weeklyAvgCompletionRate}%
-              </span>
-            </div>
-            <div className="px-3 py-1.5 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-center">
-              <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">Week Revenue</span>
-              <span className="text-xs font-extrabold text-[var(--t1)]">
-                {business.currencySymbol}{weeklyTotalRevenue.toLocaleString()}
-              </span>
-            </div>
+            {isCreator ? (
+              <>
+                <div className="px-3 py-1.5 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-center">
+                  <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">7D Views</span>
+                  <span className="text-xs font-extrabold text-[var(--t1)]">
+                    {creatorSummary?.totalViews ?? 0} views
+                  </span>
+                </div>
+                <div className="px-3 py-1.5 rounded-[var(--r8)] border text-center bg-purple-50 border-purple-200 text-purple-800">
+                  <span className="text-[10px] font-bold uppercase block opacity-75">7D Clicks</span>
+                  <span className="text-xs font-extrabold flex items-center justify-center gap-1">
+                    {creatorSummary?.totalClicks ?? 0}
+                  </span>
+                </div>
+                <div className="px-3 py-1.5 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-center">
+                  <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">7D Revenue</span>
+                  <span className="text-xs font-extrabold text-[var(--t1)]">
+                    {business.currencySymbol}{creatorSummary?.totalRevenue ?? 0}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-3 py-1.5 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-center">
+                  <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">Weekly Volume</span>
+                  <span className="text-xs font-extrabold text-[var(--t1)]">{weeklyTotalOrders} orders</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-[var(--r8)] border text-center bg-[var(--g100)] border-[var(--g200)] text-[var(--g700)]">
+                  <span className="text-[10px] font-bold uppercase block opacity-75">Avg Completion</span>
+                  <span className="text-xs font-extrabold flex items-center justify-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-[var(--g600)]" />
+                    {weeklyAvgCompletionRate}%
+                  </span>
+                </div>
+                <div className="px-3 py-1.5 rounded-[var(--r8)] bg-[var(--bg)] border border-[var(--border)] text-center">
+                  <span className="text-[10px] text-[var(--t3)] font-bold uppercase block">Week Revenue</span>
+                  <span className="text-xs font-extrabold text-[var(--t1)]">
+                    {business.currencySymbol}{weeklyTotalRevenue.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -625,8 +850,115 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <div className="w-full h-64 sm:h-72">
           {isLoading ? (
             <div className="w-full h-full flex items-center justify-center bg-slate-50/60 rounded-2xl animate-pulse">
-              <span className="text-xs text-slate-400 font-medium">Loading weekly trends...</span>
+              <span className="text-xs text-slate-400 font-medium">Loading weekly chart...</span>
             </div>
+          ) : isCreator ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={creatorSummary?.dailyTrends || []}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="day"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                />
+                <YAxis
+                  yAxisId="left"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#8b5cf6"
+                  fontSize={11}
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-slate-900/95 backdrop-blur-xs text-white p-3 rounded-2xl shadow-xl border border-slate-800 text-xs space-y-1.5 z-50 min-w-[170px]">
+                          <div className="font-bold text-slate-200 border-b border-slate-800 pb-1 flex justify-between">
+                            <span>{label}</span>
+                            <span className="text-[10px] text-slate-400">{data.dateStr}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
+                              Views:
+                            </span>
+                            <span className="font-bold text-white">{data.views}</span>
+                          </div>
+                          <div className="flex justify-between text-purple-300">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                              Clicks:
+                            </span>
+                            <span className="font-bold">{data.clicks}</span>
+                          </div>
+                          <div className="flex justify-between text-emerald-300">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                              Conversions:
+                            </span>
+                            <span className="font-bold">{data.conversions}</span>
+                          </div>
+                          {data.revenue > 0 && (
+                            <div className="flex justify-between text-amber-300 pt-1 border-t border-slate-800 text-[11px]">
+                              <span>Day Revenue:</span>
+                              <span className="font-bold">{business.currencySymbol}{data.revenue}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '12px', fontSize: '11px' }}
+                  iconType="circle"
+                  iconSize={8}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="views"
+                  name="Page & Content Views"
+                  fill="#818cf8"
+                  radius={[6, 6, 0, 0]}
+                  barSize={18}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="clicks"
+                  name="Link & Outbound Clicks"
+                  fill="#8b5cf6"
+                  radius={[6, 6, 0, 0]}
+                  barSize={18}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="conversions"
+                  name="Conversions / Bookings"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: '#10b981', strokeWidth: 1, stroke: '#ffffff' }}
+                  activeDot={{ r: 5 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
@@ -711,7 +1043,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   yAxisId="left"
                   dataKey="totalOrders"
                   name="Total Orders"
-                  fill={isCreator ? '#818cf8' : '#94a3b8'}
+                  fill="#94a3b8"
                   radius={[6, 6, 0, 0]}
                   barSize={18}
                 />
@@ -719,7 +1051,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   yAxisId="left"
                   dataKey="completedOrders"
                   name="Completed Orders"
-                  fill={isCreator ? '#4f46e5' : '#059669'}
+                  fill="#059669"
                   radius={[6, 6, 0, 0]}
                   barSize={18}
                 />

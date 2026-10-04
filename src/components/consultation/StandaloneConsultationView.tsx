@@ -19,7 +19,7 @@ import {
   Info,
 } from 'lucide-react';
 import { BusinessProfile, CatalogItem, Booking } from '../../types';
-import { getCatalogItems, createBooking, getBookedSlotsForDate } from '../../services/firebaseService';
+import { getCatalogItems, createBooking, getBookedSlotsForDate, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 
 interface StandaloneConsultationViewProps {
@@ -69,47 +69,31 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
     async function loadServices() {
       setIsLoading(true);
       try {
+        recordAnalyticsEvent(business.id, 'consultation_view', { slug: business.slug }).catch(() => {});
         const items = await getCatalogItems(business.id);
         if (!isMounted) return;
 
-        // Filter for consultation slots or service items
-        const consultItems = items.filter(
-          (i) => i.productType === 'consultation_slot' || i.type === 'service'
+        // Strictly filter for active creator consultation items
+        const consultItems = (items || []).filter(
+          (i) =>
+            i.isActive !== false &&
+            (i.productType === 'consultation_slot' ||
+              Boolean(i.consultationDuration) ||
+              Boolean(i.consultationTimeSlots && i.consultationTimeSlots.length > 0))
         );
 
         if (consultItems.length > 0) {
           setServices(consultItems);
           setSelectedService(consultItems[0]);
-        } else if (items.length > 0) {
-          // If no explicit consultation tag, use available services or items
-          setServices(items);
-          setSelectedService(items[0]);
         } else {
-          // Fallback virtual default consultation service
-          const defaultService: CatalogItem = {
-            id: 'default-consultation',
-            businessId: business.id,
-            name: '1:1 Strategy & Consultation Session',
-            slug: '1-on-1-consultation',
-            type: 'service',
-            productType: 'consultation_slot',
-            categoryId: 'default',
-            images: [],
-            inStock: true,
-            isActive: true,
-            price: 999,
-            salePrice: 999,
-            shortDescription: `Book a dedicated 1-on-1 strategy and consultation call with ${business.name}.`,
-            consultationDuration: 45,
-            consultationTimeSlots: DEFAULT_TIME_SLOTS,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          setServices([defaultService]);
-          setSelectedService(defaultService);
+          // Strictly no fake consultation fallback
+          setServices([]);
+          setSelectedService(null);
         }
       } catch (err) {
         console.error('Error fetching consultation items:', err);
+        setServices([]);
+        setSelectedService(null);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -209,6 +193,8 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
   const whatsappNumber = (business.whatsapp || business.phone || '').replace(/[^0-9]/g, '');
   const cleanCurrency = business.currencySymbol || '₹';
 
+  const isProfileVerified = Boolean(business.isVerified || (business as any).verified);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
       {/* Explicit Owner Preview Header */}
@@ -233,10 +219,10 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-blue-50 border-2 border-blue-100 p-1 shrink-0 shadow-sm overflow-hidden">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-blue-50 border-2 border-blue-100 p-1 shrink-0 shadow-sm overflow-hidden flex items-center justify-center">
               <SafeImage
                 fallbackType="avatar"
-                src={business.logo || business.profileImage || '/cteatorlink.jpeg'}
+                src={business.logo || business.profileImage || ''}
                 alt={business.name}
                 className="w-full h-full object-cover rounded-xl"
               />
@@ -248,10 +234,12 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
                   <Video className="w-3 h-3 text-blue-600" />
                   1:1 Consultations
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  Verified Creator
-                </span>
+                {isProfileVerified && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    Verified Creator
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-slate-900">
@@ -279,7 +267,24 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
 
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        {confirmedBooking ? (
+        {isLoading ? (
+          <div className="p-16 text-center text-slate-400 space-y-3">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600" />
+            <p className="text-xs font-semibold">Loading available consultation sessions...</p>
+          </div>
+        ) : services.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-slate-200 p-10 sm:p-16 text-center space-y-4 shadow-sm max-w-lg mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+              <CalendarCheck className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-900">No consultation sessions available.</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {business.name} has not configured any public consultation or mentorship sessions at this time.
+              </p>
+            </div>
+          </div>
+        ) : confirmedBooking ? (
           /* Confirmation Screen */
           <div className="bg-white rounded-3xl border border-emerald-200 p-6 sm:p-10 shadow-lg text-center space-y-6 animate-in zoom-in-95 duration-200">
             <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
@@ -358,28 +363,22 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
                   Select Session Type
                 </h3>
 
-                {isLoading ? (
-                  <div className="p-8 text-center text-slate-400 text-xs">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
-                    Loading available consultation sessions...
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {services.map((item) => {
-                      const isSelected = selectedService?.id === item.id;
-                      const price = item.salePrice || item.price || 0;
-                      const duration = item.consultationDuration || 30;
+                <div className="space-y-3">
+                  {services.map((item) => {
+                    const isSelected = selectedService?.id === item.id;
+                    const price = item.salePrice || item.price || 0;
+                    const duration = item.consultationDuration || 30;
 
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => setSelectedService(item)}
-                          className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between gap-3 ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-50/40 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
-                        >
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedService(item)}
+                        className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between gap-3 ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50/40 shadow-sm'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <h4 className="font-bold text-sm text-slate-900 leading-snug">
@@ -411,8 +410,7 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
                       );
                     })}
                   </div>
-                )}
-              </div>
+                </div>
 
               {/* Trust Box */}
               <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2 text-xs text-slate-600">

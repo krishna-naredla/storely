@@ -405,6 +405,21 @@ export const CustomQuoteManager: React.FC<CustomQuoteManagerProps> = ({ business
         <div className="flex items-center gap-2 self-start sm:self-center">
           <button
             type="button"
+            onClick={() => {
+              const url = getModuleDeepUrl(business, 'quotes');
+              navigator.clipboard.writeText(url);
+              setCopiedLink(true);
+              setTimeout(() => setCopiedLink(false), 2000);
+            }}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 shadow-2xs"
+            title="Copy public link to Custom Quote Request Form"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-purple-600" />}
+            <span>{copiedLink ? 'Copied Link' : 'Copy Form Link'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsQrModalOpen(true)}
             className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 shadow-2xs"
             title="View, download, and print QR code for Custom Quote Request Form"

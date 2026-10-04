@@ -18,7 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { BusinessProfile, AffiliateProductItem } from '../../types';
-import { subscribeToAffiliateProducts, recordAffiliateProductClick } from '../../services/firebaseService';
+import { subscribeToAffiliateProducts, recordAffiliateProductClick, recordAnalyticsEvent } from '../../services/firebaseService';
 import { getCreatorModulePublicUrl } from '../../utils/creatorModuleManager';
 
 interface StandaloneAffiliateViewProps {
@@ -40,12 +40,13 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
   const [copiedShareLink, setCopiedShareLink] = useState(false);
 
   useEffect(() => {
+    recordAnalyticsEvent(business.id, 'affiliate_impression', { slug: business.slug }).catch(() => {});
     const unsub = subscribeToAffiliateProducts(business.id, (fetched) => {
       setItems(fetched.filter((item) => item.status !== 'archived'));
       setLoading(false);
     });
     return () => unsub();
-  }, [business.id]);
+  }, [business.id, business.slug]);
 
   // Extract unique categories
   const categories = useMemo(() => {
@@ -85,6 +86,11 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
 
   const handleOpenAffiliateLink = (item: AffiliateProductItem) => {
     recordAffiliateProductClick(business.id, item.id);
+    recordAnalyticsEvent(business.id, 'affiliate_click', {
+      itemId: item.id,
+      title: item.title,
+      url: item.affiliateUrl,
+    }).catch(() => {});
     window.open(item.affiliateUrl, '_blank', 'noopener,noreferrer');
   };
 

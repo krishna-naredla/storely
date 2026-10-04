@@ -94,7 +94,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     if (!businessId) return;
     const title = businessName;
     document.title = title;
-    recordBioLinkView(businessId);
+    recordAnalyticsEvent(businessId, 'bio_view', { slug: businessSlug }).catch(() => {});
     loadData();
 
     // Generate QR Code for sharing canonical public URL
@@ -116,7 +116,6 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
       setLinks(activeLinks);
-      recordAnalyticsEvent(businessId, 'bio_views', { slug: businessSlug }).catch(() => {});
     } catch (err) {
       console.error('Error loading biolinks:', err);
     } finally {
@@ -143,8 +142,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   }
 
   const handleLinkClick = (link: BioLink, e: React.MouseEvent) => {
-    recordBioLinkClick(business.id, link.id).catch(console.error);
-    recordAnalyticsEvent(business.id, 'bio_link_click', {
+    recordAnalyticsEvent(business.id, 'bio_click', {
       linkId: link.id,
       title: link.title,
       type: link.type,
@@ -470,7 +468,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
           </div>
 
           {/* Green Verified Tick Checkmark */}
-          {theme.showVerifiedBadge && (
+          {theme.showVerifiedBadge && Boolean(business.isVerified) && (
             <div
               className="absolute bottom-1 right-1 w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xl border-2 sm:border-3 border-white ring-2 ring-emerald-500/20"
               title="Verified Creator"

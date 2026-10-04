@@ -280,7 +280,7 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
     window.print();
   };
 
-  const previewImage = business.banner || business.coverImage || business.logo || business.profileImage || (isCreator ? '/cteatorlink.jpeg' : '/storelly6.jpg.jpeg');
+  const previewImage = business.banner || business.coverImage || business.logo || business.profileImage || '';
   const domainName = typeof window !== 'undefined' ? window.location.host : 'storelly.app';
 
   return (
@@ -415,26 +415,15 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
             <div className={`relative z-10 h-32 overflow-hidden ${
               isCreator ? 'bg-linear-to-r from-indigo-600 to-purple-700' : 'bg-linear-to-r from-emerald-600 to-teal-700'
             }`}>
-              {business.banner || business.coverImage ? (
-                <img
-                  src={business.banner || business.coverImage}
-                  alt="Banner"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <img
-                  src={isCreator ? "/cteatorlink.jpeg" : "/storelly6.jpg.jpeg"}
-                  alt="Banner"
-                  className="w-full h-full object-cover opacity-80"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = isCreator ? "/cteatorlink.jpeg" : "/storelly6.jpg";
-                  }}
-                />
-              )}
+              <SafeImage
+                src={business.banner || business.coverImage || ''}
+                alt="Banner"
+                fallbackType="banner"
+                className="w-full h-full object-cover"
+              />
               <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
               
-              {Boolean(business.name && (business.whatsapp || business.phone)) && (
+              {Boolean(business.isVerified) && (
                 <div className="absolute top-3 right-3">
                   <VerifiedBadge verified={true} size="sm" />
                 </div>
@@ -445,19 +434,12 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
             <div className="relative z-10 px-6 pt-0 pb-6">
               {/* Logo overlapping banner */}
               <div className="flex justify-between items-end -mt-12 mb-4">
-                <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-md border border-slate-100 overflow-hidden">
-                  <img
-                    src={
-                      business.logo ||
-                      business.profileImage ||
-                      (isCreator ? "/cteatorlink.jpeg" : "/storelly6.jpg.jpeg")
-                    }
+                <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-md border border-slate-100 overflow-hidden flex items-center justify-center">
+                  <SafeImage
+                    fallbackType="avatar"
+                    src={business.logo || business.profileImage || ''}
                     alt={business.name}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = isCreator ? "/cteatorlink.jpeg" : "/storelly6.jpg";
-                    }}
-                    className="w-full h-full object-contain object-center rounded-xl"
+                    className="w-full h-full object-cover rounded-xl"
                   />
                 </div>
 
@@ -799,10 +781,11 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
           <div className="bg-slate-950 p-4 sm:p-6 rounded-2xl border border-slate-800 max-w-lg mx-auto text-white space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden shrink-0 border border-slate-700 flex items-center justify-center">
-                <img
-                  src={business.logo || business.profileImage || (isCreator ? '/cteatorlink.jpeg' : '/storelly6.jpg.jpeg')}
+                <SafeImage
+                  fallbackType="avatar"
+                  src={business.logo || business.profileImage || ''}
                   alt={business.name}
-                  className="w-full h-full object-contain object-center"
+                  className="w-full h-full object-cover"
                 />
               </div>
               <div>
@@ -842,10 +825,11 @@ export const DigitalCardPreview: React.FC<DigitalCardPreviewProps> = ({ business
           <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 max-w-lg mx-auto space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                <img
-                  src={business.logo || business.profileImage || (isCreator ? '/cteatorlink.jpeg' : '/storelly6.jpg.jpeg')}
+                <SafeImage
+                  fallbackType="avatar"
+                  src={business.logo || business.profileImage || ''}
                   alt={business.name}
-                  className="w-full h-full object-contain object-center"
+                  className="w-full h-full object-cover"
                 />
               </div>
               <div>
