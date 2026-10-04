@@ -469,6 +469,8 @@ export interface Customer {
 
 export type CanonicalAnalyticsEventType =
   | 'profile_view'
+  | 'module_click'
+  | 'conversion'
   | 'bio_view'
   | 'bio_click'
   | 'portfolio_view'

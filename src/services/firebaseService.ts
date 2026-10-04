@@ -2897,7 +2897,7 @@ export async function getEventTickets(
   try {
     const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
     let q = query(ticketsRef, orderBy('createdAt', 'desc'));
-    if (eventId) {
+    if (eventId && eventId !== 'all') {
       q = query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
     }
     const snapshot = await getDocs(q);
@@ -2906,26 +2906,32 @@ export async function getEventTickets(
       ...d.data(),
     })) as EventTicket[];
   } catch (err) {
-    console.error('Error fetching event tickets:', err.message || err, err);
+    console.error('Error fetching event tickets:', err?.message || err, err);
     return [];
   }
 }
 
 /**
- * Real-time subscription to tickets of an event
+ * Real-time subscription to tickets of an event or all business events
  */
 export function subscribeToEventTickets(
   businessId: string,
-  eventId: string,
-  callback: (tickets: EventTicket[]) => void
+  eventIdOrCallback: string | ((tickets: EventTicket[]) => void) | undefined,
+  maybeCallback?: (tickets: EventTicket[]) => void
 ): () => void {
-  if (!businessId || !eventId || !auth?.currentUser) {
-    callback([]);
+  const eventId = typeof eventIdOrCallback === 'string' ? eventIdOrCallback : undefined;
+  const callback = typeof eventIdOrCallback === 'function' ? eventIdOrCallback : maybeCallback;
+
+  if (!businessId || !callback || !auth?.currentUser) {
+    if (callback) callback([]);
     return () => {};
   }
   try {
     const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
-    const q = query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
+    const q = eventId && eventId !== 'all'
+      ? query(ticketsRef, where('eventId', '==', eventId), orderBy('createdAt', 'desc'))
+      : query(ticketsRef, orderBy('createdAt', 'desc'));
+
     return onSnapshot(
       q,
       (snapshot) => {

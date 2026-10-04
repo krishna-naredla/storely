@@ -6,6 +6,8 @@ import { recordAnalyticsEvent } from '../services/firebaseService';
  */
 export const CANONICAL_EVENTS: Record<CanonicalAnalyticsEventType, string> = {
   profile_view: 'Profile View',
+  module_click: 'Module Outbound / Tab Click',
+  conversion: 'Module Goal Conversion',
   bio_view: 'Bio Link View',
   bio_click: 'Bio Link Click',
   portfolio_view: 'Portfolio View',
