@@ -15,9 +15,12 @@ import {
   Copy,
   Check,
   RefreshCw,
+  ExternalLink,
+  Armchair,
 } from 'lucide-react';
 import { EventItem, EventTicket, BusinessProfile } from '../../types';
 import { subscribeToEventTickets, checkInTicket } from '../../services/firebaseService';
+import { exportEventToGoogleCalendar } from '../../services/googleCalendarService';
 import { auth } from '../../config/firebase';
 
 interface EventAttendeesModalProps {
@@ -39,6 +42,12 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
   const [filter, setFilter] = useState<'all' | 'checked_in' | 'pending' | 'refunded'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
+  const [calendarSyncSuccess, setCalendarSyncSuccess] = useState<{
+    htmlLink: string;
+    attendeesCount: number;
+  } | null>(null);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !event?.id || !business?.id || !auth?.currentUser) {
@@ -101,12 +110,31 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
     setTimeout(() => setCopiedTicketId(null), 2000);
   };
 
+  const handleSyncToGoogleCalendar = async () => {
+    try {
+      setSyncingCalendar(true);
+      setCalendarError(null);
+      const res = await exportEventToGoogleCalendar(event, tickets);
+      setCalendarSyncSuccess({
+        htmlLink: res.htmlLink,
+        attendeesCount: res.attendeesCount,
+      });
+    } catch (err: any) {
+      console.error('Calendar sync error:', err);
+      setCalendarError(err.message || 'Failed to sync with Google Calendar.');
+    } finally {
+      setSyncingCalendar(false);
+    }
+  };
+
   const handleExportCSV = () => {
     if (tickets.length === 0) return;
 
-    const headers = ['Ticket ID', 'Attendee Name', 'Phone', 'Email', 'Payment Status', 'Price (INR)', 'Checked In', 'Registered Date'];
+    const headers = ['Ticket ID', 'Seat Number', 'Section', 'Attendee Name', 'Phone', 'Email', 'Payment Status', 'Price (INR)', 'Checked In', 'Registered Date'];
     const rows = tickets.map((t) => [
       `"${t.ticketId}"`,
+      `"${t.seatNumber || 'N/A'}"`,
+      `"${t.seatSection || 'General'}"`,
       `"${t.customerName}"`,
       `"${t.customerPhone}"`,
       `"${t.customerEmail || ''}"`,
@@ -138,11 +166,14 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
       accessText = `\n📍 *Venue:* ${event.venueAddress || ''}${event.venueCity ? `, ${event.venueCity}` : ''}`;
     }
 
+    const seatText = ticket.seatNumber ? `\n💺 *Assigned Seat:* ${ticket.seatNumber} (${ticket.seatSection || 'General'})` : '';
+
     const msg = encodeURIComponent(
       `👋 Hi ${ticket.customerName},\n\n` +
       `Reminder for your upcoming session: *${event.title}* with ${business.name}!\n\n` +
-      `🎫 *Ticket ID:* \`${ticket.ticketId}\`\n` +
-      `📅 *Date:* ${event.eventDate}\n` +
+      `🎫 *Ticket ID:* \`${ticket.ticketId}\`` +
+      seatText +
+      `\n📅 *Date:* ${event.eventDate}\n` +
       `⏰ *Time:* ${event.eventTime}\n` +
       accessText +
       `\n\nLooking forward to seeing you!`
@@ -171,6 +202,22 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Google Calendar Sync Button */}
+            <button
+              type="button"
+              onClick={handleSyncToGoogleCalendar}
+              disabled={syncingCalendar}
+              className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-xs"
+              title="Sync event and confirmed attendees to your Google Calendar"
+            >
+              {syncingCalendar ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+              ) : (
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              )}
+              <span>{syncingCalendar ? 'Syncing...' : 'Sync Google Calendar'}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleExportCSV}
@@ -189,6 +236,42 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Calendar Sync Notification Banner */}
+        {calendarSyncSuccess && (
+          <div className="bg-blue-50 border-b border-blue-100 px-5 py-2.5 flex items-center justify-between text-xs text-blue-800">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>
+                Successfully synchronized event and <strong>{calendarSyncSuccess.attendeesCount}</strong> attendees to your Google Calendar!
+              </span>
+            </div>
+            <a
+              href={calendarSyncSuccess.htmlLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-bold text-blue-700 underline hover:text-blue-900"
+            >
+              View in Calendar <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+
+        {calendarError && (
+          <div className="bg-rose-50 border-b border-rose-100 px-5 py-2.5 flex items-center justify-between text-xs text-rose-800">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{calendarError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCalendarError(null)}
+              className="text-rose-600 font-bold hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Stats Metrics Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 sm:p-5 bg-white border-b border-slate-100 text-xs">
@@ -291,6 +374,14 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                       <span className="font-bold text-sm text-slate-900">
                         {ticket.customerName}
                       </span>
+
+                      {/* Seat Number Pill if assigned */}
+                      {ticket.seatNumber && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[11px] font-bold border border-purple-200">
+                          <Armchair className="w-3 h-3 text-purple-600" />
+                          Seat {ticket.seatNumber} ({ticket.seatSection || 'General'})
+                        </span>
+                      )}
                       
                       {/* Ticket ID Pill */}
                       <button

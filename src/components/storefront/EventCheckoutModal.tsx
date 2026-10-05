@@ -23,9 +23,12 @@ import {
   Timer,
   CreditCard,
   Smartphone,
+  Armchair,
+  Crown,
+  Ban,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BusinessProfile, EventItem, EventTicket } from '../../types';
+import { BusinessProfile, EventItem, EventTicket, EventSeat } from '../../types';
 import { purchaseEventTicketTransaction, reserveEventSeat, releaseEventSeat } from '../../services/firebaseService';
 import { loadRazorpayScript } from '../../services/razorpayService';
 
@@ -49,6 +52,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
   const [customerEmail, setCustomerEmail] = useState('');
   const [paymentMode, setPaymentMode] = useState<'online' | 'upi_qr'>('online');
   const [upiUtr, setUpiUtr] = useState('');
+  const [selectedSeatNumber, setSelectedSeatNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmedTicket, setConfirmedTicket] = useState<EventTicket | null>(null);
@@ -118,6 +122,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           customerPhone: cleanPhone,
           customerEmail: customerEmail.trim() || undefined,
           paymentStatus: 'free',
+          seatNumber: selectedSeatNumber || undefined,
         });
         setConfirmedTicket(ticket);
         prepareWhatsAppConfirmation(ticket);
@@ -137,6 +142,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           paymentStatus: 'paid',
           paymentId: upiUtr ? `UPI-${upiUtr.trim()}` : `UPI-${Date.now()}`,
           notes: upiUtr ? `Paid via UPI QR, UTR: ${upiUtr}` : 'Paid via UPI QR',
+          seatNumber: selectedSeatNumber || undefined,
           holdId: holdId,
         });
 
@@ -166,7 +172,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             body: JSON.stringify({
               businessId: business.id,
               eventId: event.id,
-              customerName,
+              customerName: customerName.trim(),
               customerPhone: cleanPhone,
             }),
           });
@@ -175,64 +181,32 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
             orderData = await rzpOrderRes.json().catch(() => null);
           } else {
             const errData = await rzpOrderRes.json().catch(() => ({}));
-            console.warn('[EventCheckout] Server Razorpay notice:', errData);
+            console.error('[EventCheckout] Server Razorpay error:', errData);
+            throw new Error(errData?.error || "Payment couldn't be initialized. Please try again in a moment.");
           }
-        } catch (fetchErr) {
-          console.warn('[EventCheckout] Network fetch notice:', fetchErr);
+        } catch (fetchErr: any) {
+          await releaseEventSeat(business.id, event.id, holdId).catch(() => {});
+          setErrorMessage(fetchErr?.message || "Payment couldn't be started. Please check your connection and try again.");
+          setLoading(false);
+          return;
         }
 
-        // If server returned simulation mode or live order couldn't be initialized (e.g. invalid Razorpay merchant keys)
-        if (!orderData || orderData.isTestMode || !orderData.rzpOrderId) {
-          const simOrderId = orderData?.rzpOrderId || `order_sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-          
-          try {
-            await fetch('/api/events/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: simOrderId,
-                razorpay_payment_id: `pay_sim_${Date.now()}`,
-                razorpay_signature: 'simulated_signature',
-              }),
-            }).catch(() => {});
-          } catch (e) {
-            // Non-blocking in sandbox
-          }
-
-          const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
-            customerName: customerName.trim(),
-            customerPhone: cleanPhone,
-            customerEmail: customerEmail.trim() || undefined,
-            paymentStatus: 'paid',
-            paymentId: `pay_sim_${Date.now()}`,
-            razorpayOrderId: simOrderId,
-            holdId: holdId,
-          });
-
-          setConfirmedTicket(ticket);
-          prepareWhatsAppConfirmation(ticket);
-          if (onSuccess) onSuccess(ticket);
+        // Must have valid Razorpay order ID and key from server
+        if (!orderData || !orderData.rzpOrderId || !orderData.keyId) {
+          await releaseEventSeat(business.id, event.id, holdId).catch(() => {});
+          setErrorMessage(orderData?.error || "Payment couldn't be started. Please try again in a moment.");
+          setLoading(false);
           return;
         }
 
         // 2. Live Razorpay Payment Modal
         await loadRazorpayScript();
-        const hasRazorpayScript = typeof (window as any).Razorpay !== 'undefined';
+        const RazorpayClass = (window as any).Razorpay;
 
-        if (!hasRazorpayScript) {
-          // Fallback to verified simulation if SDK blocked by browser
-          const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
-            customerName: customerName.trim(),
-            customerPhone: cleanPhone,
-            customerEmail: customerEmail.trim() || undefined,
-            paymentStatus: 'paid',
-            paymentId: `pay_direct_${Date.now()}`,
-            razorpayOrderId: orderData.rzpOrderId,
-            holdId: holdId,
-          });
-          setConfirmedTicket(ticket);
-          prepareWhatsAppConfirmation(ticket);
-          if (onSuccess) onSuccess(ticket);
+        if (!RazorpayClass) {
+          await releaseEventSeat(business.id, event.id, holdId).catch(() => {});
+          setErrorMessage('Payment gateway SDK failed to load. Please disable ad-blockers and try again.');
+          setLoading(false);
           return;
         }
 
@@ -254,11 +228,14 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
+                  businessId: business.id,
+                  eventId: event.id,
                 }),
               });
 
               if (!verifyRes.ok) {
-                throw new Error('Payment verification failed on server');
+                const errData = await verifyRes.json().catch(() => ({}));
+                throw new Error(errData?.error || 'Payment verification failed on server');
               }
 
               const { ticket } = await purchaseEventTicketTransaction(business.id, event.id, {
@@ -268,6 +245,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                 paymentStatus: 'paid',
                 paymentId: response.razorpay_payment_id,
                 razorpayOrderId: response.razorpay_order_id,
+                seatNumber: selectedSeatNumber || undefined,
                 holdId: holdId,
               });
 
@@ -275,7 +253,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
               prepareWhatsAppConfirmation(ticket);
               if (onSuccess) onSuccess(ticket);
             } catch (err: any) {
-              setErrorMessage(err.message || 'Payment recorded but failed to lock ticket. Please contact organizer.');
+              setErrorMessage(err.message || 'Payment was received but ticket finalization encountered an issue. Please contact the organizer.');
             } finally {
               setLoading(false);
             }
@@ -300,7 +278,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           }
         };
 
-        const rzp = new (window as any).Razorpay(options);
+        const rzp = new RazorpayClass(options);
         rzp.on('payment.failed', async function (resp: any) {
           setErrorMessage(resp.error?.description || 'Payment failed. Please try again.');
           try {
@@ -312,7 +290,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
         });
         rzp.open();
       } catch (payInitErr: any) {
-        await releaseEventSeat(business.id, event.id, holdId);
+        await releaseEventSeat(business.id, event.id, holdId).catch(() => {});
         throw payInitErr;
       }
     } catch (err: any) {
@@ -556,6 +534,105 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                 )}
               </div>
             )}
+
+            {/* Interactive Visual Seating Selector (if seating chart enabled) */}
+            {event.seatingChart?.enabled && event.seatingChart.seats?.length ? (
+              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Armchair className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-bold text-slate-200">Select Your Seat</span>
+                  </div>
+                  {selectedSeatNumber ? (
+                    <span className="px-2 py-0.5 rounded-md bg-purple-500 text-white text-[10px] font-extrabold">
+                      Selected: {selectedSeatNumber}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">
+                      Auto-assigned if unselected
+                    </span>
+                  )}
+                </div>
+
+                {/* Stage Indicator */}
+                <div className="w-full max-w-xs mx-auto">
+                  <div className="h-2 rounded-t-full bg-purple-500/60 border-t border-purple-400"></div>
+                  <p className="text-[9px] font-bold text-center tracking-widest text-purple-300 uppercase mt-0.5">
+                    STAGE / FRONT
+                  </p>
+                </div>
+
+                {/* Seat Matrix */}
+                <div className="max-h-44 overflow-y-auto overflow-x-auto py-2 flex flex-col items-center gap-1.5">
+                  {Object.entries(
+                    event.seatingChart.seats.reduce((acc, seat) => {
+                      if (!acc[seat.row]) acc[seat.row] = [];
+                      acc[seat.row].push(seat);
+                      return acc;
+                    }, {} as Record<string, EventSeat[]>)
+                  ).map(([rowLabel, rowSeats]: [string, EventSeat[]]) => (
+                    <div key={rowLabel} className="flex items-center gap-1.5">
+                      <span className="w-4 text-center text-[10px] font-bold text-purple-300 select-none">
+                        {rowLabel}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {rowSeats.map((seat) => {
+                          const isBooked = seat.status === 'booked';
+                          const isBlocked = seat.status === 'blocked';
+                          const isSelected = selectedSeatNumber === seat.label;
+                          const isVIP = seat.section?.toLowerCase().includes('vip');
+
+                          return (
+                            <button
+                              key={seat.id}
+                              type="button"
+                              disabled={isBooked || isBlocked}
+                              onClick={() => setSelectedSeatNumber(isSelected ? null : seat.label)}
+                              className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold transition-all ${
+                                isSelected
+                                  ? 'bg-amber-400 text-slate-950 ring-2 ring-white scale-110'
+                                  : isBooked || isBlocked
+                                  ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                  : isVIP
+                                  ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer'
+                                  : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
+                              }`}
+                              title={`${seat.label} - ${seat.section || 'General'} (${isBooked ? 'Booked' : isBlocked ? 'Unavailable' : 'Available'})`}
+                            >
+                              {isBooked || isBlocked ? (
+                                <Ban className="w-2.5 h-2.5" />
+                              ) : isVIP ? (
+                                <Crown className="w-2.5 h-2.5" />
+                              ) : (
+                                seat.number
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="w-4 text-center text-[10px] font-bold text-purple-300 select-none">
+                        {rowLabel}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-center gap-3 text-[10px] text-slate-400 border-t border-slate-800 pt-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded bg-emerald-600"></div>
+                    <span>Available</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded bg-amber-400"></div>
+                    <span>Selected</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded bg-slate-800 border border-slate-700"></div>
+                    <span>Taken</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             {/* Form Fields */}
             <div className="space-y-3.5">

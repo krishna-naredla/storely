@@ -245,7 +245,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     business.modules?.digital_products || business.modules?.digitalProducts
   );
   const isConsultationsEnabled = Boolean(
-    business.modules?.booking_appointments || business.modules?.digital_products || business.modules?.digitalProducts
+    business.modules?.booking_appointments
   );
   const isPortfolioEnabled = Boolean(
     business.modules?.work_portfolio || business.modules?.portfolio
@@ -522,11 +522,11 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     }
   }, [catalogItems, categories, initialView, isPortfolioEnabled, isDigitalProductsEnabled, business.id]);
 
-  // Calculate average rating
+  // Calculate average rating strictly from actual reviews (never invent fake 5.0)
   const averageRating =
     reviews.length > 0
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-      : '5.0';
+      : null;
 
   // Filter & sort catalog items with strict module gating
   const filteredItems = catalogItems
@@ -611,7 +611,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 pb-28 font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 pb-28 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Top Admin Control Bar (if viewing from app preview / management) */}
       {onBackToDashboard && (
         <aside aria-label="Customer preview toolbar" className="sticky top-0 z-40 bg-emerald-600 text-white px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shadow-md border-b border-slate-800">
@@ -1042,7 +1042,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 const actionResult = resolveItemAction(item);
                 const isBookable = actionResult.isBooking;
                 const isDigital = actionResult.isDigital;
-                const isCartable = actionResult.isCartable;
+                const isCartable = actionResult.isCartable && business.modules?.cart_ordering !== false;
 
                 const displayPrice =
                   typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
@@ -1220,7 +1220,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                             <CalendarCheck className="w-4 h-4" />
                             <span className="hidden sm:inline">{actionResult.buttonText}</span>
                           </button>
-                        ) : (
+                        ) : isCartable ? (
                           <div className="flex items-center">
                             {hasVariants ? (
                               <button
@@ -1294,6 +1294,21 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               </button>
                             )}
                           </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const waPhone = (business.whatsapp || business.phone || '').replace(/\D/g, '');
+                              const msg = encodeURIComponent(`Hi ${business.name}, I'm interested in "${item.name}" (${business.currencySymbol}${displayPrice}). Please share more details.`);
+                              window.open(`https://wa.me/${waPhone}?text=${msg}`, '_blank');
+                            }}
+                            className="min-h-[44px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-[var(--r12)] font-bold text-xs shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+                            title="Inquire on WhatsApp"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>Enquire</span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -1304,53 +1319,60 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           )}
         </div>
 
-        {/* Live Events, Workshops & Masterclasses Showcase */}
-        {(events.length > 0 || business.modules?.events_tickets || business.modules?.events_ticketing) && (
+        {/* Live Events, Workshops & Masterclasses Showcase (strictly gated by active events module) */}
+        {Boolean((business.modules?.events_tickets || business.modules?.events_ticketing) && events.length > 0) && (
           <div id="events-section">
             <EventsShowcase events={events} business={business} />
           </div>
         )}
 
-        {/* Customer Reviews & Trust Section */}
-        <section id="reviews-section" className="rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] p-6 sm:p-8 shadow-[var(--shadow-xs)] space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-[var(--r12)] bg-amber-50 text-amber-500 flex items-center justify-center shadow-xs">
-                  <Star className="w-5 h-5 fill-current" />
+        {/* Customer Reviews & Trust Section (strictly gated by reviews module) */}
+        {business.modules?.reviews !== false && (
+          <section id="reviews-section" className="rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] p-6 sm:p-8 shadow-[var(--shadow-xs)] space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-[var(--r12)] bg-amber-50 text-amber-500 flex items-center justify-center shadow-xs">
+                    <Star className="w-5 h-5 fill-current" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-[var(--t1)] font-heading">
+                    Customer Stories &amp; Trust
+                  </h3>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[var(--t1)] font-heading">
-                  Customer Stories &amp; Trust
-                </h3>
-              </div>
-              <p className="text-xs sm:text-sm text-[var(--t2)] font-medium">
-                Verified experiences from real customers of {business.name}.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="px-3.5 py-1.5 bg-amber-500/10 rounded-[var(--r12)] border border-amber-500/20 flex items-center gap-2">
-                <span className="text-base font-bold text-amber-700 leading-none">{averageRating}</span>
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className={`w-3 h-3 ${i < Math.round(Number(averageRating)) ? 'fill-amber-400 text-amber-400' : 'fill-[var(--g200)] text-[var(--g200)]'}`} />
-                  ))}
-                </div>
-                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider ml-1">
-                  ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
-                </span>
+                <p className="text-xs sm:text-sm text-[var(--t2)] font-medium">
+                  Verified experiences from real customers of {business.name}.
+                </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsReviewModalOpen(true)}
-                className="min-h-[44px] px-5 py-2.5 rounded-[var(--r12)] ds-btn-primary text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Write Review</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                {averageRating && reviews.length > 0 ? (
+                  <div className="px-3.5 py-1.5 bg-amber-500/10 rounded-[var(--r12)] border border-amber-500/20 flex items-center gap-2">
+                    <span className="text-base font-bold text-amber-700 leading-none">{averageRating}</span>
+                    <div className="flex items-center gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`w-3 h-3 ${i < Math.round(Number(averageRating)) ? 'fill-amber-400 text-amber-400' : 'fill-[var(--g200)] text-[var(--g200)]'}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider ml-1">
+                      ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </div>
+                ) : (
+                  <div className="px-3 py-1.5 bg-slate-100 rounded-[var(--r12)] border border-slate-200 text-xs font-semibold text-slate-500">
+                    No ratings yet
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsReviewModalOpen(true)}
+                  className="min-h-[44px] px-5 py-2.5 rounded-[var(--r12)] ds-btn-primary text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-[var(--shadow-xs)]"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Write Review</span>
+                </button>
+              </div>
             </div>
-          </div>
 
           {/* Verified Guarantee Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-[var(--r16)] bg-[var(--bg)] border border-[var(--border)] shadow-[var(--shadow-xs)] text-xs">
@@ -1417,6 +1439,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             </div>
           )}
         </section>
+        )}
 
         {/* Store Information & Location Section */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">

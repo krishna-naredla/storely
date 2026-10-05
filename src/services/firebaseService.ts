@@ -1622,34 +1622,49 @@ export async function createNotification(
       if (!modules.reviews) return null;
     }
 
-    // 3. Deterministic docId / Idempotency to prevent duplicates
-    const notifDocId = data.idempotencyKey || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const docRef = doc(db, 'businesses', businessId, 'notifications', notifDocId);
-
-    // If an idempotencyKey was provided, check if document already exists
-    if (data.idempotencyKey) {
-      try {
-        const existingSnap = await getDoc(docRef);
-        if (existingSnap.exists()) {
-          return existingSnap.data() as Notification;
-        }
-      } catch (checkErr) {
-        // Non-blocking: proceed with deterministic setDoc without crashing
+    // 3. Delegate notification creation to trusted server API
+    try {
+      const resp = await fetch('/api/notifications/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId,
+          ...data,
+        }),
+      });
+      if (resp.ok) {
+        return {
+          ...data,
+          id: data.idempotencyKey || `notif_${Date.now()}`,
+          businessId,
+          ownerId: ownerId || undefined,
+          profileType,
+          read: false,
+          createdAt: Date.now(),
+        } as Notification;
       }
+    } catch (apiErr) {
+      console.warn('[Notification] Server notification endpoint unreachable, checking client auth:', apiErr);
     }
 
-    const notification: Notification = {
-      ...data,
-      id: notifDocId,
-      businessId,
-      ownerId: ownerId || undefined,
-      profileType,
-      read: false,
-      createdAt: Date.now(),
-    };
+    // 4. Authenticated Owner fallback write
+    if (auth?.currentUser && auth.currentUser.uid === ownerId) {
+      const notifDocId = data.idempotencyKey || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const docRef = doc(db, 'businesses', businessId, 'notifications', notifDocId);
+      const notification: Notification = {
+        ...data,
+        id: notifDocId,
+        businessId,
+        ownerId: ownerId || undefined,
+        profileType,
+        read: false,
+        createdAt: Date.now(),
+      };
+      await setDoc(docRef, sanitizeForFirestore(notification));
+      return notification;
+    }
 
-    await setDoc(docRef, sanitizeForFirestore(notification));
-    return notification;
+    return null;
   } catch (err) {
     console.error('Error creating notification:', err);
     return null;
@@ -1800,7 +1815,11 @@ export async function getAnalyticsSummary(businessId: string): Promise<Analytics
       getDocs(collection(db, 'businesses', businessId, 'analyticsEvents')).catch(() => ({ docs: [] } as any)),
     ]);
 
-    const completedOrders = orders.filter((o) => o.status !== 'cancelled');
+    const completedOrders = orders.filter((o) => 
+      o.status !== 'cancelled' && 
+      o.paymentStatus !== 'refunded' && 
+      (o.paymentStatus === 'paid' || o.status === 'delivered' || o.status === 'confirmed')
+    );
     const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
     const events = eventsSnap.docs.map((d: any) => d.data());
@@ -1964,35 +1983,46 @@ export async function getCreatorAnalyticsSummary(
       }
     });
 
+    // 1. Digital Store Revenue: Realized paid digital transactions only (not pending or unverified)
     const digitalOrders = orders.filter((o) => {
       if (startTime > 0 && (o.createdAt || 0) < startTime) return false;
-      return o.status !== 'cancelled';
+      const isPaid = o.paymentStatus === 'paid' || (o.total === 0 && (o.status === 'confirmed' || o.status === 'delivered'));
+      const notRefundedOrCancelled = o.status !== 'cancelled' && o.paymentStatus !== 'refunded';
+      return isPaid && notRefundedOrCancelled;
     });
     const digitalSalesCount = digitalOrders.length;
     const digitalRevenue = digitalOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     const digitalProductsCount = catalogList.filter((c: any) => c.itemType === 'course' || c.downloadUrl || (c.digitalFiles && c.digitalFiles.length > 0)).length;
 
+    // 2. Consultation Revenue: Authoritative paid/confirmed transactions only
     const filteredBookings = bookings.filter((b) => {
       if (startTime > 0 && (b.createdAt || 0) < startTime) return false;
-      return true;
+      return b.status !== 'cancelled' && b.status !== 'refunded' && b.paymentStatus !== 'refunded';
     });
-    const pendingBookings = filteredBookings.filter((b) => b.status === 'pending').length;
-    const completedBookings = filteredBookings.filter((b) => b.status === 'completed' || b.status === 'confirmed').length;
-    const consultationRevenue = filteredBookings
-      .filter((b) => b.status !== 'cancelled')
-      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    const pendingBookings = filteredBookings.filter((b) => b.status === 'pending' && b.paymentStatus !== 'paid').length;
+    const completedBookings = filteredBookings.filter((b) => b.status === 'completed' || (b.status === 'confirmed' && b.paymentStatus === 'paid')).length;
+    const paidBookings = filteredBookings.filter((b) => b.paymentStatus === 'paid' || (b.totalAmount === 0 && (b.status === 'confirmed' || b.status === 'completed')));
+    const consultationRevenue = paidBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
 
+    // 3. Event Revenue: Only paid/valid tickets, not pending or failed payments, excluding refunds
     const filteredTickets = ticketsList.filter((t) => {
       if (startTime > 0 && (t.createdAt || 0) < startTime) return false;
-      return t.status !== 'cancelled';
+      const isPaid = t.paymentStatus === 'paid' || (t.price === 0 && t.status !== 'cancelled');
+      const notRefundedOrCancelled = t.status !== 'cancelled' && t.status !== 'refunded' && t.paymentStatus !== 'refunded';
+      return isPaid && notRefundedOrCancelled;
     });
     const eventRevenue = filteredTickets.reduce((sum, t) => sum + (t.price || 0), 0);
 
+    // 4. Quote Revenue: Only paid quotes, excluding refunds
     const quoteReqs = quoteReqsSnap.docs.map((d: any) => d.data()).filter((q: any) => startTime === 0 || (q.createdAt || 0) >= startTime);
     const quotes = quotesSnap.docs.map((d: any) => d.data()).filter((q: any) => startTime === 0 || (q.createdAt || 0) >= startTime);
     const quotesSent = quotes.length;
     const quotesAccepted = quotes.filter((q: any) => q.status === 'accepted' || q.status === 'paid').length;
-    const quotesPaidList = quotes.filter((q: any) => q.status === 'paid' || q.paymentStatus === 'paid');
+    const quotesPaidList = quotes.filter((q: any) => {
+      const isPaid = q.status === 'paid' || q.paymentStatus === 'paid';
+      const notRefundedOrCancelled = q.status !== 'refunded' && q.paymentStatus !== 'refunded' && q.status !== 'cancelled';
+      return isPaid && notRefundedOrCancelled;
+    });
     const quoteRevenue = quotesPaidList.reduce((sum: number, q: any) => sum + (q.totalAmount || q.amount || 0), 0);
 
     const filteredReviews = reviewsList.filter((r) => startTime === 0 || (r.createdAt || 0) >= startTime);
@@ -2025,7 +2055,7 @@ export async function getCreatorAnalyticsSummary(
       const dayClicks = dayEvents.filter((e: any) => ['bio_click', 'affiliate_click', 'whatsapp_click', 'project_view', 'share', 'qr_scan'].includes(normalizeType(e.eventType))).length;
 
       const dayOrders = digitalOrders.filter((o) => (o.createdAt || 0) >= startOfDay && (o.createdAt || 0) <= endOfDay);
-      const dayBookings = filteredBookings.filter((b) => (b.createdAt || 0) >= startOfDay && (b.createdAt || 0) <= endOfDay && b.status !== 'cancelled');
+      const dayBookings = paidBookings.filter((b) => (b.createdAt || 0) >= startOfDay && (b.createdAt || 0) <= endOfDay);
       const dayTickets = filteredTickets.filter((t) => (t.createdAt || 0) >= startOfDay && (t.createdAt || 0) <= endOfDay);
       const dayQuotesPaid = quotesPaidList.filter((q: any) => (q.updatedAt || q.createdAt || 0) >= startOfDay && (q.updatedAt || q.createdAt || 0) <= endOfDay);
 
@@ -2988,6 +3018,8 @@ export async function purchaseEventTicketTransaction(
     paymentStatus?: 'paid' | 'free';
     paymentId?: string;
     razorpayOrderId?: string;
+    seatNumber?: string;
+    seatSection?: string;
     notes?: string;
     holdId?: string;
   }
@@ -3040,13 +3072,63 @@ export async function purchaseEventTicketTransaction(
     const nextSold = currentSold + 1;
     const nextStatus: EventStatus = seatsRemaining <= 0 ? 'sold_out' : (event.status !== 'sold_out' ? event.status || 'upcoming' : 'upcoming');
 
-    // 1. Update seats atomically
-    transaction.update(eventRef, {
+    // Seat allocation if event has seating chart enabled
+    let assignedSeatNumber = buyerDetails.seatNumber;
+    let assignedSeatSection = buyerDetails.seatSection;
+    let updatedSeatingChart = event.seatingChart;
+
+    if (event.seatingChart?.enabled && event.seatingChart.seats?.length) {
+      const allSeats = [...event.seatingChart.seats];
+
+      // If specific seat requested
+      if (assignedSeatNumber) {
+        const targetSeatIndex = allSeats.findIndex(
+          (s) => (s.label === assignedSeatNumber || s.id === assignedSeatNumber) && s.status === 'available'
+        );
+        if (targetSeatIndex !== -1) {
+          allSeats[targetSeatIndex] = {
+            ...allSeats[targetSeatIndex],
+            status: 'booked',
+            bookedByTicketId: ticketCode,
+            bookedByCustomerName: buyerDetails.customerName.trim(),
+          };
+          assignedSeatSection = allSeats[targetSeatIndex].section;
+        }
+      } else {
+        // Auto-assign next available seat
+        const firstAvailIndex = allSeats.findIndex((s) => s.status === 'available');
+        if (firstAvailIndex !== -1) {
+          assignedSeatNumber = allSeats[firstAvailIndex].label;
+          assignedSeatSection = allSeats[firstAvailIndex].section;
+          allSeats[firstAvailIndex] = {
+            ...allSeats[firstAvailIndex],
+            status: 'booked',
+            bookedByTicketId: ticketCode,
+            bookedByCustomerName: buyerDetails.customerName.trim(),
+          };
+        }
+      }
+
+      updatedSeatingChart = {
+        ...event.seatingChart,
+        seats: allSeats,
+        totalSeats: allSeats.filter((s) => s.status !== 'blocked').length,
+      };
+    }
+
+    // 1. Update event atomically
+    const eventUpdatePayload: any = {
       ticketsSold: nextSold,
       seatsRemaining: seatsRemaining,
       status: nextStatus,
       updatedAt: Date.now(),
-    });
+    };
+
+    if (updatedSeatingChart) {
+      eventUpdatePayload.seatingChart = updatedSeatingChart;
+    }
+
+    transaction.update(eventRef, eventUpdatePayload);
 
     // 2. Create the ticket document
     const newTicket: EventTicket = {
@@ -3065,6 +3147,8 @@ export async function purchaseEventTicketTransaction(
       paymentStatus: buyerDetails.paymentStatus || (event.price === 0 ? 'free' : 'paid'),
       paymentId: buyerDetails.paymentId,
       razorpayOrderId: buyerDetails.razorpayOrderId,
+      seatNumber: assignedSeatNumber,
+      seatSection: assignedSeatSection,
       checkedIn: false,
       meetingUrl: event.meetingUrl,
       venueAddress: event.venueAddress,
@@ -3081,6 +3165,7 @@ export async function purchaseEventTicketTransaction(
       ticketsSold: nextSold,
       seatsRemaining: seatsRemaining,
       status: nextStatus,
+      seatingChart: updatedSeatingChart,
     };
 
     return { ticket: newTicket, updatedEvent };

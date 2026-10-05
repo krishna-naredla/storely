@@ -14,14 +14,14 @@ declare global {
 }
 
 export const DEFAULT_RAZORPAY_CONFIG: PlatformRazorpayConfig = {
-  keyId: "rzp_live_SuHwJ97Z4EyRhJ",
-  keySecret: "vsKq2To1kZFHJu9v1S1Od9RM",
-  isEnabled: true,
+  keyId: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_RAZORPAY_KEY_ID) || '',
+  keySecret: '',
+  isEnabled: false,
   isTestMode: false,
-  merchantName: "Storelly Business OS",
-  merchantThemeColor: "#155330",
+  merchantName: 'Storelly Business OS',
+  merchantThemeColor: '#155330',
   autoUpgradePlan: true,
-  currency: "INR",
+  currency: 'INR',
 };
 
 // Dynamically load Razorpay SDK
@@ -243,11 +243,16 @@ export async function initiateRazorpaySubscription(
 
   const amountInPaise = Math.max(1, Math.round(plan.monthlyPrice * 100));
 
+  const activeKey = config.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID;
+  if (!activeKey) {
+    const errorMsg = "Razorpay Key ID is not configured on the server or in store settings. Please configure your payment credentials in Settings.";
+    console.error(`[Razorpay] ${errorMsg}`);
+    if (onFailure) onFailure(new Error(errorMsg));
+    return;
+  }
+
   const rzpOptions = {
-    key:
-      config.keyId ||
-      (import.meta as any).env?.VITE_RAZORPAY_KEY_ID ||
-      "rzp_live_SuHwJ97Z4EyRhJ",
+    key: activeKey,
     amount: amountInPaise,
     currency: config.currency || "INR",
     order_id: orderId, // Critical for signature verification
@@ -367,9 +372,14 @@ export async function initiateRazorpayCheckout(options: {
     if (!orderRes.ok) throw new Error("Failed to create secure payment order on server.");
     const { rzpOrderId } = await orderRes.json();
 
+    const activeKey = config.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID;
+    if (!activeKey) {
+      throw new Error("Razorpay Key ID is not configured on the server or in store settings. Please configure your payment credentials in Settings.");
+    }
+
     // 2. Configure checkout
     const rzpOptions = {
-      key: config.keyId || (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || "rzp_live_SuHwJ97Z4EyRhJ",
+      key: activeKey,
       amount: Math.round(amount * 100),
       currency: currency || "INR",
       order_id: rzpOrderId,

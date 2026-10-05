@@ -459,7 +459,7 @@ export function resolveTargetViewForBusiness(
   route: PublicRouteInfo,
   business: BusinessProfile
 ): {
-  targetView: 'store' | 'bio' | 'portfolio' | 'card' | 'consultations' | 'events' | 'quotes' | 'reviews';
+  targetView: 'store' | 'bio' | 'portfolio' | 'card' | 'consultations' | 'events' | 'quotes' | 'reviews' | 'recommendations';
   canonicalPath: string;
 } {
   const isCreator = isCreatorProfile(business);
@@ -477,6 +477,9 @@ export function resolveTargetViewForBusiness(
   }
   if (route.explicitView === 'reviews') {
     return { targetView: 'reviews', canonicalPath: `/reviews/${slug}` };
+  }
+  if (route.explicitView === 'recommendations') {
+    return { targetView: 'recommendations', canonicalPath: `/recommendations/${slug}` };
   }
   if (route.explicitView === 'bio') {
     return { targetView: 'bio', canonicalPath: `/@${slug}` };
@@ -512,6 +515,9 @@ export function resolveTargetViewForBusiness(
         if (isCreatorModuleEnabled(business, 'reviews')) {
           return { targetView: 'reviews', canonicalPath: `/reviews/${slug}` };
         }
+        if (isCreatorModuleEnabled(business, 'affiliate_products')) {
+          return { targetView: 'recommendations', canonicalPath: `/recommendations/${slug}` };
+        }
       }
     }
     return { targetView: 'store', canonicalPath: `/store/${slug}` };
@@ -543,6 +549,12 @@ export function resolveTargetViewForBusiness(
   if (preferred === 'quotes') {
     return { targetView: 'quotes', canonicalPath: `/quote/${slug}` };
   }
+  if (preferred === 'reviews') {
+    return { targetView: 'reviews', canonicalPath: `/reviews/${slug}` };
+  }
+  if (preferred === 'recommendations') {
+    return { targetView: 'recommendations', canonicalPath: `/recommendations/${slug}` };
+  }
 
   // Default creator fallback priority if preferred is not set:
   if (isCreatorModuleEnabled(business, 'portfolio')) {
@@ -559,6 +571,12 @@ export function resolveTargetViewForBusiness(
   }
   if (isCreatorModuleEnabled(business, 'booking_appointments')) {
     return { targetView: 'consultations', canonicalPath: `/consult/${slug}` };
+  }
+  if (isCreatorModuleEnabled(business, 'reviews')) {
+    return { targetView: 'reviews', canonicalPath: `/reviews/${slug}` };
+  }
+  if (isCreatorModuleEnabled(business, 'affiliate_products')) {
+    return { targetView: 'recommendations', canonicalPath: `/recommendations/${slug}` };
   }
 
   return { targetView: 'bio', canonicalPath: `/@${slug}` };

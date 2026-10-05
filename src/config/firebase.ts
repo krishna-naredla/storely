@@ -39,8 +39,9 @@ try {
 
 // Target the provisioned Firestore database with auto-detect long polling enabled for proxies / iframes
 let firestoreInstance: Firestore;
-const targetDbId = appletConfig.firestoreDatabaseId && appletConfig.firestoreDatabaseId.trim()
-  ? appletConfig.firestoreDatabaseId.trim()
+const configWithDb = appletConfig as typeof appletConfig & { firestoreDatabaseId?: string };
+const targetDbId = configWithDb.firestoreDatabaseId && configWithDb.firestoreDatabaseId.trim()
+  ? configWithDb.firestoreDatabaseId.trim()
   : undefined;
 
 try {

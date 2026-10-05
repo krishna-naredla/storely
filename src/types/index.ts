@@ -148,7 +148,7 @@ export interface BusinessProfile {
     branchName?: string;
   };
   paymentInstructions?: string;
-  primaryDestination?: 'portfolio' | 'biolink' | 'store' | 'consultations' | 'events' | 'quotes' | 'reviews';
+  primaryDestination?: 'portfolio' | 'biolink' | 'store' | 'consultations' | 'events' | 'quotes' | 'reviews' | 'recommendations';
   socialLinks?:
     | {
         instagram?: string;
@@ -390,7 +390,7 @@ export interface Order {
   total: number;
   status: OrderStatus;
   paymentMethod: 'cod' | 'upi_on_delivery' | 'online' | 'cash_at_counter';
-  paymentStatus: 'pending' | 'paid' | 'failed';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
@@ -442,7 +442,7 @@ export interface Booking {
   
   totalAmount: number;
   status: BookingStatus;
-  paymentStatus?: 'pending' | 'paid' | 'failed';
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
   meetingUrl?: string; // Google Meet or Zoom
   notes?: string;
   createdAt: number;
@@ -919,6 +919,36 @@ export type EventFormat = 'online' | 'offline';
 export type EventStatus = 'upcoming' | 'past' | 'sold_out' | 'cancelled';
 export type MeetingPlatform = 'google_meet' | 'zoom' | 'teams' | 'youtube_live' | 'other';
 
+export interface EventSeat {
+  id: string; // e.g. "A1", "B4", "VIP-1"
+  row: string; // "A", "B", "VIP"
+  number: number;
+  label: string; // "A-1"
+  section?: string; // "VIP", "Premium", "General", "Balcony"
+  priceModifier?: number;
+  status: 'available' | 'held' | 'booked' | 'blocked';
+  bookedByTicketId?: string;
+  bookedByCustomerName?: string;
+}
+
+export interface EventSeatingSection {
+  id: string;
+  name: string;
+  color: string;
+  price?: number;
+  rowsCount: number;
+  seatsPerRow: number;
+}
+
+export interface EventSeatingChart {
+  enabled: boolean;
+  layoutType?: 'theatre' | 'grid' | 'banquet' | 'stadium';
+  sections?: EventSeatingSection[];
+  totalSeats: number;
+  seats: EventSeat[];
+  allowCustomerSelection?: boolean;
+}
+
 export interface EventItem {
   id: string;
   businessId: string;
@@ -939,6 +969,7 @@ export interface EventItem {
   seatsRemaining: number; // Atomic tracking
   ticketsSold: number;
   status: EventStatus;
+  seatingChart?: EventSeatingChart;
   cancellationReason?: string;
   sendMeetingLinkTiming?: 'immediately' | 'closer_to_event';
   sortOrder?: number;
@@ -963,6 +994,8 @@ export interface EventTicket {
   paymentStatus: 'paid' | 'free' | 'refunded';
   paymentId?: string;
   razorpayOrderId?: string;
+  seatNumber?: string;
+  seatSection?: string;
   checkedIn: boolean;
   checkedInAt?: number;
   meetingUrl?: string; // Private link stored upon confirmed ticket

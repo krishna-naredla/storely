@@ -84,7 +84,7 @@ export const CREATOR_MODULES_REGISTRY: CreatorModuleRegistryEntry[] = [
   {
     id: 'digital_products',
     canonicalRouteType: 'store',
-    dbKeys: ['digital_products', 'digitalProducts', 'digital', 'catalog', 'store'],
+    dbKeys: ['digital_products', 'digitalProducts', 'digital_store'],
     title: 'Digital Store & Downloads',
     shortTitle: 'Digital Store',
     description: 'Sell downloadable assets, PDFs, design templates, software, and presets.',
@@ -184,10 +184,12 @@ export function extractCreatorHandle(businessOrSlug: any): string {
 }
 
 /**
- * Maps any module key or alias to its primary CreatorModuleId
+ * Maps any module key or alias to its primary CreatorModuleId.
+ * Fails safely by returning null for unknown or invalid keys (never silently defaults to portfolio).
  */
-export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId {
-  const k = String(moduleIdOrKey).toLowerCase();
+export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId | null {
+  if (!moduleIdOrKey) return null;
+  const k = String(moduleIdOrKey).toLowerCase().trim();
   switch (k) {
     case 'portfolio':
     case 'work_portfolio':
@@ -202,8 +204,7 @@ export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId
     case 'digital_products':
     case 'digitalproducts':
     case 'digital':
-    case 'catalog':
-    case 'store':
+    case 'digital_store':
       return 'digital_products';
 
     case 'booking_appointments':
@@ -235,7 +236,7 @@ export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId
       return 'affiliate_products';
 
     default:
-      return 'portfolio';
+      return null;
   }
 }
 
@@ -243,7 +244,8 @@ export function normalizeCreatorModuleId(moduleIdOrKey: string): CreatorModuleId
  * Retrieves the independent Enabled and Published states for a Creator module.
  * Source of truth:
  * 1. Explicit `business.creatorModulesConfig[moduleId]` or `business.moduleStates[moduleId]`
- * 2. Fallback to `business.modules[key]` (defaulting published = enabled for legacy records)
+ * 2. Fallback to `business.modules[key]`. For legacy records where publication status is unknown,
+ *    preserves enabled state but requires explicit publication before public access.
  */
 export function getCreatorModuleState(
   business: BusinessProfile | null | undefined,
@@ -258,6 +260,10 @@ export function getCreatorModuleState(
   }
 
   const primaryId = normalizeCreatorModuleId(moduleIdOrKey);
+  if (!primaryId) {
+    return { enabled: false, published: false, status: 'DISABLED' };
+  }
+
   const explicitConfig =
     business.creatorModulesConfig?.[primaryId] ||
     business.moduleStates?.[primaryId];
@@ -277,7 +283,9 @@ export function getCreatorModuleState(
     };
   }
 
-  // Fallback to legacy modules object
+  // Fallback to legacy modules object.
+  // Legacy enabled records preserve enabled state for configuration,
+  // but require explicit publication before public access to prevent unready content leakage.
   const modules = (business.modules || {}) as Record<string, any>;
   let isEnabled = false;
 
@@ -289,7 +297,7 @@ export function getCreatorModuleState(
       isEnabled = Boolean(modules.universal_links || modules.bio_links || modules.biolink);
       break;
     case 'digital_products':
-      isEnabled = Boolean(modules.digital_products || modules.digitalProducts || modules.digital || modules.catalog || modules.store);
+      isEnabled = Boolean(modules.digital_products || modules.digitalProducts || modules.digital_store);
       break;
     case 'booking_appointments':
       isEnabled = Boolean(modules.booking_appointments || modules.consultations || modules.bookings || modules.consult);
@@ -308,10 +316,16 @@ export function getCreatorModuleState(
       break;
   }
 
-  const status: ModulePublishState = isEnabled ? 'ENABLED_PUBLISHED' : 'DISABLED';
+  const isPublished = false; // Legacy fallback requires explicit publishing
+  const status: ModulePublishState = !isEnabled
+    ? 'DISABLED'
+    : isPublished
+    ? 'ENABLED_PUBLISHED'
+    : 'ENABLED_UNPUBLISHED';
+
   return {
     enabled: isEnabled,
-    published: isEnabled,
+    published: isPublished,
     status,
   };
 }
@@ -398,10 +412,13 @@ export function getCreatorModuleDisplayPath(
     case 'digital_products':
     case 'digitalproducts':
     case 'digital':
-    case 'catalog':
+    case 'digital_store':
     case 'store':
-    default:
       return `/store/${encodeURIComponent(handle)}${optionalEntitySlug ? `?item=${encodeURIComponent(optionalEntitySlug)}` : ''}`;
+
+    default:
+      // Fails safely for unknown module ids instead of silently falling back to digital store or portfolio
+      return `/@${encodeURIComponent(handle)}`;
   }
 }
 
@@ -461,6 +478,9 @@ export async function setCreatorModuleState(
   state: { enabled?: boolean; published?: boolean }
 ): Promise<BusinessProfile> {
   const primaryId = normalizeCreatorModuleId(moduleId);
+  if (!primaryId) {
+    throw new Error(`Invalid creator module identifier: "${moduleId}".`);
+  }
   const registryEntry = CREATOR_MODULES_REGISTRY.find((e) => e.id === primaryId);
   const currentState = getCreatorModuleState(business, primaryId);
 

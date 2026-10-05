@@ -153,7 +153,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               const completionRate =
                 totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
               const revenue = dayOrders
-                .filter((o) => o.status !== 'cancelled')
+                .filter((o) => o.status !== 'cancelled' && o.paymentStatus !== 'refunded' && (o.paymentStatus === 'paid' || o.status === 'delivered' || o.status === 'confirmed'))
                 .reduce((sum, o) => sum + (o.total || 0), 0);
 
               daysArr.push({

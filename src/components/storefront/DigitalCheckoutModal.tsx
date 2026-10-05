@@ -295,9 +295,14 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
       // Check for Razorpay SDK on window
       const RazorpayClass = (window as any).Razorpay;
 
+      const activeRazorpayKey = (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || orderData.keyId;
+      if (!activeRazorpayKey) {
+        throw new Error('Payment gateway is not configured for this store. Please contact the seller.');
+      }
+
       if (RazorpayClass) {
         const options = {
-          key: (import.meta as any).env?.VITE_RAZORPAY_KEY_ID || orderData.keyId || "rzp_live_SuHwJ97Z4EyRhJ",
+          key: activeRazorpayKey,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: business.name,

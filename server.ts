@@ -33,9 +33,10 @@ if (!getAdminApps().length) {
   });
 }
 
+const configWithDb = appletConfig as typeof appletConfig & { firestoreDatabaseId?: string };
 const targetDbId =
-  appletConfig.firestoreDatabaseId && appletConfig.firestoreDatabaseId.trim()
-    ? appletConfig.firestoreDatabaseId.trim()
+  configWithDb.firestoreDatabaseId && configWithDb.firestoreDatabaseId.trim()
+    ? configWithDb.firestoreDatabaseId.trim()
     : undefined;
 
 const serverDb =
@@ -43,17 +44,38 @@ const serverDb =
     ? initializeFirestore(firebaseApp, {}, targetDbId)
     : getFirestore(firebaseApp);
 
-// Initialize Razorpay
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SuHwJ97Z4EyRhJ";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "vsKq2To1kZFHJu9v1S1Od9RM";
-const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+// Initialize Razorpay strictly from secure environment/database configuration (NO hardcoded secrets)
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
 
 const razorpay = (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) 
   ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET }) 
   : null;
 
-async function resolveRazorpayCredentials(): Promise<{ keyId: string; keySecret: string; client: any } | null> {
-  // 1. Dynamic platform settings from Firestore (configured by Admin)
+async function resolveRazorpayCredentials(businessId?: string): Promise<{ keyId: string; keySecret: string; client: any } | null> {
+  // 1. Business-level custom payment gateway (if configured by merchant/creator)
+  if (businessId) {
+    try {
+      const bizSnap = await getDoc(doc(serverDb, "businesses", businessId));
+      if (bizSnap.exists()) {
+        const bData = bizSnap.data();
+        const customKeyId = bData.paymentConfig?.razorpayKeyId || bData.paymentSettings?.razorpayKeyId || bData.razorpayKeyId;
+        const customKeySecret = bData.paymentConfig?.razorpayKeySecret || bData.paymentSettings?.razorpayKeySecret || bData.razorpayKeySecret;
+        if (customKeyId && customKeySecret) {
+          return {
+            keyId: customKeyId,
+            keySecret: customKeySecret,
+            client: new Razorpay({ key_id: customKeyId, key_secret: customKeySecret })
+          };
+        }
+      }
+    } catch (err) {
+      // Non-blocking fallback to platform settings
+    }
+  }
+
+  // 2. Dynamic platform settings from Firestore system_settings / platform_settings
   try {
     const snap = await getDoc(doc(serverDb, "system_settings", "payment_config"));
     if (snap.exists()) {
@@ -66,11 +88,23 @@ async function resolveRazorpayCredentials(): Promise<{ keyId: string; keySecret:
         };
       }
     }
+
+    const platSnap = await getDoc(doc(serverDb, "platform_settings", "payment_config"));
+    if (platSnap.exists()) {
+      const pData = platSnap.data();
+      if (pData.keyId && pData.keySecret && pData.isEnabled !== false) {
+        return {
+          keyId: pData.keyId,
+          keySecret: pData.keySecret,
+          client: new Razorpay({ key_id: pData.keyId, key_secret: pData.keySecret })
+        };
+      }
+    }
   } catch (err) {
     // Non-blocking
   }
 
-  // 2. Environment variables
+  // 3. Environment variables
   if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
     return {
       keyId: process.env.RAZORPAY_KEY_ID,
@@ -79,7 +113,7 @@ async function resolveRazorpayCredentials(): Promise<{ keyId: string; keySecret:
     };
   }
 
-  // 3. Fallback instance
+  // 4. Default instance
   if (razorpay && RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
     return {
       keyId: RAZORPAY_KEY_ID,
@@ -437,6 +471,38 @@ async function createServerNotification(businessId: string, data: {
   }
 }
 
+// Secure Customer / Public Notification Endpoint with Rate Limiting & Input Sanitization
+const notificationLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+  message: "Too many notifications submitted. Please slow down.",
+});
+
+app.post("/api/notifications/create", notificationLimiter, async (req, res) => {
+  try {
+    const { businessId, type, title, message, link, entityType, entityId, idempotencyKey, metadata } = req.body;
+    if (!businessId || !type || !title || typeof title !== "string") {
+      return res.status(400).json({ error: "Missing required notification fields." });
+    }
+
+    await createServerNotification(businessId, {
+      type: String(type).slice(0, 30),
+      title: String(title).slice(0, 150),
+      message: String(message || "").slice(0, 500),
+      link: link ? String(link).slice(0, 200) : undefined,
+      entityType: entityType ? String(entityType).slice(0, 50) : undefined,
+      entityId: entityId ? String(entityId).slice(0, 100) : undefined,
+      idempotencyKey: idempotencyKey ? String(idempotencyKey).slice(0, 150) : undefined,
+      metadata: metadata || {},
+    });
+
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("[API NOTIFICATION] Error:", err);
+    return res.status(500).json({ error: err.message || "Failed to create notification" });
+  }
+});
+
 async function updateQuotePayment(businessId: string, requestId: string, paymentId: string, signature?: string) {
   try {
     const quoteRef = doc(serverDb, "businesses", businessId, "quote_requests", requestId);
@@ -568,66 +634,332 @@ async function updateEventTicketPayment(businessId: string, eventId: string, buy
   }
 }
 
-// 0. Webhook Raw Body Handling
+// Helper to update booking payment status in Firestore (Idempotent)
+async function updateBookingPayment(businessId: string, bookingId: string, paymentId: string) {
+  try {
+    const bookingRef = doc(serverDb, "businesses", businessId, "bookings", bookingId);
+    const snap = await getDoc(bookingRef);
+    if (!snap.exists()) {
+      console.error(`[PAYMENT] Booking ${bookingId} not found.`);
+      return false;
+    }
+    const bData = snap.data();
+    if (bData.paymentStatus === "paid") return true;
+
+    await updateDoc(bookingRef, {
+      paymentStatus: "paid",
+      status: "confirmed",
+      razorpayPaymentId: paymentId,
+      paidAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await createServerNotification(businessId, {
+      type: "consultation",
+      title: "Consultation Payment Received",
+      message: `Payment received for booking #${bData.bookingNumber || bookingId} (${bData.itemName || "1:1 Session"}).`,
+      link: "/dashboard/bookings",
+      entityType: "booking",
+      entityId: bookingId,
+      idempotencyKey: `booking_pay_${bookingId}_${paymentId}`,
+      metadata: { bookingId, paymentId }
+    });
+    return true;
+  } catch (err) {
+    console.error(`[PAYMENT] Failed to update booking ${bookingId}:`, err);
+    return false;
+  }
+}
+
+// Helper to handle authoritative refunds across all modules (Event seats, digital, quotes, orders)
+async function handleAuthoritativeRefund(businessId: string, details: {
+  type?: string;
+  notes?: any;
+  paymentId?: string;
+  rzpOrderId?: string;
+  refundAmount?: number;
+}) {
+  try {
+    const { type, notes, paymentId, rzpOrderId } = details;
+    console.log(`[REFUND] Authoritative refund processing for business: ${businessId}, payment: ${paymentId}`);
+
+    if (type === "event_ticket" || notes?.eventId) {
+      const ticketsRef = collection(serverDb, "businesses", businessId, "tickets");
+      let ticketSnap = paymentId 
+        ? await getDocs(query(ticketsRef, where("paymentId", "==", paymentId), limit(1)))
+        : { empty: true, docs: [] as any[] };
+      
+      if (ticketSnap.empty && rzpOrderId) {
+        ticketSnap = await getDocs(query(ticketsRef, where("razorpayOrderId", "==", rzpOrderId), limit(1)));
+      }
+
+      if (!ticketSnap.empty) {
+        const ticketDoc = ticketSnap.docs[0];
+        const tData = ticketDoc.data();
+        if (tData.paymentStatus !== "refunded") {
+          await updateDoc(ticketDoc.ref, {
+            paymentStatus: "refunded",
+            status: "cancelled",
+            refundedAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+
+          // Atomically return seat capacity to event
+          const targetEventId = tData.eventId || notes?.eventId;
+          if (targetEventId) {
+            const evRef = doc(serverDb, "businesses", businessId, "events", targetEventId);
+            await runTransaction(serverDb, async (tx) => {
+              const evSnap = await tx.get(evRef);
+              if (evSnap.exists()) {
+                const ev = evSnap.data();
+                const curSold = Math.max(0, (Number(ev.ticketsSold) || 0) - 1);
+                const curSeats = (Number(ev.seatsRemaining) || 0) + 1;
+                tx.update(evRef, {
+                  ticketsSold: curSold,
+                  seatsRemaining: curSeats,
+                  status: ev.status === "sold_out" ? "upcoming" : (ev.status || "upcoming"),
+                  updatedAt: Date.now(),
+                });
+              }
+            }).catch((txErr) => console.warn("[REFUND] Could not adjust event capacity:", txErr));
+          }
+
+          await createServerNotification(businessId, {
+            type: "event",
+            title: "Event Ticket Refunded",
+            message: `Ticket ${tData.ticketId || ticketDoc.id} for "${tData.eventTitle || "Event"}" was refunded.`,
+            link: "/dashboard/events",
+            entityType: "event",
+            entityId: targetEventId,
+            idempotencyKey: `ticket_refund_${ticketDoc.id}_${paymentId}`,
+          });
+        }
+      }
+    } else if (type === "quote_payment" || notes?.requestId) {
+      const requestId = notes?.requestId;
+      if (requestId) {
+        const quoteRef = doc(serverDb, "businesses", businessId, "quote_requests", requestId);
+        const qSnap = await getDoc(quoteRef);
+        if (qSnap.exists()) {
+          await updateDoc(quoteRef, {
+            paymentStatus: "refunded",
+            status: "refunded",
+            refundedAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+          await createServerNotification(businessId, {
+            type: "payment",
+            title: "Quote Payment Refunded",
+            message: `Payment for quote #${qSnap.data().requestNumber || requestId} was refunded.`,
+            link: "/dashboard/quotes",
+            entityType: "quote",
+            entityId: requestId,
+            idempotencyKey: `quote_refund_${requestId}_${paymentId}`,
+          });
+        }
+      }
+    } else if (type === "consultation" || notes?.bookingId) {
+      const bookingId = notes?.bookingId;
+      if (bookingId) {
+        const bRef = doc(serverDb, "businesses", businessId, "bookings", bookingId);
+        const bSnap = await getDoc(bRef);
+        if (bSnap.exists()) {
+          await updateDoc(bRef, {
+            paymentStatus: "refunded",
+            status: "cancelled",
+            refundedAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        }
+      }
+    } else {
+      // General / Digital / Physical Order
+      const localOrderId = notes?.localOrderId || rzpOrderId;
+      let orderRef = localOrderId ? doc(serverDb, "businesses", businessId, "orders", localOrderId) : null;
+      let orderSnap = orderRef ? await getDoc(orderRef) : null;
+      if (!orderSnap || !orderSnap.exists()) {
+        if (paymentId) {
+          const qSnap = await getDocs(query(collection(serverDb, "businesses", businessId, "orders"), where("razorpayPaymentId", "==", paymentId), limit(1)));
+          if (!qSnap.empty) {
+            orderSnap = qSnap.docs[0];
+            orderRef = orderSnap.ref as any;
+          }
+        }
+      }
+      if (orderSnap && orderSnap.exists() && orderRef) {
+        await updateDoc(orderRef, {
+          paymentStatus: "refunded",
+          status: "refunded",
+          refundedAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        await createServerNotification(businessId, {
+          type: "payment",
+          title: "Order Payment Refunded",
+          message: `Order #${orderSnap.data().orderNumber || orderSnap.id} payment was refunded.`,
+          link: "/dashboard/orders",
+          entityType: "order",
+          entityId: orderSnap.id,
+          idempotencyKey: `order_refund_${orderSnap.id}_${paymentId}`,
+        });
+      }
+    }
+  } catch (err: any) {
+    console.error("[REFUND] Error handling refund:", err);
+  }
+}
+
+// 0. Hardened Razorpay Webhook with Idempotency, HMAC SHA-256, & Authoritative Notes Binding
 app.post(
   "/api/webhooks/razorpay",
-  bodyParser.raw({ type: "application/json" }),
+  bodyParser.raw({ type: "*/*" }),
   async (req, res) => {
     try {
       const signature = req.headers["x-razorpay-signature"] as string;
-      if (!RAZORPAY_WEBHOOK_SECRET) {
-        console.error("[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured.");
-        return res.status(500).send("Webhook secret missing");
+      if (!signature) {
+        return res.status(400).send("Missing signature header");
       }
 
+      // 1. Resolve authoritative webhook secret from environment or database settings (FAIL-CLOSED)
+      let webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+      if (!webhookSecret) {
+        try {
+          const snap = await getDoc(doc(serverDb, "system_settings", "payment_config"));
+          if (snap.exists()) {
+            webhookSecret = snap.data()?.webhookSecret || snap.data()?.keySecret;
+          }
+          if (!webhookSecret) {
+            const platSnap = await getDoc(doc(serverDb, "platform_settings", "payment_config"));
+            if (platSnap.exists()) {
+              webhookSecret = platSnap.data()?.webhookSecret || platSnap.data()?.keySecret;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (!webhookSecret) {
+        console.error("[Webhook] No webhook secret configured on server. Failing closed.");
+        return res.status(500).send("Webhook secret is not configured on server.");
+      }
+
+      const rawBody = req.body instanceof Buffer ? req.body : Buffer.from(req.body || "");
       const expectedSignature = crypto
-        .createHmac("sha256", RAZORPAY_WEBHOOK_SECRET)
-        .update(req.body)
+        .createHmac("sha256", webhookSecret)
+        .update(rawBody)
         .digest("hex");
 
-      if (expectedSignature !== signature) {
+      if (!timingSafeCompare(expectedSignature, signature)) {
         console.error("[Webhook] Signature verification failed.");
         return res.status(400).send("Invalid signature");
       }
 
-      // Parse body only AFTER verification
-      const body = JSON.parse(req.body.toString());
-      const event = body.event;
-      console.log(`[Webhook] Event: ${event}`);
+      // Parse body only AFTER cryptographic verification
+      let body: any;
+      try {
+        body = JSON.parse(rawBody.toString("utf8"));
+      } catch (parseErr) {
+        return res.status(400).send("Invalid JSON payload");
+      }
 
+      const event = body.event;
+      const eventId = body.id || body.event_id || req.headers["x-razorpay-event-id"];
+      console.log(`[Webhook] Verified event: ${event} (id: ${eventId})`);
+
+      // 2. Webhook Idempotency: Duplicate delivery protection
+      if (eventId) {
+        const eventRef = doc(serverDb, "system_settings", `webhook_event_${eventId}`);
+        const existingDoc = await getDoc(eventRef);
+        if (existingDoc.exists()) {
+          console.log(`[Webhook] Duplicate event ${eventId} received. Acknowledging with 200 OK.`);
+          return res.status(200).json({ status: "already_processed" });
+        }
+        await setDoc(eventRef, {
+          eventId,
+          event,
+          processedAt: Date.now(),
+        }).catch((e) => console.warn("[Webhook] Could not persist event log:", e));
+      }
+
+      // 3. Process authoritative event types
       if (event === "payment.captured" || event === "order.paid") {
-        const payment = body.payload.payment.entity;
-        const rzpOrderId = payment.order_id;
-        const notes = payment.notes || {};
+        const payment = body.payload?.payment?.entity;
+        const order = body.payload?.order?.entity;
+        const rzpOrderId = payment?.order_id || order?.id;
+        const paymentId = payment?.id;
+        const notes = payment?.notes || order?.notes || {};
         const businessId = notes.businessId;
         const type = notes.type;
 
         if (businessId) {
           if (type === "quote_payment" && notes.requestId) {
-            await updateQuotePayment(businessId, notes.requestId, payment.id);
+            await updateQuotePayment(businessId, notes.requestId, paymentId);
           } else if (type === "event_ticket" && notes.eventId) {
             await updateEventTicketPayment(businessId, notes.eventId, {
               customerName: notes.customerName,
               customerPhone: notes.customerPhone,
-              paymentId: payment.id,
+              customerEmail: notes.customerEmail,
+              paymentId: paymentId,
               razorpayOrderId: rzpOrderId
             });
+          } else if (type === "consultation" && notes.bookingId) {
+            await updateBookingPayment(businessId, notes.bookingId, paymentId);
           } else if (type === "digital_product" && notes.itemId) {
-            // Digital products usually handled in verify-payment, but webhook ensures fallback
             const localOrderId = notes.localOrderId || rzpOrderId;
-            await updateOrderPayment(businessId, localOrderId, payment.id);
+            await updateOrderPayment(businessId, localOrderId, paymentId);
           } else {
-            // Physical Order
+            // Physical / General Order
             const localOrderId = notes.localOrderId || rzpOrderId;
-            await updateOrderPayment(businessId, localOrderId, payment.id);
+            if (localOrderId) {
+              await updateOrderPayment(businessId, localOrderId, paymentId);
+            }
           }
+        }
+      } else if (event === "payment.failed") {
+        const payment = body.payload?.payment?.entity;
+        const notes = payment?.notes || {};
+        const businessId = notes.businessId;
+        const type = notes.type;
+        const rzpOrderId = payment?.order_id;
+
+        if (businessId) {
+          if (type === "quote_payment" && notes.requestId) {
+            const quoteRef = doc(serverDb, "businesses", businessId, "quote_requests", notes.requestId);
+            await updateDoc(quoteRef, { paymentStatus: "failed", updatedAt: Date.now() }).catch(() => {});
+          } else if (type === "digital_product" || !type) {
+            const localOrderId = notes.localOrderId || rzpOrderId;
+            if (localOrderId) {
+              const orderRef = doc(serverDb, "businesses", businessId, "orders", localOrderId);
+              await updateDoc(orderRef, { paymentStatus: "failed", updatedAt: Date.now() }).catch(() => {});
+            }
+          }
+        }
+      } else if (event === "refund.processed" || event === "payment.refunded") {
+        const payment = body.payload?.payment?.entity;
+        const refund = body.payload?.refund?.entity;
+        const notes = payment?.notes || {};
+        const businessId = notes.businessId;
+        const type = notes.type;
+        const rzpOrderId = payment?.order_id;
+        const paymentId = payment?.id;
+
+        if (businessId) {
+          await handleAuthoritativeRefund(businessId, {
+            type,
+            notes,
+            paymentId,
+            rzpOrderId,
+            refundAmount: (refund?.amount || 0) / 100,
+          });
         }
       }
 
-      res.json({ status: "ok" });
+      return res.status(200).json({ status: "ok" });
     } catch (err: any) {
       console.error("[Webhook] Processing failed:", err);
-      res.status(500).send("Internal Server Error");
+      return res.status(500).send("Internal Server Error");
     }
   }
 );
@@ -828,14 +1160,15 @@ app.post("/api/digital/create-order", paymentLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: "Product is free. Use free checkout flow." });
     }
 
-    if (!razorpay) {
-      return res.status(500).json({ 
+    const creds = await resolveRazorpayCredentials(businessId);
+    if (!creds || !creds.client) {
+      return res.status(503).json({ 
         success: false, 
         error: "Razorpay is not configured on the server. Online payments are currently unavailable." 
       });
     }
 
-    const rzpOrder = await razorpay.orders.create({
+    const rzpOrder = await creds.client.orders.create({
       amount: Math.round(orderAmount * 100),
       currency: currency || "INR",
       receipt: `digi_${Date.now()}`,
@@ -853,11 +1186,16 @@ app.post("/api/digital/create-order", paymentLimiter, async (req, res) => {
       orderId: rzpOrder.id,
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
-      keyId: RAZORPAY_KEY_ID,
+      keyId: creds.keyId,
     });
   } catch (err: any) {
-    console.error("[Razorpay] Digital order creation failed:", err);
-    res.status(500).json({ success: false, error: err.message });
+    const rzpDesc = err?.error?.description || err?.message || "";
+    console.error("[Razorpay] Digital order creation failed:", rzpDesc || err);
+    const isAuthFailure = rzpDesc.toLowerCase().includes("authentication failed");
+    const clientMsg = isAuthFailure
+      ? "Payment gateway authentication failed. Please check active Razorpay API keys in Admin / Store Settings."
+      : (rzpDesc || "Failed to create digital payment order.");
+    res.status(500).json({ success: false, error: clientMsg });
   }
 });
 
@@ -872,14 +1210,6 @@ app.post("/api/digital/verify-payment", paymentLimiter, async (req, res) => {
       businessId,
     } = req.body;
     
-    // STRICT FAIL-CLOSED: if secret is missing, never treat payment as verified
-    if (!RAZORPAY_KEY_SECRET || !razorpay) {
-      return res.status(500).json({
-        success: false,
-        error: "Payment verification service is unavailable. Server secret is not configured.",
-      });
-    }
-
     if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
       return res.status(400).json({
         success: false,
@@ -887,8 +1217,19 @@ app.post("/api/digital/verify-payment", paymentLimiter, async (req, res) => {
       });
     }
 
+    const creds = await resolveRazorpayCredentials(businessId);
+    const secret = creds?.keySecret || RAZORPAY_KEY_SECRET;
+
+    // STRICT FAIL-CLOSED: if secret is missing, never treat payment as verified
+    if (!secret || !creds?.client) {
+      return res.status(500).json({
+        success: false,
+        error: "Payment verification service is unavailable. Server secret is not configured.",
+      });
+    }
+
     const generatedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
@@ -899,13 +1240,33 @@ app.post("/api/digital/verify-payment", paymentLimiter, async (req, res) => {
       });
     }
 
-    // Update the payment status in DB (Digital orders might be created at verify time if they weren't persisted before)
-    // For digital products, we often create the order record only AFTER success if it's a simple buy-now
-    // But Storelly uses Order records. Let's see if we can find one.
-    await updateOrderPayment(businessId, razorpay_order_id, razorpay_payment_id, razorpay_signature);
+    // Resolve authoritative order notes to bind exact product and business
+    let authoritativeItemId = itemId;
+    let authoritativeBusinessId = businessId;
+
+    try {
+      const rzpOrder = await creds.client.orders.fetch(razorpay_order_id);
+      if (rzpOrder && rzpOrder.notes) {
+        if (rzpOrder.notes.itemId) authoritativeItemId = rzpOrder.notes.itemId;
+        if (rzpOrder.notes.businessId) authoritativeBusinessId = rzpOrder.notes.businessId;
+      }
+    } catch (orderFetchErr) {
+      console.warn("[Razorpay] Could not fetch authoritative order notes:", orderFetchErr);
+    }
+
+    // A valid payment for Product A must never unlock Product B
+    if (itemId && authoritativeItemId && itemId !== authoritativeItemId) {
+      return res.status(403).json({
+        success: false,
+        error: "Security validation error: Payment was created for a different product.",
+      });
+    }
+
+    // Update the payment status in DB
+    await updateOrderPayment(authoritativeBusinessId, razorpay_order_id, razorpay_payment_id, razorpay_signature);
 
     // Resolve authoritative product asset from canonical database
-    const canonicalProduct = await resolveCanonicalProduct(businessId, itemId);
+    const canonicalProduct = await resolveCanonicalProduct(authoritativeBusinessId, authoritativeItemId);
     if (!canonicalProduct) {
       return res.status(404).json({
         success: false,
@@ -1105,11 +1466,12 @@ app.post("/api/orders/create-rzp", async (req, res) => {
       return res.status(400).json({ error: "Invalid order amount in official record." });
     }
 
-    if (!razorpay) {
-      return res.status(500).json({ error: "Razorpay not configured on server." });
+    const creds = await resolveRazorpayCredentials(businessId);
+    if (!creds || !creds.client) {
+      return res.status(503).json({ error: "Razorpay not configured on server." });
     }
 
-    const rzpOrder = await razorpay.orders.create({
+    const rzpOrder = await creds.client.orders.create({
       amount: Math.round(orderAmount * 100),
       currency: currency || "INR",
       receipt: orderId,
@@ -1126,11 +1488,16 @@ app.post("/api/orders/create-rzp", async (req, res) => {
       rzpOrderId: rzpOrder.id,
       amount: rzpOrder.amount,
       currency: rzpOrder.currency,
-      keyId: RAZORPAY_KEY_ID,
+      keyId: creds.keyId,
     });
   } catch (err: any) {
-    console.error("[Razorpay] Physical order creation failed:", err);
-    res.status(500).json({ error: err.message });
+    const rzpDesc = err?.error?.description || err?.message || "";
+    console.error("[Razorpay] Physical order creation failed:", rzpDesc || err);
+    const isAuthFailure = rzpDesc.toLowerCase().includes("authentication failed");
+    const clientMsg = isAuthFailure
+      ? "Payment gateway authentication failed. Please check active Razorpay API keys in Admin / Store Settings."
+      : (rzpDesc || "Failed to create physical order payment.");
+    res.status(500).json({ error: clientMsg });
   }
 });
 
@@ -1139,13 +1506,16 @@ app.post("/api/orders/verify-payment", paymentLimiter, async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, businessId, localOrderId } = req.body;
     
-    if (!RAZORPAY_KEY_SECRET) return res.status(500).json({ error: "Secret missing" });
+    const creds = await resolveRazorpayCredentials(businessId);
+    const secret = creds?.keySecret || RAZORPAY_KEY_SECRET;
+
+    if (!secret) return res.status(500).json({ error: "Secret missing" });
     if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
       return res.status(400).json({ error: "Missing required payment verification parameters." });
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
@@ -1610,9 +1980,8 @@ app.post("/api/quotes/create-rzp", async (req, res) => {
     const amount = Number(quoteData.quotedPrice);
     if (!amount || amount <= 0) return res.status(400).json({ error: "Invalid quote amount" });
 
-    const creds = await resolveRazorpayCredentials();
+    const creds = await resolveRazorpayCredentials(businessId);
     let rzpOrder: any = null;
-    let isSimulation = false;
 
     if (!creds || !creds.client) {
       return res.status(503).json({
@@ -1632,9 +2001,14 @@ app.post("/api/quotes/create-rzp", async (req, res) => {
         }
       });
     } catch (rzpErr: any) {
-      console.error("[Razorpay] Quote live order error:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
+      const rzpDesc = rzpErr?.error?.description || rzpErr?.message || "";
+      console.error("[Razorpay] Quote live order error:", rzpDesc || rzpErr);
+      const isAuthFailure = rzpDesc.toLowerCase().includes("authentication failed");
+      const clientMsg = isAuthFailure
+        ? "Payment gateway authentication failed. Please check active Razorpay API keys in Admin / Store Settings."
+        : (rzpDesc || "Payment provider order creation failed.");
       return res.status(502).json({
-        error: rzpErr?.error?.description || "Payment provider order creation failed.",
+        error: clientMsg,
       });
     }
 
@@ -1650,17 +2024,20 @@ app.post("/api/quotes/create-rzp", async (req, res) => {
   }
 });
 
-// 12. Custom Quote Payment Verification
+// 12. Custom Quote Payment Verification (Authoritative Binding)
 app.post("/api/quotes/verify-payment", paymentLimiter, async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, businessId, requestId } = req.body;
-    if (!RAZORPAY_KEY_SECRET) return res.status(500).json({ error: "Secret missing" });
+    const creds = await resolveRazorpayCredentials(businessId);
+    const secret = creds?.keySecret || RAZORPAY_KEY_SECRET;
+
+    if (!secret || !creds?.client) return res.status(500).json({ error: "Gateway secret configuration missing on server" });
     if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
       return res.status(400).json({ error: "Missing required quote payment parameters" });
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
@@ -1668,9 +2045,28 @@ app.post("/api/quotes/verify-payment", paymentLimiter, async (req, res) => {
       return res.status(400).json({ error: "Signature mismatch" });
     }
 
-    const success = await updateQuotePayment(businessId, requestId, razorpay_payment_id, razorpay_signature);
+    // Resolve authoritative quote order notes from Razorpay
+    let authoritativeRequestId = requestId;
+    let authoritativeBusinessId = businessId;
+
+    try {
+      const rzpOrder = await creds.client.orders.fetch(razorpay_order_id);
+      if (rzpOrder && rzpOrder.notes) {
+        if (rzpOrder.notes.requestId) authoritativeRequestId = rzpOrder.notes.requestId;
+        if (rzpOrder.notes.businessId) authoritativeBusinessId = rzpOrder.notes.businessId;
+      }
+    } catch (orderFetchErr) {
+      console.warn("[Razorpay] Could not fetch authoritative quote order notes:", orderFetchErr);
+    }
+
+    // A valid payment for Quote A must never update Quote B
+    if (requestId && authoritativeRequestId && requestId !== authoritativeRequestId) {
+      return res.status(403).json({ error: "Security validation failed: Payment was created for a different quote request." });
+    }
+
+    const success = await updateQuotePayment(authoritativeBusinessId, authoritativeRequestId, razorpay_payment_id, razorpay_signature);
     if (success) {
-      res.json({ success: true });
+      res.json({ success: true, requestId: authoritativeRequestId });
     } else {
       res.status(500).json({ error: "Failed to update quote status" });
     }
@@ -1697,9 +2093,8 @@ app.post("/api/events/create-rzp", async (req, res) => {
       return res.status(400).json({ error: "Invalid event price" });
     }
 
-    const creds = await resolveRazorpayCredentials();
+    const creds = await resolveRazorpayCredentials(businessId);
     let rzpOrder: any = null;
-    let isSimulation = false;
 
     if (!creds || !creds.client) {
       return res.status(503).json({
@@ -1723,9 +2118,14 @@ app.post("/api/events/create-rzp", async (req, res) => {
         }
       });
     } catch (rzpErr: any) {
-      console.error("[Razorpay] Event live order creation error:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
+      const rzpDesc = rzpErr?.error?.description || rzpErr?.message || "";
+      console.error("[Razorpay] Event live order creation error:", rzpDesc || rzpErr);
+      const isAuthFailure = rzpDesc.toLowerCase().includes("authentication failed");
+      const clientMsg = isAuthFailure
+        ? "Payment gateway authentication failed. Please ensure active Razorpay Key ID and Secret are configured in Admin or Store Settings."
+        : (rzpDesc || "Payment provider order creation failed.");
       return res.status(502).json({
-        error: rzpErr?.error?.description || "Payment provider order creation failed.",
+        error: clientMsg,
       });
     }
 
@@ -1743,24 +2143,20 @@ app.post("/api/events/create-rzp", async (req, res) => {
   }
 });
 
-// 14. Event Payment Verification
+// 14. Event Payment Verification (Authoritative Binding & Atomic Ticket Issuance)
 app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, businessId, eventId, customerName, customerPhone, customerEmail } = req.body;
 
-    // Simulated sandbox order verification
-    if (razorpay_order_id && razorpay_order_id.startsWith("order_sim_")) {
-      return res.json({ success: true, simulated: true });
-    }
-
-    const creds = await resolveRazorpayCredentials();
-    const secret = creds?.keySecret || RAZORPAY_KEY_SECRET;
-
-    if (!secret) {
-      return res.status(500).json({ error: "Secret missing" });
-    }
     if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
       return res.status(400).json({ error: "Missing event payment verification parameters" });
+    }
+
+    const creds = await resolveRazorpayCredentials(businessId);
+    const secret = creds?.keySecret || RAZORPAY_KEY_SECRET;
+
+    if (!secret || !creds?.client) {
+      return res.status(500).json({ error: "Gateway secret configuration missing on server" });
     }
 
     const generatedSignature = crypto
@@ -1769,12 +2165,52 @@ app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
       .digest("hex");
 
     if (!timingSafeCompare(generatedSignature, razorpay_signature)) {
-      return res.status(400).json({ error: "Signature mismatch" });
+      console.warn("[Razorpay] Event payment signature mismatch for order:", razorpay_order_id);
+      return res.status(400).json({ error: "Invalid payment signature" });
     }
 
-    res.json({ success: true });
+    // Resolve authoritative event order notes from Razorpay
+    let authoritativeEventId = eventId;
+    let authoritativeBusinessId = businessId;
+    let buyerName = customerName;
+    let buyerPhone = customerPhone;
+    let buyerEmail = customerEmail;
+
+    try {
+      const rzpOrder = await creds.client.orders.fetch(razorpay_order_id);
+      if (rzpOrder && rzpOrder.notes) {
+        if (rzpOrder.notes.eventId) authoritativeEventId = rzpOrder.notes.eventId;
+        if (rzpOrder.notes.businessId) authoritativeBusinessId = rzpOrder.notes.businessId;
+        if (rzpOrder.notes.customerName && !buyerName) buyerName = rzpOrder.notes.customerName;
+        if (rzpOrder.notes.customerPhone && !buyerPhone) buyerPhone = rzpOrder.notes.customerPhone;
+        if (rzpOrder.notes.customerEmail && !buyerEmail) buyerEmail = rzpOrder.notes.customerEmail;
+      }
+    } catch (orderFetchErr) {
+      console.warn("[Razorpay] Could not fetch authoritative event order notes:", orderFetchErr);
+    }
+
+    // A valid payment for Event A must never unlock Event B
+    if (eventId && authoritativeEventId && eventId !== authoritativeEventId) {
+      return res.status(403).json({ error: "Security validation failed: Payment was created for a different event." });
+    }
+
+    // Atomically create verified ticket and decrement seat capacity
+    const ticketResult = await updateEventTicketPayment(authoritativeBusinessId, authoritativeEventId, {
+      customerName: buyerName || "Guest",
+      customerPhone: buyerPhone || "",
+      customerEmail: buyerEmail || "",
+      paymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+    });
+
+    if (!ticketResult) {
+      return res.status(500).json({ error: "Failed to allocate ticket or event is sold out." });
+    }
+
+    res.json({ success: true, eventId: authoritativeEventId });
   } catch (err: any) {
     const errorDesc = err?.error?.description || err?.message || "Payment verification failed";
+    console.error("[Razorpay] Event payment verification error:", errorDesc);
     res.status(500).json({ error: errorDesc });
   }
 });

@@ -241,6 +241,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     custom_quotes: false,
     events_tickets: false,
     reviews: false,
+    affiliate_products: false,
     products: false,
     cart_ordering: false,
     table_delivery: false,
@@ -315,6 +316,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       events_tickets: true,
       custom_quotes: true,
       reviews: true,
+      affiliate_products: true,
     }));
   };
 
@@ -329,6 +331,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       events_tickets: false,
       custom_quotes: false,
       reviews: false,
+      affiliate_products: false,
     }));
   };
 
@@ -366,6 +369,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         const isQuotes = Boolean(creatorModules.custom_quotes);
         const isEvents = Boolean(creatorModules.events_tickets);
         const isReviews = Boolean(creatorModules.reviews);
+        const isAffiliate = Boolean(creatorModules.affiliate_products);
 
         finalModules = {
           universal_links: isBio,
@@ -376,21 +380,26 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           custom_quotes: isQuotes,
           events_tickets: isEvents,
           reviews: isReviews,
+          affiliate_products: isAffiliate,
+          recommendations: isAffiliate,
           products: false,
           cart_ordering: false,
           table_delivery: false,
           analytics: true,
         };
 
+        // Enabling a module in onboarding MUST NOT automatically publish it.
+        // New module state must be enabled=true and published=false so Creator can configure before publishing.
         const now = Date.now();
         creatorModulesConfig = {
-          portfolio: { enabled: isPort, published: isPort, updatedAt: now },
-          universal_links: { enabled: isBio, published: isBio, updatedAt: now },
-          digital_products: { enabled: isDigital, published: isDigital, updatedAt: now },
-          booking_appointments: { enabled: isConsult, published: isConsult, updatedAt: now },
-          custom_quotes: { enabled: isQuotes, published: isQuotes, updatedAt: now },
-          events_tickets: { enabled: isEvents, published: isEvents, updatedAt: now },
-          reviews: { enabled: isReviews, published: isReviews, updatedAt: now },
+          portfolio: { enabled: isPort, published: false, updatedAt: now },
+          universal_links: { enabled: isBio, published: false, updatedAt: now },
+          digital_products: { enabled: isDigital, published: false, updatedAt: now },
+          booking_appointments: { enabled: isConsult, published: false, updatedAt: now },
+          custom_quotes: { enabled: isQuotes, published: false, updatedAt: now },
+          events_tickets: { enabled: isEvents, published: false, updatedAt: now },
+          reviews: { enabled: isReviews, published: false, updatedAt: now },
+          affiliate_products: { enabled: isAffiliate, published: false, updatedAt: now },
         };
       } else {
         // Strict Vendor module saving:
@@ -468,7 +477,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               ? 'events'
               : creatorModules.custom_quotes
               ? 'quotes'
-              : 'portfolio')
+              : creatorModules.reviews
+              ? 'reviews'
+              : creatorModules.affiliate_products
+              ? 'recommendations'
+              : 'biolink')
           : undefined,
         status: 'active',
         socials: {
@@ -1621,7 +1634,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           creatorModules.events_tickets,
                           creatorModules.custom_quotes,
                           creatorModules.reviews,
-                        ].filter(Boolean).length} of 7 Selected
+                          creatorModules.affiliate_products,
+                        ].filter(Boolean).length} of 8 Selected
                       </span>
                       <button
                         type="button"
@@ -1878,6 +1892,40 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                       </div>
                       <p className="text-xs text-slate-500 mt-3">
                         Collect and display verified client feedback, star ratings, and social proof.
+                      </p>
+                    </div>
+
+                    {/* Affiliate & Recommendations */}
+                    <div
+                      onClick={() => handleCreatorModuleToggle('affiliate_products')}
+                      className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                        creatorModules.affiliate_products
+                          ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center">
+                            <Tag className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-900">Affiliate &amp; Recommendations</h3>
+                            <span className="text-[10px] text-teal-700 font-bold uppercase">/recommendations/{slug || 'username'}</span>
+                          </div>
+                        </div>
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                            creatorModules.affiliate_products
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-200 text-slate-400'
+                          }`}
+                        >
+                          {creatorModules.affiliate_products && <Check className="w-3 h-3 stroke-[3]" />}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-3">
+                        Curate recommended gear, books, tools, discounts, and monetized affiliate links.
                       </p>
                     </div>
                   </div>

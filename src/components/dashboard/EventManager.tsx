@@ -31,7 +31,7 @@ import {
   X,
   QrCode,
 } from 'lucide-react';
-import { BusinessProfile, EventItem, EventFormat, EventStatus, MeetingPlatform } from '../../types';
+import { BusinessProfile, EventItem, EventFormat, EventStatus, MeetingPlatform, EventSeatingChart } from '../../types';
 import {
   subscribeToEvents,
   createEvent,
@@ -47,6 +47,8 @@ import { isCreatorProfile } from '../../utils/profileHelper';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
 import { ModuleQrModal } from '../common/ModuleQrModal';
+import { VisualSeatingChartCreator } from '../events/VisualSeatingChartCreator';
+import { Armchair } from 'lucide-react';
 
 interface EventManagerProps {
   business: BusinessProfile;
@@ -92,6 +94,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
   const [formIsFree, setFormIsFree] = useState(false);
   const [formPrice, setFormPrice] = useState(499);
   const [formCapacity, setFormCapacity] = useState(50);
+  const [formSeatingChart, setFormSeatingChart] = useState<EventSeatingChart | undefined>(undefined);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [copiedLinkEventId, setCopiedLinkEventId] = useState<string | null>(null);
@@ -149,6 +152,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
     setFormIsFree(false);
     setFormPrice(499);
     setFormCapacity(50);
+    setFormSeatingChart(undefined);
     setIsFormOpen(true);
   };
 
@@ -168,6 +172,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
     setFormIsFree(event.price === 0);
     setFormPrice(event.price || 0);
     setFormCapacity(event.capacity || 50);
+    setFormSeatingChart(event.seatingChart);
     setIsFormOpen(true);
   };
 
@@ -223,6 +228,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
           capacity,
           seatsRemaining: remaining,
           status,
+          seatingChart: formSeatingChart,
         });
       } else {
         await createEvent(business.id, {
@@ -241,6 +247,7 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
           isFree: price === 0,
           capacity,
           status: 'upcoming',
+          seatingChart: formSeatingChart,
         });
       }
 
@@ -613,16 +620,22 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                     </div>
                   </div>
 
-                  {/* Capacity Bar & Seats Info */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    <div className="flex items-center justify-between text-[11px] font-bold">
-                      <span className="text-slate-700">
-                        {event.ticketsSold} of {event.capacity} booked
-                      </span>
-                      <span className={seatsLeft <= 5 && seatsLeft > 0 ? 'text-amber-600 font-black' : 'text-slate-500'}>
-                        {isSoldOut ? '0 seats left' : `${seatsLeft} seats remaining`}
-                      </span>
-                    </div>
+                    {/* Seating Chart & Capacity Info */}
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between text-[11px] font-bold">
+                        <span className="text-slate-700 flex items-center gap-1.5">
+                          {event.seatingChart?.enabled && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold">
+                              <Armchair className="w-2.5 h-2.5 text-purple-600" />
+                              Map Active
+                            </span>
+                          )}
+                          <span>{event.ticketsSold} of {event.capacity} booked</span>
+                        </span>
+                        <span className={seatsLeft <= 5 && seatsLeft > 0 ? 'text-amber-600 font-black' : 'text-slate-500'}>
+                          {isSoldOut ? '0 seats left' : `${seatsLeft} seats remaining`}
+                        </span>
+                      </div>
 
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
@@ -984,6 +997,13 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
                   )}
                 </div>
               </div>
+
+              {/* Visual Seating Chart Designer */}
+              <VisualSeatingChartCreator
+                value={formSeatingChart}
+                onChange={setFormSeatingChart}
+                onCapacityChange={setFormCapacity}
+              />
 
               {/* Submit / Cancel Buttons */}
               <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">

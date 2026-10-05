@@ -52,6 +52,7 @@ export const OrderManager: React.FC<any> = ({ business }) => {
   // Selected Order for Details View
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [copiedInvoice, setCopiedInvoice] = useState(false);
 
   // 4x6 Shipping Label Modal
@@ -108,11 +109,13 @@ export const OrderManager: React.FC<any> = ({ business }) => {
   }, [business?.id]);
 
   const handleStatusChange = async (order: Order, newStatus: OrderStatus) => {
+    setStatusError(null);
     // If attempting to confirm an online payment order, check if UTR exists in notes or order
     if (newStatus === 'confirmed' && order.paymentMethod === 'online') {
       const hasUtr = order.notes && (order.notes.toLowerCase().includes('utr') || order.notes.length >= 8);
       if (!hasUtr) {
-        alert('Cannot confirm this online order yet! A valid UPI UTR (Transaction Reference) must be verified first.');
+        setStatusError('Cannot confirm this online order yet! A valid UPI UTR (Transaction Reference) must be verified first.');
+        setTimeout(() => setStatusError(null), 5000);
         return;
       }
     }
@@ -471,9 +474,16 @@ export const OrderManager: React.FC<any> = ({ business }) => {
               {/* Status Update Control */}
               {!isCreator && selectedOrder.orderType !== 'digital' && (
                 <div className="p-4 bg-[var(--bg)] rounded-[var(--r12)] border border-[var(--border)] space-y-2 print-hide">
-                  <label className="block text-xs font-bold text-[var(--t1)] uppercase tracking-wider font-heading">
-                    Update Fulfilment Status
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-[var(--t1)] uppercase tracking-wider font-heading">
+                      Update Fulfilment Status
+                    </label>
+                  </div>
+                  {statusError && (
+                    <div className="p-2.5 rounded-[var(--r8)] bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold animate-in fade-in">
+                      {statusError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
                     {(['pending', 'pending-verification', 'confirmed', 'processing', 'ready', 'delivered', 'cancelled'] as OrderStatus[]).map(
                       (st) => (

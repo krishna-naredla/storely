@@ -447,8 +447,7 @@ export const BUSINESS_TYPES: Record<BusinessType, BusinessTypeMeta> = {
       inventory_tracking: false,
       universal_links: true,
       analytics: true,
-          digital_products: true,
-},
+    },
     suggestedCategories: ['Class 10-12 Batches', 'Competitive Exam Prep', 'Spoken English & Skills', 'Study Materials'],
   },
   services: {
@@ -708,6 +707,13 @@ export const MODULE_DEFINITIONS: {
     iconName: 'BarChart2',
     recommendedFor: 'All Businesses',
   },
+  {
+    key: 'affiliate_products',
+    label: 'Affiliate & Recommended Products',
+    description: 'Curate monetized gear, books, tools, discounts, and affiliate links.',
+    iconName: 'Tag',
+    recommendedFor: 'Creators, Influencers, Educators',
+  },
 ];
 
 export const AVAILABLE_MODULES = MODULE_DEFINITIONS;
@@ -728,12 +734,6 @@ export const VENDOR_MODULE_WHITELIST = [
   'offers',
   'digital_card',
   'inventory_tracking',
-  'digital_products',
-  'work_portfolio',
-  'portfolio',
-  'custom_quotes',
-  'events_tickets',
-  'events_ticketing',
   'analytics',
 ] as const;
 
@@ -741,12 +741,24 @@ export const CREATOR_MODULE_WHITELIST = [
   'work_portfolio',
   'portfolio',
   'universal_links',
+  'bio_links',
+  'biolink',
   'digital_products',
+  'digitalProducts',
+  'digital_store',
   'booking_appointments',
+  'consultations',
+  'bookings',
   'custom_quotes',
+  'quotes',
   'events_tickets',
   'events_ticketing',
+  'events',
   'reviews',
+  'testimonials',
+  'affiliate_products',
+  'recommendations',
+  'affiliate',
   'analytics',
 ] as const;
 
@@ -796,11 +808,21 @@ export const VERTICAL_RELEVANT_MODULES: Record<BusinessType, (keyof BusinessModu
   jewellery: ['products', 'cart_ordering', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
   electronics: ['products', 'services', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
   furniture: ['products', 'services', 'cart_ordering', 'inventory_tracking', 'offers', 'reviews', 'inquiries', 'digital_card'],
-  education: ['services', 'booking_appointments', 'digital_products', 'events_tickets', 'offers', 'reviews', 'inquiries', 'digital_card'],
+  education: ['services', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
   services: ['services', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
-  agency: ['services', 'custom_quotes', 'work_portfolio', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
+  agency: ['services', 'booking_appointments', 'inquiries', 'reviews', 'offers', 'digital_card'],
   custom: ['products', 'services', 'cart_ordering', 'booking_appointments', 'offers', 'reviews', 'inquiries', 'digital_card'],
-  digital_creator: ['work_portfolio', 'portfolio', 'universal_links', 'digital_products', 'booking_appointments', 'custom_quotes', 'events_tickets', 'reviews'],
+  digital_creator: [
+    'work_portfolio',
+    'portfolio',
+    'universal_links',
+    'digital_products',
+    'booking_appointments',
+    'custom_quotes',
+    'events_tickets',
+    'reviews',
+    'affiliate_products',
+  ],
 };
 
 /**

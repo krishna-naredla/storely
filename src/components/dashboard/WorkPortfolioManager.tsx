@@ -375,6 +375,20 @@ export const WorkPortfolioManager: React.FC<WorkPortfolioManagerProps> = ({
 
   useEffect(() => {
     loadPortfolioData();
+    const curSettings = business.portfolioSettings || { ctaMode: 'whatsapp' };
+    setSelectedTemplateId(curSettings.templateId || 'modern_showcase');
+    setBlocks(
+      curSettings.blocks && curSettings.blocks.length > 0
+        ? curSettings.blocks
+        : getDefaultPortfolioBlocks(business)
+    );
+    setSelectedProfession(curSettings.profession || 'custom');
+    setProfessionTitle(
+      curSettings.professionTitle ||
+        PORTFOLIO_PRESETS[curSettings.profession || 'custom']?.professionTitle ||
+        ''
+    );
+    setHasUnsavedChanges(false);
   }, [business.id]);
 
   // Handle Switching Profession Preset

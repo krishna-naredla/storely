@@ -117,6 +117,7 @@ service cloud.firestore {
                     (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan in ['free', 'starter', 'trial']);
 
       // Update: Owner or Admin. OwnerId is strictly IMMUTABLE.
+      // Profile type cannot be client-switched after creation.
       // Ordinary owner cannot self-promote subscription status or subscription plan
       allow update: if isSignedIn() && (
         isAdmin() ||
@@ -124,7 +125,10 @@ service cloud.firestore {
           resource.data.ownerId == request.auth.uid &&
           request.resource.data.ownerId == resource.data.ownerId &&
           (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus == resource.data.subscriptionStatus) &&
-          (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan == resource.data.subscriptionPlan)
+          (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan == resource.data.subscriptionPlan) &&
+          (!('profileType' in resource.data) || !('profileType' in request.resource.data) || request.resource.data.profileType == resource.data.profileType) &&
+          (!('type' in resource.data) || !('type' in request.resource.data) || request.resource.data.type == resource.data.type) &&
+          (!('storeType' in resource.data) || !('storeType' in request.resource.data) || request.resource.data.storeType == resource.data.storeType)
         )
       );
 
@@ -218,11 +222,12 @@ service cloud.firestore {
         allow list: if isBusinessOwner(businessId);
         // Anyone with the direct ticket ID or owner can get the ticket pass for display / QR validation
         allow get: if true;
-        // Public customer can create ticket registration with legitimate payload
+        // Public customer can create ticket registration with legitimate payload (free tickets only; paid tickets issued by server)
         allow create: if request.resource.data.eventId is string &&
                          request.resource.data.customerName is string &&
                          request.resource.data.customerPhone is string &&
-                         request.resource.data.ticketId is string;
+                         request.resource.data.ticketId is string &&
+                         (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid' || request.resource.data.price == 0);
         allow update, delete: if isBusinessOwner(businessId);
       }
 
@@ -232,7 +237,8 @@ service cloud.firestore {
         allow create: if request.resource.data.eventId is string &&
                          request.resource.data.customerName is string &&
                          request.resource.data.customerPhone is string &&
-                         request.resource.data.ticketId is string;
+                         request.resource.data.ticketId is string &&
+                         (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus != 'paid' || request.resource.data.price == 0);
         allow update, delete: if isBusinessOwner(businessId);
       }
 
@@ -288,9 +294,13 @@ service cloud.firestore {
       }
 
       match /analyticsEvents/{eventId} {
-        // Public can create telemetry bound strictly to parent businessId
+        // Public can create telemetry bound strictly to parent businessId with strict schema
         allow create: if request.resource.data.businessId == businessId &&
-                         request.resource.data.eventType is string;
+                         request.resource.data.eventType is string &&
+                         request.resource.data.eventType.size() > 0 &&
+                         request.resource.data.eventType.size() <= 60 &&
+                         (!('revenue' in request.resource.data) || request.resource.data.revenue == 0) &&
+                         (!('paymentStatus' in request.resource.data));
         // Only business owner can read or query analytics events
         allow read: if isBusinessOwner(businessId);
         // Events are immutable historical logs: no client update or delete
@@ -299,22 +309,20 @@ service cloud.firestore {
 
       // --- Private Merchant Subcollections (Strict Tenant Isolation) ---
       match /customers/{customerId} {
-        allow get: if true;
-        allow create, update: if request.resource.data.businessId == businessId;
-        allow list, delete: if isBusinessOwner(businessId);
+        // Customer personal records are private to the business owner
+        allow read: if isBusinessOwner(businessId);
+        // Public can only create a customer document during order/booking checkout with strict validation
+        allow create: if request.resource.data.businessId == businessId &&
+                         request.resource.data.name is string &&
+                         request.resource.data.name.size() > 0 &&
+                         request.resource.data.phone is string;
+        // Public customers cannot update existing customer records; only business owner can update or delete
+        allow update, delete: if isBusinessOwner(businessId);
       }
 
       match /notifications/{notificationId} {
-        // Enforce valid notification payload strictly matching parent business
-        allow create: if (
-          request.resource.data.businessId == businessId &&
-          request.resource.data.read == false &&
-          request.resource.data.title is string &&
-          request.resource.data.title.size() > 0 &&
-          request.resource.data.title.size() <= 200 &&
-          request.resource.data.message is string &&
-          request.resource.data.message.size() <= 1000
-        );
+        // Notification creation restricted to business owner or trusted backend logic
+        allow create: if isBusinessOwner(businessId);
         // Only authenticated business owner or admin can read, mark read, or delete notifications
         allow read, delete: if isBusinessOwner(businessId);
         allow update: if isBusinessOwner(businessId) &&

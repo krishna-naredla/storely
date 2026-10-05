@@ -16,7 +16,17 @@ import { BusinessProfile } from '../../types';
 
 interface PublicModuleUnavailableViewProps {
   business?: BusinessProfile | null;
-  moduleType: 'store' | 'bio' | 'portfolio' | 'card' | 'general';
+  moduleType:
+    | 'store'
+    | 'bio'
+    | 'portfolio'
+    | 'card'
+    | 'consultations'
+    | 'events'
+    | 'quotes'
+    | 'reviews'
+    | 'recommendations'
+    | 'general';
   title?: string;
   message?: string;
   isExplicitPreview?: boolean;
@@ -58,6 +68,16 @@ export const PublicModuleUnavailableView: React.FC<PublicModuleUnavailableViewPr
         return 'Bio Link Unavailable';
       case 'portfolio':
         return 'Portfolio Unavailable';
+      case 'consultations':
+        return 'Consultations Unavailable';
+      case 'events':
+        return 'Events & Tickets Unavailable';
+      case 'quotes':
+        return 'Custom Quotes Unavailable';
+      case 'reviews':
+        return 'Reviews Unavailable';
+      case 'recommendations':
+        return 'Recommendations Unavailable';
       case 'card':
         return 'Visiting Card Unavailable';
       default:
@@ -75,6 +95,16 @@ export const PublicModuleUnavailableView: React.FC<PublicModuleUnavailableViewPr
         return `The universal bio links page for ${name} is currently disabled or has not been published yet.`;
       case 'portfolio':
         return `The portfolio showcase for ${name} is currently private or disabled.`;
+      case 'consultations':
+        return `1:1 consultations for ${name} are currently not accepting bookings.`;
+      case 'events':
+        return `Events and workshops for ${name} are not currently active or published.`;
+      case 'quotes':
+        return `Custom project quotes for ${name} are not currently open for briefs.`;
+      case 'reviews':
+        return `Client reviews for ${name} are currently inactive.`;
+      case 'recommendations':
+        return `Recommended products for ${name} are not currently published.`;
       case 'card':
         return `The digital trust card for ${name} is not currently active.`;
       default:

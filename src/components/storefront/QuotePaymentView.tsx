@@ -78,35 +78,29 @@ export const QuotePaymentView: React.FC<QuotePaymentViewProps> = ({
 
         if (rzpOrderRes.ok) {
           orderData = await rzpOrderRes.json().catch(() => null);
+        } else {
+          const errData = await rzpOrderRes.json().catch(() => ({}));
+          throw new Error(errData?.error || "Payment couldn't be initialized on server.");
         }
-      } catch (e) {
-        console.warn('Quote order fetch notice:', e);
+      } catch (e: any) {
+        setErrorMessage(e.message || "Payment couldn't be initialized.");
+        setPaying(false);
+        return;
       }
 
-      if (!orderData || orderData.isTestMode) {
-        const simOrderId = orderData?.rzpOrderId || `quote_sim_${Date.now()}`;
-        const verifyRes = await fetch('/api/quotes/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: simOrderId,
-            razorpay_payment_id: `pay_sim_${Date.now()}`,
-            razorpay_signature: 'simulated_signature',
-            businessId: business.id,
-            requestId: request.id,
-          }),
-        });
-
-        if (verifyRes.ok) {
-          const updated = await getCustomQuoteRequest(business.id, request.id);
-          if (updated) setRequest(updated);
-          setPaymentSuccess(true);
-          return;
-        }
+      if (!orderData || !orderData.rzpOrderId) {
+        setErrorMessage(orderData?.error || 'Payment gateway could not generate an order. Please try again later.');
+        setPaying(false);
+        return;
       }
 
       const { rzpOrderId, amount, currency, keyId } = orderData;
-      const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID || keyId || "rzp_live_SuHwJ97Z4EyRhJ";
+      const razorpayKey = (import.meta as any).env.VITE_RAZORPAY_KEY_ID || keyId;
+      if (!razorpayKey) {
+        setErrorMessage('Payment gateway is not configured for this quote. Please contact the creator.');
+        setPaying(false);
+        return;
+      }
 
       if (!hasRazorpayScript) {
         throw new Error('Razorpay SDK failed to load. Please disable ad-blockers and try again.');

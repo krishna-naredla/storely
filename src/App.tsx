@@ -1264,6 +1264,19 @@ function MainContent() {
 
             {activeTab === 'quotes' && <CustomQuoteManager business={biz} />}
 
+            {activeTab === 'recommendations' && (
+              <AffiliateManager
+                business={biz}
+                onBusinessUpdated={(updated) => {
+                  setSelectedBusiness(updated);
+                  setBusinesses((prev) =>
+                    prev.map((b) => (b.id === updated.id ? updated : b))
+                  );
+                }}
+                onOpenStorefront={(slug, path) => navigateToStorefront(slug, path)}
+              />
+            )}
+
             {activeTab === 'categories' && <CategoryManager business={biz} />}
 
             {activeTab === 'orders' && <OrderManager business={biz} />}

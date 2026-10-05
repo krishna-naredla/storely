@@ -40,52 +40,9 @@ interface ModuleDefinition {
   key: keyof BusinessModules;
   title: string;
   description: string;
-  category: "Catalog" | "Ordering" | "Bookings" | "Marketing" | "Creator Tools";
+  category: "Catalog" | "Ordering" | "Bookings" | "Marketing";
   icon: React.ReactNode;
 }
-
-export const CREATOR_MODULE_DEFINITIONS: ModuleDefinition[] = [
-  {
-    key: "digital_products",
-    title: "Digital Products & Downloads",
-    description:
-      "Sell downloadable assets, PDFs, design templates, ebooks, software, and presets with instant download links.",
-    category: "Creator Tools",
-    icon: <ShoppingBag className="w-4 h-4 text-teal-600" />,
-  },
-  {
-    key: "universal_links",
-    title: "Universal Bio Link",
-    description:
-      "One link in bio for all your socials, YouTube videos, resources, and custom links with click analytics.",
-    category: "Creator Tools",
-    icon: <LinkIcon className="w-4 h-4 text-purple-600" />,
-  },
-  {
-    key: "work_portfolio",
-    title: "Work Portfolio Showcase",
-    description:
-      "Display project case studies, visual galleries, client feedback, skills, and visual media kit.",
-    category: "Creator Tools",
-    icon: <Briefcase className="w-4 h-4 text-indigo-600" />,
-  },
-  {
-    key: "events_ticketing",
-    title: "Events, Workshops & Tickets",
-    description:
-      "Host live masterclasses, webinars, and meetups with live attendee seat tracking and ticket checkout.",
-    category: "Creator Tools",
-    icon: <Ticket className="w-4 h-4 text-pink-600" />,
-  },
-  {
-    key: "custom_quotes",
-    title: "Custom Project Quotes",
-    description:
-      "Receive detailed client project briefs and send custom price estimates, scopes of work, and invoices.",
-    category: "Creator Tools",
-    icon: <FileText className="w-4 h-4 text-amber-600" />,
-  },
-];
 
 const COMMERCE_MODULE_DEFINITIONS: ModuleDefinition[] = [
   {
@@ -288,22 +245,12 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
   const categories = ["Catalog", "Ordering", "Bookings", "Marketing"] as const;
   const isCreator = isCreatorProfile(business);
   const relevantModules = new Set(
-    getRelevantModulesForVertical(business.type || (isCreator ? 'digital_creator' : 'retail'))
+    getRelevantModulesForVertical(business.type || 'retail')
   );
 
   const isRelevantCommerceModule = (modKey: keyof BusinessModules) => {
     return relevantModules.has(modKey);
   };
-
-  const isRelevantCreatorModule = (modKey: keyof BusinessModules) => {
-    if (isCreator) return true;
-    if (modKey === 'work_portfolio') return relevantModules.has('work_portfolio') || relevantModules.has('portfolio');
-    if (modKey === 'events_ticketing') return relevantModules.has('events_tickets') || relevantModules.has('events_ticketing');
-    if (modKey === 'digital_products') return relevantModules.has('digital_products') || relevantModules.has('digitalProducts');
-    return relevantModules.has(modKey);
-  };
-
-  const relevantCreatorModules = CREATOR_MODULE_DEFINITIONS.filter((m) => isRelevantCreatorModule(m.key));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -425,79 +372,6 @@ export const ModuleManager: React.FC<ModuleManagerProps> = ({
             </div>
           );
         })}
-
-        {/* Creator Tools Category (shown if relevant for this vertical or creator profile) */}
-        {relevantCreatorModules.length > 0 && (
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[var(--g500)]" />
-                Creator &amp; Digital Tools
-              </h3>
-              <span className="text-[10px] font-semibold text-[var(--g700)] bg-[var(--g100)] px-2 py-0.5 rounded-[var(--r8)] border border-[var(--g200)]">
-                {isCreator ? "Creator Account" : "Available Tools"}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {relevantCreatorModules.map((mod) => {
-                const isEnabled = isModuleActive(mod.key);
-                const isSavingThis = savingKey === mod.key;
-
-                return (
-                  <div
-                    key={mod.key}
-                    className={`p-4 rounded-[var(--r12)] border transition-all flex items-start justify-between gap-4 ${
-                      isEnabled
-                        ? "bg-[var(--card)] border-[var(--g500)]/40 ring-1 ring-[var(--g500)]/10 shadow-[var(--shadow-xs)]"
-                        : "bg-[var(--bg)] border-[var(--border)] opacity-80"
-                    }`}
-                  >
-                    <div className="flex gap-3">
-                      <div className="w-9 h-9 rounded-[var(--r8)] bg-[var(--g100)] text-[var(--g600)] flex items-center justify-center shrink-0">
-                        {mod.icon}
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="text-xs font-bold text-[var(--t1)] flex items-center gap-1.5">
-                          <span>{mod.title}</span>
-                          {isEnabled && (
-                            <span className="text-[9px] font-bold text-[var(--g700)] bg-[var(--g100)] px-1.5 py-0.5 rounded-[var(--r4)] border border-[var(--g200)]">
-                              Active
-                            </span>
-                          )}
-                        </h4>
-                        <p className="text-[11px] text-[var(--t2)] leading-relaxed">
-                          {mod.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Toggle Button */}
-                    <button
-                      type="button"
-                      disabled={isSavingThis}
-                      onClick={() => handleToggleClick(mod)}
-                      className={`p-1 rounded-[var(--r8)] transition cursor-pointer shrink-0 ${
-                        isEnabled
-                          ? "text-[var(--g600)]"
-                          : "text-[var(--t3)] hover:text-[var(--t2)]"
-                      }`}
-                      title={isEnabled ? "Click to disable module" : "Click to enable module"}
-                    >
-                      {isSavingThis ? (
-                        <Loader2 className="w-7 h-7 animate-spin text-[var(--g600)]" />
-                      ) : isEnabled ? (
-                        <ToggleRight className="w-8 h-8" />
-                      ) : (
-                        <ToggleLeft className="w-8 h-8" />
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Confirmation Dialog for Disabling Module */}

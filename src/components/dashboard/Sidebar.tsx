@@ -170,8 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             (relevantModules.has('services') && !!modules?.services) ||
             (relevantModules.has('menu') && !!modules?.menu) ||
             (relevantModules.has('rooms') && !!modules?.rooms) ||
-            (relevantModules.has('vehicles') && !!modules?.vehicles) ||
-            (relevantModules.has('digital_products') && (!!modules?.digital_products || !!modules?.digitalProducts)),
+            (relevantModules.has('vehicles') && !!modules?.vehicles),
         },
         {
           id: "categories",
@@ -194,34 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             (relevantModules.has('menu') && !!modules?.menu) ||
             (relevantModules.has('products') && !!modules?.products) ||
             (relevantModules.has('table_delivery') && !!modules?.table_delivery) ||
-            (relevantModules.has('inquiries') && !!modules?.inquiries) ||
-            (relevantModules.has('digital_products') && (!!modules?.digital_products || !!modules?.digitalProducts)),
-        },
-        {
-          id: "portfolio",
-          label: "Portfolio",
-          icon: Briefcase,
-          badge: "Showcase",
-          visible: (relevantModules.has('work_portfolio') || relevantModules.has('portfolio')) && (!!modules?.work_portfolio || !!modules?.portfolio),
-        },
-        {
-          id: "biolink",
-          label: "Bio Link",
-          icon: Link,
-          badge: "@link",
-          visible: relevantModules.has('universal_links') && (!!modules?.universal_links || !!modules?.biolink),
-        },
-        {
-          id: "events",
-          label: "Events & Tickets",
-          icon: Ticket,
-          visible: (relevantModules.has('events_tickets') || relevantModules.has('events_ticketing')) && (!!modules?.events_tickets || !!modules?.events_ticketing),
-        },
-        {
-          id: "quotes",
-          label: "Custom Quotes",
-          icon: FileText,
-          visible: relevantModules.has('custom_quotes') && !!modules?.custom_quotes,
+            (relevantModules.has('inquiries') && !!modules?.inquiries),
         },
         {
           id: "bookings",
