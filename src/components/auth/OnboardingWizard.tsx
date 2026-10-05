@@ -498,6 +498,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               ctaMode: 'whatsapp',
             }
           : undefined,
+        subscriptionStatus: 'trial',
+        subscriptionPlan: 'trial',
       };
 
       const newBiz = await createBusinessFn(businessData);

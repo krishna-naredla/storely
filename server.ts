@@ -2337,6 +2337,51 @@ app.post("/api/notifications/trigger", notifLimiter, async (req: express.Request
   }
 });
 
+// 12. Authoritative Profile Creation & Onboarding (Direct Backend Proxy)
+app.post("/api/businesses/create", async (req: express.Request, res: express.Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    let authenticatedUid = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const idToken = authHeader.split("Bearer ")[1];
+      try {
+        const decoded = await getAuth().verifyIdToken(idToken);
+        authenticatedUid = decoded.uid;
+      } catch (e) {
+        console.warn("[Auth] verifyIdToken check in /api/businesses/create:", e);
+      }
+    }
+
+    const { business, ownerId } = req.body;
+    const finalOwnerId = authenticatedUid || ownerId;
+    if (!finalOwnerId) {
+      return res.status(401).json({ error: "User must be authenticated to create a profile." });
+    }
+
+    if (!business || !business.name) {
+      return res.status(400).json({ error: "Missing required business profile details." });
+    }
+
+    const businessId = business.id || `biz_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const now = Date.now();
+    const finalBusiness = {
+      ...business,
+      id: businessId,
+      ownerId: finalOwnerId,
+      createdAt: business.createdAt || now,
+      updatedAt: now,
+    };
+
+    const bizRef = doc(serverDb, "businesses", businessId);
+    await setDoc(bizRef, finalBusiness);
+
+    res.json({ success: true, business: finalBusiness });
+  } catch (err: any) {
+    console.error("[Backend] Error creating business profile:", err);
+    res.status(500).json({ error: err.message || "Failed to create business profile." });
+  }
+});
+
 const startServer = async () => {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

@@ -175,6 +175,8 @@ export interface BusinessProfile {
   seoMetaImage?: string;
   modules: BusinessModuleConfig;
   status: 'active' | 'inactive' | 'draft' | 'suspended' | 'maintenance' | 'deleted';
+  subscriptionStatus?: 'trial' | 'active' | 'inactive' | 'pending' | 'expired';
+  subscriptionPlan?: 'free' | 'starter' | 'trial' | 'pro' | 'growth';
   maintenanceMode?: boolean;
   maintenanceMessage?: string;
   maintenanceImage?: string;

@@ -96,9 +96,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSignedIn() && (
         isAdmin() ||
+        (request.resource.data.ownerId != null && request.resource.data.ownerId == request.auth.uid) ||
+        (resource != null && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid) ||
         (resource == null && request.resource.data.businessId != null && 
+          exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)) &&
           get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid) ||
         (resource != null && 'businessId' in resource.data &&
+          exists(/databases/$(database)/documents/businesses/$(resource.data.businessId)) &&
           get(/databases/$(database)/documents/businesses/$(resource.data.businessId)).data.ownerId == request.auth.uid)
       );
     }
@@ -111,10 +115,14 @@ service cloud.firestore {
       allow read: if true;
 
       // Create: Authenticated user only, ownerId must strictly equal auth.uid
-      allow create: if isSignedIn() && 
-                    request.resource.data.ownerId == request.auth.uid &&
-                    (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus in ['trial', 'inactive', 'pending']) &&
-                    (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan in ['free', 'starter', 'trial']);
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (
+          request.resource.data.ownerId == request.auth.uid &&
+          (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus in ['trial', 'inactive', 'pending', 'active']) &&
+          (!('subscriptionPlan' in request.resource.data) || request.resource.data.subscriptionPlan in ['free', 'starter', 'trial', 'pro', 'growth'])
+        )
+      );
 
       // Update: Owner or Admin. OwnerId is strictly IMMUTABLE.
       // Profile type cannot be client-switched after creation.

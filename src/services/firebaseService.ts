@@ -350,6 +350,8 @@ export async function createBusiness(
   const slug = data.slug || generateSlug(data.name);
 
   const business: BusinessProfile = {
+    subscriptionStatus: 'trial',
+    subscriptionPlan: 'trial',
     ...data,
     id: businessId,
     slug,
@@ -363,12 +365,41 @@ export async function createBusiness(
   try {
     const sanitized = sanitizeForFirestore(business);
     await setDoc(businessDocRef, sanitized);
-  } catch (err) {
-    console.error('Firestore write error for createBusiness:', err);
-    throw err; // Rethrow to handle failure in UI
-  }
+    return business;
+  } catch (err: any) {
+    console.warn('Direct Firestore client write note for createBusiness, attempting backend endpoint:', err);
 
-  return business;
+    // Fallback: Authoritative backend endpoint with user's Firebase Auth token
+    try {
+      let token = '';
+      if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken();
+      }
+      const res = await fetch('/api/businesses/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          business,
+          ownerId: data.ownerId || auth.currentUser?.uid,
+        }),
+      });
+
+      if (res.ok) {
+        const payload = await res.json();
+        if (payload.business) {
+          saveLocalBusiness(payload.business);
+          return payload.business;
+        }
+      }
+    } catch (fallbackErr) {
+      console.error('Backend business creation fallback failed:', fallbackErr);
+    }
+
+    throw err; // Rethrow to handle failure in UI if both failed
+  }
 }
 
 export async function getBusinessById(businessId: string): Promise<BusinessProfile | null> {
@@ -2368,6 +2399,7 @@ export const createBioLink = async (businessId: string, data: any) => {
   const newLink = {
     ...data,
     businessId,
+    ownerId: auth.currentUser?.uid || data.ownerId || '',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

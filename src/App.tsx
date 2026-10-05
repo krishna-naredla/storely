@@ -884,6 +884,11 @@ function MainContent() {
     if (!currentUser) {
       throw new Error('You must be signed in to create a business or creator profile.');
     }
+    try {
+      await currentUser.getIdToken();
+    } catch (e) {
+      console.warn('getIdToken refresh notice:', e);
+    }
     const ownerId = currentUser.uid;
     return await createBusiness(ownerId, data);
   };
