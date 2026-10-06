@@ -116,6 +116,7 @@ export interface BusinessProfile {
   phone: string;
   whatsapp: string;
   email?: string;
+  ownerEmail?: string;
   address?: string;
   pincode?: string;
   city?: string;
@@ -219,6 +220,7 @@ export interface StoreTrustCardSettings {
 export interface Category {
   id: string;
   businessId: string;
+  ownerId?: string;
   name: string;
   slug: string;
   description?: string;
@@ -263,6 +265,7 @@ export interface CatalogItemAddon {
 export interface CatalogItem {
   id: string;
   businessId: string;
+  ownerId?: string;
   type: CatalogItemType;
   name: string;
   slug: string;
@@ -917,9 +920,28 @@ export interface PortfolioSettings {
 // MODULE 4: EVENT & WEBINAR TICKETING TYPES
 // ==========================================
 
-export type EventFormat = 'online' | 'offline';
+export type EventFormat = 'online' | 'offline' | 'hybrid';
 export type EventStatus = 'upcoming' | 'past' | 'sold_out' | 'cancelled';
 export type MeetingPlatform = 'google_meet' | 'zoom' | 'teams' | 'youtube_live' | 'other';
+export type EventScheduleType = 'single' | 'multi_date' | 'custom_dates' | 'recurring';
+
+export interface EventTimeSlot {
+  id: string; // e.g. "slot_1", "slot_1000_1100"
+  startTime: string; // "10:00 AM" or "10:00"
+  endTime?: string; // "11:00 AM" or "11:00"
+  capacity?: number; // Slot specific capacity limit
+  ticketsSold?: number;
+  seatsRemaining?: number;
+  label?: string; // e.g. "Morning Session", "Evening Batch"
+  priceModifier?: number;
+}
+
+export interface EventScheduleDate {
+  id: string; // e.g. "date_2026-10-15" or date string
+  date: string; // YYYY-MM-DD
+  slots: EventTimeSlot[];
+  isCancelled?: boolean;
+}
 
 export interface EventSeat {
   id: string; // e.g. "A1", "B4", "VIP-1"
@@ -957,9 +979,11 @@ export interface EventItem {
   title: string;
   description: string;
   coverImage: string;
-  eventDate: string; // YYYY-MM-DD
-  eventTime: string; // e.g. "18:00" or "06:00 PM"
+  eventDate: string; // Primary / start date YYYY-MM-DD
+  eventEndDate?: string; // End date for multi-day / recurring events
+  eventTime: string; // Primary / default start time e.g. "18:00" or "06:00 PM"
   eventDurationMinutes?: number;
+  timezone?: string; // e.g. "Asia/Kolkata (IST)", "UTC", "America/New_York (EST)"
   format: EventFormat;
   meetingUrl?: string; // Google Meet / Zoom link (private, sent only on ticket delivery)
   meetingPlatform?: MeetingPlatform;
@@ -967,13 +991,25 @@ export interface EventItem {
   venueCity?: string;
   price: number; // 0 = Free
   isFree?: boolean;
-  capacity: number; // e.g. 50
+  capacity: number; // Global event capacity e.g. 50
   seatsRemaining: number; // Atomic tracking
   ticketsSold: number;
   status: EventStatus;
   seatingChart?: EventSeatingChart;
   cancellationReason?: string;
+  cancellationPolicy?: string;
+  registrationStartDate?: string; // YYYY-MM-DD
+  registrationEndDate?: string; // YYYY-MM-DD
   sendMeetingLinkTiming?: 'immediately' | 'closer_to_event';
+  scheduleType?: EventScheduleType;
+  scheduleDates?: EventScheduleDate[];
+  recurringPattern?: {
+    frequency: 'daily' | 'weekly' | 'weekdays' | 'custom_days';
+    daysOfWeek?: number[]; // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    startDate: string;
+    endDate: string;
+    slots: EventTimeSlot[];
+  };
   sortOrder?: number;
   isActive?: boolean;
   createdAt: number;
@@ -990,8 +1026,10 @@ export interface EventTicket {
   customerPhone: string; // WhatsApp number
   customerEmail?: string;
   format: EventFormat;
-  eventDate: string;
-  eventTime: string;
+  eventDate: string; // Exact selected date YYYY-MM-DD
+  eventTime: string; // Exact selected time slot e.g. "10:00 AM – 11:00 AM"
+  slotId?: string;
+  timezone?: string;
   price: number;
   paymentStatus: 'paid' | 'free' | 'refunded';
   paymentId?: string;

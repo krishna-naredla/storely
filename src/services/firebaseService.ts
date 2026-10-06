@@ -3152,6 +3152,10 @@ export async function purchaseEventTicketTransaction(
     customerName: string;
     customerPhone: string;
     customerEmail?: string;
+    eventDate?: string;
+    eventTime?: string;
+    slotId?: string;
+    timezone?: string;
     paymentStatus?: 'paid' | 'free';
     paymentId?: string;
     razorpayOrderId?: string;
@@ -3180,6 +3184,33 @@ export async function purchaseEventTicketTransaction(
     const capacity = Number(event.capacity) || 1;
     const currentSold = Number(event.ticketsSold) || 0;
     let seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - currentSold;
+
+    const selectedDate = buyerDetails.eventDate || event.eventDate;
+    const selectedTime = buyerDetails.eventTime || event.eventTime;
+    const selectedSlotId = buyerDetails.slotId;
+
+    // Check & update slot-level capacity if event has multi-date / multi-slot schedule configured
+    let updatedScheduleDates = event.scheduleDates ? [...event.scheduleDates] : undefined;
+    if (updatedScheduleDates && selectedDate) {
+      const dateIdx = updatedScheduleDates.findIndex((d) => d.date === selectedDate);
+      if (dateIdx !== -1 && updatedScheduleDates[dateIdx].slots) {
+        const slots = [...updatedScheduleDates[dateIdx].slots];
+        const slotIdx = slots.findIndex((s) => s.id === selectedSlotId || s.startTime === selectedTime || `${s.startTime} - ${s.endTime}` === selectedTime);
+        if (slotIdx !== -1) {
+          const slot = { ...slots[slotIdx] };
+          const slotCap = Number(slot.capacity) || capacity || 1;
+          const slotSold = Number(slot.ticketsSold) || 0;
+          const slotRemaining = slot.seatsRemaining !== undefined ? Number(slot.seatsRemaining) : slotCap - slotSold;
+          if (slotRemaining <= 0 || slotSold >= slotCap) {
+            throw new Error('Sorry, this time slot just became full. Please select another available slot.');
+          }
+          slot.ticketsSold = slotSold + 1;
+          slot.seatsRemaining = Math.max(0, slotRemaining - 1);
+          slots[slotIdx] = slot;
+          updatedScheduleDates[dateIdx] = { ...updatedScheduleDates[dateIdx], slots };
+        }
+      }
+    }
 
     // Check if we have an active hold
     if (buyerDetails.holdId) {
@@ -3261,6 +3292,10 @@ export async function purchaseEventTicketTransaction(
       updatedAt: Date.now(),
     };
 
+    if (updatedScheduleDates) {
+      eventUpdatePayload.scheduleDates = updatedScheduleDates;
+    }
+
     if (updatedSeatingChart) {
       eventUpdatePayload.seatingChart = updatedSeatingChart;
     }
@@ -3278,8 +3313,10 @@ export async function purchaseEventTicketTransaction(
       customerPhone: buyerDetails.customerPhone.trim(),
       customerEmail: buyerDetails.customerEmail?.trim(),
       format: event.format,
-      eventDate: event.eventDate,
-      eventTime: event.eventTime,
+      eventDate: selectedDate,
+      eventTime: selectedTime,
+      slotId: selectedSlotId,
+      timezone: buyerDetails.timezone || event.timezone || 'Asia/Kolkata',
       price: event.price || 0,
       paymentStatus: buyerDetails.paymentStatus || (event.price === 0 ? 'free' : 'paid'),
       paymentId: buyerDetails.paymentId,
@@ -3302,6 +3339,7 @@ export async function purchaseEventTicketTransaction(
       ticketsSold: nextSold,
       seatsRemaining: seatsRemaining,
       status: nextStatus,
+      scheduleDates: updatedScheduleDates,
       seatingChart: updatedSeatingChart,
     };
 

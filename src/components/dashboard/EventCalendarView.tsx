@@ -84,15 +84,23 @@ export const EventCalendarView: React.FC<EventCalendarViewProps> = ({
     });
   }, [events, formatFilter]);
 
-  // Group events by YYYY-MM-DD
+  // Group events by YYYY-MM-DD (supporting multi-date schedules)
   const eventsByDate = useMemo(() => {
     const map: Record<string, EventItem[]> = {};
     filteredEvents.forEach((ev) => {
-      if (!ev.eventDate) return;
-      if (!map[ev.eventDate]) {
-        map[ev.eventDate] = [];
+      const dates = new Set<string>();
+      if (ev.eventDate) dates.add(ev.eventDate);
+      if (ev.scheduleDates && Array.isArray(ev.scheduleDates)) {
+        ev.scheduleDates.forEach((sd) => {
+          if (sd.date) dates.add(sd.date);
+        });
       }
-      map[ev.eventDate].push(ev);
+      dates.forEach((d) => {
+        if (!map[d]) {
+          map[d] = [];
+        }
+        map[d].push(ev);
+      });
     });
     return map;
   }, [filteredEvents]);

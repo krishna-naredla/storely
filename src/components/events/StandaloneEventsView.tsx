@@ -477,7 +477,9 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
                       <div className="flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                         <span className="font-bold text-slate-800">
-                          {event.eventDate} at {event.eventTime}
+                          {event.scheduleDates && event.scheduleDates.length > 1
+                            ? `${event.scheduleDates.length} Dates Available (${event.eventDate} → ${event.eventEndDate || event.eventDate})`
+                            : `${event.eventDate} at ${event.eventTime}`}
                         </span>
                         {event.eventDurationMinutes && (
                           <span className="text-slate-400">({event.eventDurationMinutes} mins)</span>
@@ -490,6 +492,11 @@ export const StandaloneEventsView: React.FC<StandaloneEventsViewProps> = ({
                           <span className="truncate">
                             Live via {event.meetingPlatform === 'google_meet' ? 'Google Meet' : event.meetingPlatform || 'Online Platform'}
                           </span>
+                        </div>
+                      ) : event.format === 'hybrid' ? (
+                        <div className="flex items-center gap-2 text-slate-500 text-[11px]">
+                          <Video className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span className="truncate">Hybrid (Online &amp; In-Person)</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-slate-500 text-[11px]">

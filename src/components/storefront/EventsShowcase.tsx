@@ -454,7 +454,11 @@ export const EventsShowcase: React.FC<EventsShowcaseProps> = ({
                     <div className="space-y-1.5 pt-2 text-xs text-slate-700">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="font-bold">{event.eventDate} at {event.eventTime}</span>
+                        <span className="font-bold">
+                          {event.scheduleDates && event.scheduleDates.length > 1
+                            ? `${event.scheduleDates.length} Dates Available (${event.eventDate} → ${event.eventEndDate || event.eventDate})`
+                            : `${event.eventDate} at ${event.eventTime}`}
+                        </span>
                         {event.eventDurationMinutes && (
                           <span className="text-slate-400 font-normal">({event.eventDurationMinutes} mins)</span>
                         )}
@@ -466,6 +470,11 @@ export const EventsShowcase: React.FC<EventsShowcaseProps> = ({
                           <span className="truncate">
                             Live via {event.meetingPlatform === 'google_meet' ? 'Google Meet' : event.meetingPlatform || 'Online Platform'}
                           </span>
+                        </div>
+                      ) : event.format === 'hybrid' ? (
+                        <div className="flex items-center gap-2 text-slate-500 text-[11px]">
+                          <Video className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span className="truncate">Hybrid (Online &amp; In-Person)</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-slate-500 text-[11px]">

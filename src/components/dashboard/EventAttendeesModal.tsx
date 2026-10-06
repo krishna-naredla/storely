@@ -79,6 +79,17 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
     .filter((t) => t.paymentStatus === 'paid')
     .reduce((sum, t) => sum + (t.price || 0), 0);
 
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
+
+  // Unique booked dates in tickets
+  const availableDates = React.useMemo(() => {
+    const set = new Set<string>();
+    tickets.forEach((t) => {
+      if (t.eventDate) set.add(t.eventDate);
+    });
+    return Array.from(set).sort();
+  }, [tickets]);
+
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =
       ticket.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,6 +97,10 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
       ticket.ticketId.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
+
+    if (selectedDateFilter !== 'all' && ticket.eventDate !== selectedDateFilter) {
+      return false;
+    }
 
     if (filter === 'checked_in') return ticket.checkedIn && ticket.paymentStatus !== 'refunded';
     if (filter === 'pending') return !ticket.checkedIn && ticket.paymentStatus !== 'refunded';
@@ -130,9 +145,11 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
   const handleExportCSV = () => {
     if (tickets.length === 0) return;
 
-    const headers = ['Ticket ID', 'Seat Number', 'Section', 'Attendee Name', 'Phone', 'Email', 'Payment Status', 'Price (INR)', 'Checked In', 'Registered Date'];
+    const headers = ['Ticket ID', 'Selected Date', 'Selected Time Slot', 'Seat Number', 'Section', 'Attendee Name', 'Phone', 'Email', 'Payment Status', 'Price (INR)', 'Checked In', 'Registered Date'];
     const rows = tickets.map((t) => [
       `"${t.ticketId}"`,
+      `"${t.eventDate || event.eventDate}"`,
+      `"${t.eventTime || event.eventTime}"`,
       `"${t.seatNumber || 'N/A'}"`,
       `"${t.seatSection || 'General'}"`,
       `"${t.customerName}"`,
@@ -167,14 +184,16 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
     }
 
     const seatText = ticket.seatNumber ? `\n💺 *Assigned Seat:* ${ticket.seatNumber} (${ticket.seatSection || 'General'})` : '';
+    const ticketDate = ticket.eventDate || event.eventDate;
+    const ticketTime = ticket.eventTime || event.eventTime;
 
     const msg = encodeURIComponent(
       `👋 Hi ${ticket.customerName},\n\n` +
       `Reminder for your upcoming session: *${event.title}* with ${business.name}!\n\n` +
       `🎫 *Ticket ID:* \`${ticket.ticketId}\`` +
       seatText +
-      `\n📅 *Date:* ${event.eventDate}\n` +
-      `⏰ *Time:* ${event.eventTime}\n` +
+      `\n📅 *Date:* ${ticketDate}\n` +
+      `⏰ *Time:* ${ticketTime}${ticket.timezone ? ` (${ticket.timezone})` : ''}\n` +
       accessText +
       `\n\nLooking forward to seeing you!`
     );
@@ -317,7 +336,22 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            {availableDates.length > 1 && (
+              <select
+                value={selectedDateFilter}
+                onChange={(e) => setSelectedDateFilter(e.target.value)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="all">All Dates ({tickets.length})</option>
+                {availableDates.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            )}
+
             {(['all', 'checked_in', 'pending', 'refunded'] as const).map((tab) => (
               <button
                 key={tab}
@@ -356,6 +390,8 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
             filteredTickets.map((ticket) => {
               const isUpdating = updatingId === ticket.id;
               const isRefunded = ticket.paymentStatus === 'refunded';
+              const ticketDate = ticket.eventDate || event.eventDate;
+              const ticketTime = ticket.eventTime || event.eventTime;
 
               return (
                 <div
@@ -369,10 +405,19 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                   }`}
                 >
                   {/* Left Attendee Info */}
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-slate-900">
                         {ticket.customerName}
+                      </span>
+
+                      {/* Date & Time Slot Badge */}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200/80">
+                        <Calendar className="w-3 h-3 text-emerald-600" />
+                        <span>{ticketDate}</span>
+                        <span className="text-emerald-400">•</span>
+                        <Clock className="w-3 h-3 text-emerald-600" />
+                        <span>{ticketTime}</span>
                       </span>
 
                       {/* Seat Number Pill if assigned */}

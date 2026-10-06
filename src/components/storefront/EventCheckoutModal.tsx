@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   CheckCircle,
@@ -10,6 +10,7 @@ import {
   Users,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   CheckCircle2,
   Lock,
@@ -20,15 +21,13 @@ import {
   Copy,
   Check,
   AlertTriangle,
-  Timer,
+  Globe,
   CreditCard,
-  Smartphone,
   Armchair,
-  Crown,
-  Ban,
+  Info,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BusinessProfile, EventItem, EventTicket, EventSeat } from '../../types';
+import { BusinessProfile, EventItem, EventTicket, EventScheduleDate, EventTimeSlot } from '../../types';
 import { purchaseEventTicketTransaction, reserveEventSeat, releaseEventSeat } from '../../services/firebaseService';
 import { loadRazorpayScript } from '../../services/razorpayService';
 
@@ -39,6 +38,13 @@ interface EventCheckoutModalProps {
   onClose: () => void;
   onSuccess?: (ticket: EventTicket) => void;
 }
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
   event,
@@ -53,19 +59,80 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
   const [paymentMode, setPaymentMode] = useState<'online' | 'upi_qr'>('online');
   const [upiUtr, setUpiUtr] = useState('');
   const [selectedSeatNumber, setSelectedSeatNumber] = useState<string | null>(null);
+
+  // Date & Slot Selection State
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedSlotId, setSelectedSlotId] = useState<string>('');
+  const [calendarViewDate, setCalendarViewDate] = useState<Date>(() => new Date());
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmedTicket, setConfirmedTicket] = useState<EventTicket | null>(null);
   const [whatsAppUrl, setWhatsAppUrl] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
-  const [copiedUpi, setCopiedUpi] = useState(false);
   const [holdSecondsLeft, setHoldSecondsLeft] = useState(600); // 10 minutes hold timer
+
+  // Build list of valid schedule dates
+  const availableScheduleDates: EventScheduleDate[] = useMemo(() => {
+    if (!event) return [];
+    if (event.scheduleDates && event.scheduleDates.length > 0) {
+      return event.scheduleDates.filter((d) => !d.isCancelled);
+    }
+    // Fallback for single legacy date
+    if (event.eventDate) {
+      const defaultSlot: EventTimeSlot = {
+        id: `slot_default_${event.id}`,
+        startTime: event.eventTime || '18:00',
+        endTime: '',
+        capacity: event.capacity || 50,
+        ticketsSold: event.ticketsSold || 0,
+        seatsRemaining: event.seatsRemaining || event.capacity || 50,
+        label: 'Main Session',
+      };
+      return [
+        {
+          id: `date_${event.eventDate}`,
+          date: event.eventDate,
+          slots: [defaultSlot],
+        },
+      ];
+    }
+    return [];
+  }, [event]);
+
+  // Set initial selected date & slot when modal opens or event changes
+  useEffect(() => {
+    if (!isOpen || !event) return;
+    setConfirmedTicket(null);
+    setErrorMessage(null);
+    setHoldSecondsLeft(600);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Find first available future/today date with valid slots
+    const validFutureDate = availableScheduleDates.find((d) => d.date >= todayStr) || availableScheduleDates[0];
+    if (validFutureDate) {
+      setSelectedDate(validFutureDate.date);
+      // Initialize calendar view to this month
+      try {
+        const parsed = new Date(`${validFutureDate.date}T00:00:00`);
+        setCalendarViewDate(parsed);
+      } catch (e) {
+        setCalendarViewDate(new Date());
+      }
+
+      // Pick first non-sold-out slot
+      const firstAvailSlot = validFutureDate.slots.find((s) => (s.seatsRemaining ?? s.capacity ?? 1) > 0) || validFutureDate.slots[0];
+      if (firstAvailSlot) {
+        setSelectedSlotId(firstAvailSlot.id);
+      }
+    }
+  }, [isOpen, event, availableScheduleDates]);
 
   // Timer countdown while modal is open
   useEffect(() => {
     if (!isOpen || confirmedTicket) return;
-    setHoldSecondsLeft(600);
     const interval = setInterval(() => {
       setHoldSecondsLeft((prev) => {
         if (prev <= 1) {
@@ -81,15 +148,122 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
 
   if (!isOpen || !event) return null;
 
-  const seatsLeft = event.seatsRemaining !== undefined
-    ? Number(event.seatsRemaining)
-    : Math.max(0, event.capacity - (Number(event.ticketsSold) || 0));
-  const isSoldOut = event.status === 'sold_out' || seatsLeft <= 0;
+  // Selected date object
+  const currentScheduleDate = availableScheduleDates.find((d) => d.date === selectedDate) || availableScheduleDates[0];
+  const currentSlots = currentScheduleDate?.slots || [];
+  const activeSlot = currentSlots.find((s) => s.id === selectedSlotId) || currentSlots[0];
+
+  // Active slot capacity
+  const slotCapacity = activeSlot?.capacity || event.capacity || 50;
+  const slotSold = activeSlot?.ticketsSold || 0;
+  const slotSeatsRemaining = activeSlot?.seatsRemaining !== undefined
+    ? Number(activeSlot.seatsRemaining)
+    : Math.max(0, slotCapacity - slotSold);
+
+  const isSlotSoldOut = slotSeatsRemaining <= 0;
+  const isEventSoldOut = event.status === 'sold_out' || (event.seatsRemaining !== undefined && event.seatsRemaining <= 0);
   const isFree = event.price === 0 || event.isFree;
 
-  // Resolve business UPI ID
-  const effectiveUpiId = business.upiId || (business.whatsapp ? `${business.whatsapp.replace(/\D/g, '')}@okaxis` : '');
-  const upiPayLink = `upi://pay?pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent(business.name)}&am=${event.price}&cu=INR&tn=${encodeURIComponent('Ticket for ' + event.title)}`;
+  // Registration window check
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isRegistrationNotYetOpen = Boolean(event.registrationStartDate && todayStr < event.registrationStartDate);
+  const isRegistrationClosed = Boolean(event.registrationEndDate && todayStr > event.registrationEndDate);
+
+  // Month Calendar Matrix Computation
+  const calYear = calendarViewDate.getFullYear();
+  const calMonth = calendarViewDate.getMonth();
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1);
+    const lastDay = new Date(calYear, calMonth + 1, 0);
+    const startWeekday = firstDay.getDay(); // 0 = Sun
+    const totalDays = lastDay.getDate();
+
+    const days: Array<{
+      dateString: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      isAvailable: boolean;
+      isPast: boolean;
+      isSelected: boolean;
+      isSoldOut: boolean;
+    }> = [];
+
+    const availableDateSet = new Set(availableScheduleDates.map((d) => d.date));
+
+    // Previous month padding
+    const prevMonthLastDay = new Date(calYear, calMonth, 0).getDate();
+    for (let i = startWeekday - 1; i >= 0; i--) {
+      const prevDate = new Date(calYear, calMonth - 1, prevMonthLastDay - i);
+      const dStr = prevDate.toISOString().split('T')[0];
+      days.push({
+        dateString: dStr,
+        dayNumber: prevMonthLastDay - i,
+        isCurrentMonth: false,
+        isAvailable: false,
+        isPast: dStr < todayStr,
+        isSelected: false,
+        isSoldOut: false,
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= totalDays; d++) {
+      const mm = String(calMonth + 1).padStart(2, '0');
+      const dd = String(d).padStart(2, '0');
+      const dStr = `${calYear}-${mm}-${dd}`;
+      const isSched = availableDateSet.has(dStr);
+      const isPast = dStr < todayStr;
+      const schedObj = availableScheduleDates.find((s) => s.date === dStr);
+      const isDateAllSoldOut = Boolean(
+        schedObj &&
+        schedObj.slots.every((slot) => (slot.seatsRemaining !== undefined ? slot.seatsRemaining <= 0 : (slot.ticketsSold || 0) >= (slot.capacity || 1)))
+      );
+
+      days.push({
+        dateString: dStr,
+        dayNumber: d,
+        isCurrentMonth: true,
+        isAvailable: isSched && !isPast && !isDateAllSoldOut,
+        isPast,
+        isSelected: dStr === selectedDate,
+        isSoldOut: isDateAllSoldOut,
+      });
+    }
+
+    // Next month padding to fill row
+    const remaining = (7 - (days.length % 7)) % 7;
+    for (let n = 1; n <= remaining; n++) {
+      const nextDate = new Date(calYear, calMonth + 1, n);
+      const dStr = nextDate.toISOString().split('T')[0];
+      days.push({
+        dateString: dStr,
+        dayNumber: n,
+        isCurrentMonth: false,
+        isAvailable: false,
+        isPast: false,
+        isSelected: false,
+        isSoldOut: false,
+      });
+    }
+
+    return days;
+  }, [calYear, calMonth, availableScheduleDates, selectedDate, todayStr]);
+
+  const handlePrevCalMonth = () => {
+    setCalendarViewDate(new Date(calYear, calMonth - 1, 1));
+  };
+
+  const handleNextCalMonth = () => {
+    setCalendarViewDate(new Date(calYear, calMonth + 1, 1));
+  };
+
+  // Selected Time string representation
+  const selectedTimeString = activeSlot
+    ? activeSlot.endTime
+      ? `${activeSlot.startTime} – ${activeSlot.endTime}`
+      : activeSlot.startTime
+    : event.eventTime || '18:00';
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -98,16 +272,26 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
   };
 
   const handlePurchase = async () => {
-    if (!customerName || !customerPhone || !event) return;
+    if (!customerName.trim() || !customerPhone.trim() || !event) return;
 
-    if (isSoldOut) {
-      setErrorMessage('This event is completely sold out. Atomic limit reached.');
+    if (isRegistrationNotYetOpen) {
+      setErrorMessage(`Registration for this event opens on ${event.registrationStartDate}.`);
+      return;
+    }
+
+    if (isRegistrationClosed) {
+      setErrorMessage(`Registration for this event closed on ${event.registrationEndDate}.`);
+      return;
+    }
+
+    if (isSlotSoldOut || isEventSoldOut) {
+      setErrorMessage('This time slot is completely sold out. Please select another available slot or date.');
       return;
     }
 
     const cleanPhone = customerPhone.replace(/[^0-9]/g, '');
     if (cleanPhone.length < 10) {
-      setErrorMessage('Please enter a valid 10-digit mobile number for ticket delivery');
+      setErrorMessage('Please enter a valid 10-digit mobile number for WhatsApp ticket delivery.');
       return;
     }
 
@@ -121,6 +305,10 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           customerName: customerName.trim(),
           customerPhone: cleanPhone,
           customerEmail: customerEmail.trim() || undefined,
+          eventDate: selectedDate,
+          eventTime: selectedTimeString,
+          slotId: selectedSlotId || activeSlot?.id,
+          timezone: event.timezone || 'Asia/Kolkata',
           paymentStatus: 'free',
           seatNumber: selectedSeatNumber || undefined,
         });
@@ -130,7 +318,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
         return;
       }
 
-      // Paid Event Flow: Check if user selected Direct UPI QR Mode
+      // Paid Event Flow: Direct UPI QR Mode
       if (paymentMode === 'upi_qr') {
         const holdId = `hold_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         await reserveEventSeat(business.id, event.id, holdId, 10 * 60 * 1000);
@@ -139,6 +327,10 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           customerName: customerName.trim(),
           customerPhone: cleanPhone,
           customerEmail: customerEmail.trim() || undefined,
+          eventDate: selectedDate,
+          eventTime: selectedTimeString,
+          slotId: selectedSlotId || activeSlot?.id,
+          timezone: event.timezone || 'Asia/Kolkata',
           paymentStatus: 'paid',
           paymentId: upiUtr ? `UPI-${upiUtr.trim()}` : `UPI-${Date.now()}`,
           notes: upiUtr ? `Paid via UPI QR, UTR: ${upiUtr}` : 'Paid via UPI QR',
@@ -174,6 +366,10 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
               eventId: event.id,
               customerName: customerName.trim(),
               customerPhone: cleanPhone,
+              eventDate: selectedDate,
+              eventTime: selectedTimeString,
+              slotId: selectedSlotId || activeSlot?.id,
+              timezone: event.timezone || 'Asia/Kolkata',
             }),
           });
 
@@ -191,7 +387,6 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           return;
         }
 
-        // Must have valid Razorpay order ID and key from server
         if (!orderData || !orderData.rzpOrderId || !orderData.keyId) {
           await releaseEventSeat(business.id, event.id, holdId).catch(() => {});
           setErrorMessage(orderData?.error || "Payment couldn't be started. Please try again in a moment.");
@@ -199,7 +394,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           return;
         }
 
-        // 2. Live Razorpay Payment Modal
+        // Launch Live Razorpay Payment Modal
         await loadRazorpayScript();
         const RazorpayClass = (window as any).Razorpay;
 
@@ -215,7 +410,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
           name: business.name,
-          description: `Ticket for ${event.title}`,
+          description: `Ticket for ${event.title} (${selectedDate})`,
           image: business.logo || undefined,
           order_id: orderData.rzpOrderId,
           handler: async function (response: any) {
@@ -230,6 +425,10 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                   razorpay_signature: response.razorpay_signature,
                   businessId: business.id,
                   eventId: event.id,
+                  eventDate: selectedDate,
+                  eventTime: selectedTimeString,
+                  slotId: selectedSlotId || activeSlot?.id,
+                  timezone: event.timezone || 'Asia/Kolkata',
                 }),
               });
 
@@ -242,6 +441,10 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                 customerName: customerName.trim(),
                 customerPhone: cleanPhone,
                 customerEmail: customerEmail.trim() || undefined,
+                eventDate: selectedDate,
+                eventTime: selectedTimeString,
+                slotId: selectedSlotId || activeSlot?.id,
+                timezone: event.timezone || 'Asia/Kolkata',
                 paymentStatus: 'paid',
                 paymentId: response.razorpay_payment_id,
                 razorpayOrderId: response.razorpay_order_id,
@@ -253,7 +456,7 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
               prepareWhatsAppConfirmation(ticket);
               if (onSuccess) onSuccess(ticket);
             } catch (err: any) {
-              setErrorMessage(err.message || 'Payment was received but ticket finalization encountered an issue. Please contact the organizer.');
+              setErrorMessage(err.message || 'Payment was received but ticket finalization encountered an issue. Please contact the host.');
             } finally {
               setLoading(false);
             }
@@ -274,8 +477,8 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                 console.error('Failed to release seat hold on dismiss', e);
               }
               setLoading(false);
-            }
-          }
+            },
+          },
         };
 
         const rzp = new RazorpayClass(options);
@@ -310,8 +513,9 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
           ticketId: ticket.ticketId,
           eventTitle: event.title,
           format: event.format,
-          eventDate: event.eventDate,
-          eventTime: event.eventTime,
+          eventDate: ticket.eventDate,
+          eventTime: ticket.eventTime,
+          timezone: ticket.timezone || event.timezone,
           meetingUrl: event.meetingUrl,
           venueAddress: event.venueAddress,
           venueCity: event.venueCity,
@@ -322,13 +526,8 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
         }),
       });
       if (response.ok) {
-        let data;
-        try {
-          data = JSON.parse(await response.text());
-        } catch (e) {
-          return;
-        }
-        if (data.whatsAppUrl) {
+        const data = await response.json().catch(() => null);
+        if (data?.whatsAppUrl) {
           setWhatsAppUrl(data.whatsAppUrl);
         }
       }
@@ -346,8 +545,8 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
 
   const handleShareWithFriends = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareUrl = `${origin}/store/${business.slug || business.id}?event=${event.id}#event-${event.id}`;
-    const text = `🎟️ I just reserved my ticket for "${event.title}" hosted by ${business.name}! Secure your seat before atomic capacity runs out: ${shareUrl}`;
+    const shareUrl = `${origin}/events/${business.slug || business.id}?event=${event.id}#event-${event.id}`;
+    const text = `🎟️ I just reserved my ticket for "${event.title}" on ${selectedDate} with ${business.name}! Secure your seat: ${shareUrl}`;
 
     if (navigator.share) {
       navigator.share({
@@ -364,40 +563,43 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
   };
 
   const buildGoogleCalendarUrl = () => {
-    if (!event) return '#';
-    const dateStr = (event.eventDate || '').replace(/-/g, '');
-    const timeClean = (event.eventTime || '18:00').replace(/[^0-9]/g, '');
-    const startStr = `${dateStr}T${timeClean.padEnd(4, '0')}00`;
-    const endStr = `${dateStr}T${(Number(timeClean.slice(0, 2)) + 1).toString().padStart(2, '0')}${timeClean.slice(2, 4) || '00'}00`;
+    if (!event || !confirmedTicket) return '#';
+    const dateClean = (confirmedTicket.eventDate || selectedDate || '').replace(/-/g, '');
+    const timeMatch = (confirmedTicket.eventTime || '').match(/(\d{1,2}):(\d{2})/);
+    const startHour = timeMatch ? timeMatch[1].padStart(2, '0') : '18';
+    const startMin = timeMatch ? timeMatch[2] : '00';
+    const startStr = `${dateClean}T${startHour}${startMin}00`;
+    const endHour = (Number(startHour) + 1).toString().padStart(2, '0');
+    const endStr = `${dateClean}T${endHour}${startMin}00`;
 
     const title = encodeURIComponent(event.title);
     const details = encodeURIComponent(
-      `Masterclass with ${business.name}\nTicket Code: ${confirmedTicket?.ticketId || ''}\n${
+      `Masterclass Session with ${business.name}\nTicket Code: ${confirmedTicket.ticketId}\nDate: ${confirmedTicket.eventDate}\nTime: ${confirmedTicket.eventTime} (${confirmedTicket.timezone || 'IST'})\n${
         event.meetingUrl ? `Join Link: ${event.meetingUrl}` : `Venue: ${event.venueAddress || ''}`
       }`
     );
-    const location = encodeURIComponent(event.format === 'online' ? (event.meetingUrl || 'Online') : (event.venueAddress || ''));
+    const location = encodeURIComponent(event.format === 'online' ? (event.meetingUrl || 'Online Webinar') : (event.venueAddress || ''));
 
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 my-8 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl bg-white rounded-3xl p-5 sm:p-7 shadow-2xl border border-slate-200 my-6 animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer z-10"
         >
           <X className="w-5 h-5" />
         </button>
 
         {!confirmedTicket ? (
-          /* STEP 1: REGISTRATION & ATOMIC SEAT CHECKOUT FORM */
+          /* STEP 1: REGISTRATION & CUSTOMER SCHEDULE PICKER */
           <div className="space-y-5">
-            {/* Event Summary Card */}
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-200 shrink-0 border border-slate-200">
+            {/* Event Summary Banner */}
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-200 shrink-0 border border-slate-200">
                 <img
                   src={event.coverImage || business.coverImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop&q=80'}
                   alt={event.title}
@@ -406,481 +608,463 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs">
-                    {event.format === 'online' ? 'Online Webinar' : 'In-Person'}
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-700 shadow-2xs">
+                    {event.format === 'online' ? 'Online Webinar' : event.format === 'hybrid' ? 'Hybrid' : 'In-Person'}
                   </span>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                     {event.price === 0 ? 'Free Entry' : `₹${event.price}`}
                   </span>
-                </div>
-                <h3 className="font-bold text-slate-900 text-base leading-tight line-clamp-1">
-                  {event.title}
-                </h3>
-                <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500 font-medium">
-                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {event.eventDate}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" /> {event.eventTime}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Atomic Seat Capacity & Limit Banner */}
-            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-950">
-                  <Users className="w-4 h-4 text-emerald-700" />
-                  <span>Seat Capacity (Atomic Limit):</span>
-                </div>
-                <span className="font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full text-[11px]">
-                  {seatsLeft} of {event.capacity} Available
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full h-1.5 bg-emerald-200/70 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-600 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.round(((event.ticketsSold || 0) / (event.capacity || 1)) * 100))}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-emerald-800">
-                <span className="flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-emerald-600" />
-                  <span>Atomic concurrency lock guarantees no overbooking</span>
-                </span>
-                <span className="flex items-center gap-1 font-mono font-bold">
-                  <Timer className="w-3 h-3" />
-                  <span>{formatTimer(holdSecondsLeft)}</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Payment Method Selector (if not free) */}
-            {!isFree && (
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Payment Method
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('online')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                      paymentMode === 'online'
-                        ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 shadow-2xs'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4 text-emerald-600" />
-                    <span>Instant Online Pay</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('upi_qr')}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                      paymentMode === 'upi_qr'
-                        ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 shadow-2xs'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Smartphone className="w-4 h-4 text-emerald-600" />
-                    <span>Scan UPI QR Code</span>
-                  </button>
-                </div>
-
-                {/* If UPI QR Mode selected, render dynamic QR code */}
-                {paymentMode === 'upi_qr' && (
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3 animate-in fade-in duration-200">
-                    <p className="text-xs font-bold text-slate-700">
-                      Scan with any UPI app (GPay, PhonePe, Paytm, BHIM)
-                    </p>
-
-                    <div className="p-3 bg-white rounded-2xl shadow-xs inline-block mx-auto border border-slate-200">
-                      <QRCodeSVG
-                        value={upiPayLink}
-                        size={140}
-                        level="M"
-                        includeMargin={false}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-center gap-2 text-xs font-mono text-slate-600 bg-white py-1.5 px-3 rounded-xl border border-slate-200 max-w-xs mx-auto">
-                      <span>{effectiveUpiId || 'UPI payment'}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(effectiveUpiId);
-                          setCopiedUpi(true);
-                          setTimeout(() => setCopiedUpi(false), 2000);
-                        }}
-                        className="text-emerald-700 font-bold hover:underline"
-                      >
-                        {copiedUpi ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-
-                    <div>
-                      <input
-                        type="text"
-                        value={upiUtr}
-                        onChange={(e) => setUpiUtr(e.target.value)}
-                        placeholder="UPI Ref / UTR No. (Optional)"
-                        className="w-full max-w-xs mx-auto px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-center font-mono outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Interactive Visual Seating Selector (if seating chart enabled) */}
-            {event.seatingChart?.enabled && event.seatingChart.seats?.length ? (
-              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Armchair className="w-4 h-4 text-purple-400" />
-                    <span className="text-xs font-bold text-slate-200">Select Your Seat</span>
-                  </div>
-                  {selectedSeatNumber ? (
-                    <span className="px-2 py-0.5 rounded-md bg-purple-500 text-white text-[10px] font-extrabold">
-                      Selected: {selectedSeatNumber}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400">
-                      Auto-assigned if unselected
+                  {event.timezone && (
+                    <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                      {event.timezone}
                     </span>
                   )}
                 </div>
-
-                {/* Stage Indicator */}
-                <div className="w-full max-w-xs mx-auto">
-                  <div className="h-2 rounded-t-full bg-purple-500/60 border-t border-purple-400"></div>
-                  <p className="text-[9px] font-bold text-center tracking-widest text-purple-300 uppercase mt-0.5">
-                    STAGE / FRONT
-                  </p>
-                </div>
-
-                {/* Seat Matrix */}
-                <div className="max-h-44 overflow-y-auto overflow-x-auto py-2 flex flex-col items-center gap-1.5">
-                  {Object.entries(
-                    event.seatingChart.seats.reduce((acc, seat) => {
-                      if (!acc[seat.row]) acc[seat.row] = [];
-                      acc[seat.row].push(seat);
-                      return acc;
-                    }, {} as Record<string, EventSeat[]>)
-                  ).map(([rowLabel, rowSeats]: [string, EventSeat[]]) => (
-                    <div key={rowLabel} className="flex items-center gap-1.5">
-                      <span className="w-4 text-center text-[10px] font-bold text-purple-300 select-none">
-                        {rowLabel}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {rowSeats.map((seat) => {
-                          const isBooked = seat.status === 'booked';
-                          const isBlocked = seat.status === 'blocked';
-                          const isSelected = selectedSeatNumber === seat.label;
-                          const isVIP = seat.section?.toLowerCase().includes('vip');
-
-                          return (
-                            <button
-                              key={seat.id}
-                              type="button"
-                              disabled={isBooked || isBlocked}
-                              onClick={() => setSelectedSeatNumber(isSelected ? null : seat.label)}
-                              className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold transition-all ${
-                                isSelected
-                                  ? 'bg-amber-400 text-slate-950 ring-2 ring-white scale-110'
-                                  : isBooked || isBlocked
-                                  ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                                  : isVIP
-                                  ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer'
-                                  : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
-                              }`}
-                              title={`${seat.label} - ${seat.section || 'General'} (${isBooked ? 'Booked' : isBlocked ? 'Unavailable' : 'Available'})`}
-                            >
-                              {isBooked || isBlocked ? (
-                                <Ban className="w-2.5 h-2.5" />
-                              ) : isVIP ? (
-                                <Crown className="w-2.5 h-2.5" />
-                              ) : (
-                                seat.number
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <span className="w-4 text-center text-[10px] font-bold text-purple-300 select-none">
-                        {rowLabel}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-center gap-3 text-[10px] text-slate-400 border-t border-slate-800 pt-2">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2.5 h-2.5 rounded bg-emerald-600"></div>
-                    <span>Available</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2.5 h-2.5 rounded bg-amber-400"></div>
-                    <span>Selected</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2.5 h-2.5 rounded bg-slate-800 border border-slate-700"></div>
-                    <span>Taken</span>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Form Fields */}
-            <div className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Full Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Rahul Sharma"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition text-sm text-slate-900 shadow-2xs font-medium"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  WhatsApp Mobile Number <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">+91</span>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="9876543210"
-                    maxLength={10}
-                    className="w-full pl-13 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition text-sm text-slate-900 font-medium shadow-2xs"
-                    required
-                  />
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Instant ticket pass &amp; join link will be sent to this WhatsApp number</span>
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">
+                  {event.title}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  Hosted by <strong className="text-slate-700">{business.name}</strong>
                 </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Email Address <span className="text-slate-400 font-normal">(Optional, for Calendar invite)</span>
-                </label>
-                <input
-                  type="email"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition text-sm text-slate-900 shadow-2xs"
-                />
               </div>
             </div>
 
-            {errorMessage && (
-              <div className="p-3 bg-rose-50 text-rose-700 text-xs font-medium rounded-xl border border-rose-200 space-y-2 animate-in fade-in duration-200">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                  <span>{errorMessage}</span>
+            {/* Hold Timer Banner */}
+            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200/70 text-xs text-amber-900">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Lock className="w-3.5 h-3.5 text-amber-600" />
+                <span>Atomic Seat Reservation Active:</span>
+              </span>
+              <span className="font-mono font-bold bg-white px-2 py-0.5 rounded-md border border-amber-200 text-amber-800">
+                {formatTimer(holdSecondsLeft)}
+              </span>
+            </div>
+
+            {/* ========================================================= */}
+            {/* STEP 1A: SELECT DATE (INTERACTIVE CALENDAR / DATE PICKER) */}
+            {/* ========================================================= */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <span>1. Select Preferred Date</span>
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  {availableScheduleDates.length} date{availableScheduleDates.length > 1 ? 's' : ''} available
+                </span>
+              </div>
+
+              {/* Horizontal Date Pills for Fast Selection */}
+              {availableScheduleDates.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {availableScheduleDates.map((d) => {
+                    const isSelected = selectedDate === d.date;
+                    const parsed = new Date(`${d.date}T00:00:00`);
+                    const weekday = parsed.toLocaleDateString(undefined, { weekday: 'short' });
+                    const monthDay = parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    const isDatePast = d.date < todayStr;
+
+                    return (
+                      <button
+                        key={d.date}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDate(d.date);
+                          // Auto select first slot for this date
+                          if (d.slots.length > 0) {
+                            setSelectedSlotId(d.slots[0].id);
+                          }
+                        }}
+                        disabled={isDatePast}
+                        className={`px-3 py-2 rounded-2xl border text-center shrink-0 transition cursor-pointer min-w-[85px] ${
+                          isSelected
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                            : isDatePast
+                            ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-400 hover:bg-emerald-50/30'
+                        }`}
+                      >
+                        <span className={`block text-[10px] font-bold uppercase ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                          {weekday}
+                        </span>
+                        <span className="block text-xs font-black">
+                          {monthDay}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {!isSoldOut && paymentMode === 'online' && !isFree && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentMode('upi_qr');
-                      setErrorMessage(null);
-                    }}
-                    className="w-full py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-lg font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                  >
-                    <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Switch to Direct UPI QR Code (Instant Scan & Pay)</span>
-                  </button>
-                )}
+              )}
+
+              {/* Interactive Calendar Month Picker (if multiple or long range dates) */}
+              {availableScheduleDates.length > 3 && (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      {MONTH_NAMES[calMonth]} {calYear}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={handlePrevCalMonth}
+                        className="p-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextCalMonth}
+                        className="p-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar Grid */}
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {WEEKDAY_NAMES.map((w) => (
+                      <span key={w} className="text-[10px] font-bold text-slate-400 uppercase">
+                        {w.slice(0, 2)}
+                      </span>
+                    ))}
+                    {calendarDays.map((cDay, idx) => {
+                      if (!cDay.isCurrentMonth) {
+                        return <div key={idx} className="h-7" />;
+                      }
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          disabled={!cDay.isAvailable}
+                          onClick={() => {
+                            if (cDay.isAvailable) {
+                              setSelectedDate(cDay.dateString);
+                              const targetDateObj = availableScheduleDates.find((sd) => sd.date === cDay.dateString);
+                              if (targetDateObj && targetDateObj.slots.length > 0) {
+                                setSelectedSlotId(targetDateObj.slots[0].id);
+                              }
+                            }
+                          }}
+                          className={`h-7 w-full rounded-lg text-xs font-bold transition flex items-center justify-center ${
+                            cDay.isSelected
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : cDay.isAvailable
+                              ? 'bg-white hover:bg-emerald-100 text-slate-900 border border-emerald-300/80 cursor-pointer font-black'
+                              : cDay.isPast
+                              ? 'text-slate-300 cursor-not-allowed'
+                              : 'text-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          {cDay.dayNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ========================================================= */}
+            {/* STEP 1B: SELECT TIME SLOT */}
+            {/* ========================================================= */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-emerald-600" />
+                  <span>2. Select Time Slot for {selectedDate}</span>
+                </label>
+                <span className="text-[11px] font-medium text-slate-500">
+                  {currentSlots.length} slot{currentSlots.length > 1 ? 's' : ''} on this date
+                </span>
+              </div>
+
+              {currentSlots.length === 0 ? (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+                  No time slots configured for this date.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {currentSlots.map((slot) => {
+                    const isSelected = selectedSlotId === slot.id;
+                    const sCap = slot.capacity || event.capacity || 50;
+                    const sSold = slot.ticketsSold || 0;
+                    const sLeft = slot.seatsRemaining !== undefined ? Number(slot.seatsRemaining) : Math.max(0, sCap - sSold);
+                    const isFull = sLeft <= 0;
+
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        disabled={isFull}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                        className={`p-3 rounded-2xl border text-left transition cursor-pointer relative flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs'
+                            : isFull
+                            ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                            : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-xs text-slate-900 flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{slot.startTime}{slot.endTime ? ` – ${slot.endTime}` : ''}</span>
+                          </span>
+
+                          {isFull ? (
+                            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold">
+                              SOLD OUT
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                              {sLeft} left
+                            </span>
+                          )}
+                        </div>
+
+                        {slot.label && (
+                          <span className="text-[11px] text-slate-500 font-medium mt-1 block">
+                            {slot.label}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Atomic Concurrency Guarantee Note */}
+            <div className="bg-emerald-50/60 border border-emerald-200/70 rounded-2xl p-3 flex items-center justify-between text-[11px] text-emerald-950">
+              <span className="flex items-center gap-1.5 font-bold">
+                <Users className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Selected Slot Capacity:</span>
+              </span>
+              <span className="font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                {slotSeatsRemaining} of {slotCapacity} seats remaining
+              </span>
+            </div>
+
+            {/* ========================================================= */}
+            {/* STEP 1C: ATTENDEE CONTACT DETAILS */}
+            {/* ========================================================= */}
+            <div className="space-y-3 pt-1 border-t border-slate-100">
+              <label className="font-bold text-slate-900 text-xs block">
+                3. Attendee Information
+              </label>
+
+              <div className="space-y-2.5">
+                <div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Full Name *"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="WhatsApp Mobile Number *"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Ticket &amp; QR delivered via WhatsApp</p>
+                  </div>
+
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Email Address (Optional)"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">For Google Calendar invite</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2 text-xs text-rose-800">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{errorMessage}</span>
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handlePurchase}
-              disabled={loading || !customerName || !customerPhone || isSoldOut}
-              className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold rounded-xl transition shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Locking Atomic Seat &amp; Issuing Pass...</span>
-                </>
-              ) : isSoldOut ? (
-                <>
-                  <Lock className="w-4 h-4" />
-                  <span>Capacity Full (Sold Out)</span>
-                </>
-              ) : isFree ? (
-                <>
-                  <Ticket className="w-4 h-4" />
-                  <span>Claim Free Ticket</span>
-                </>
-              ) : paymentMode === 'upi_qr' ? (
-                <>
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Confirm UPI Payment &amp; Lock Seat (₹{event.price})</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  <span>Pay ₹{event.price} &amp; Lock Seat</span>
-                </>
-              )}
-            </button>
+            {/* Submit / Pay Action Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handlePurchase}
+                disabled={loading || !customerName.trim() || !customerPhone.trim() || isSlotSoldOut || isEventSoldOut}
+                className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Reserving Seat Authoritatively...</span>
+                  </>
+                ) : isFree ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Confirm Free Registration for {selectedDate}</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay ₹{event.price} &amp; Confirm Ticket</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         ) : (
-          /* STEP 2: CONFIRMED TICKET PASS & SUCCESS STATE */
-          <div className="text-center space-y-5 py-2 animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50">
-              <CheckCircle className="w-8 h-8 text-emerald-600" />
+          /* ========================================================= */
+          /* STEP 2: CONFIRMED TICKET & QR CODE DISPLAY */
+          /* ========================================================= */
+          <div className="space-y-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-md">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
 
-            <div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/80 uppercase tracking-wider">
-                Seat Confirmed
-              </span>
-              <h2 className="text-2xl font-black text-slate-900 font-heading tracking-tight mt-2">
-                You're In! 🎉
-              </h2>
-              <p className="text-slate-500 text-xs mt-1 max-w-sm mx-auto">
-                Your admission pass for <strong className="text-slate-800">{event.title}</strong> has been secured.
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-slate-900 font-heading">
+                Registration Confirmed!
+              </h3>
+              <p className="text-xs text-slate-500">
+                Your ticket has been generated and seat capacity is locked.
               </p>
             </div>
 
-            {/* Digital Pass Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4 text-left shadow-xs">
-              <div className="flex items-center justify-between">
+            {/* Ticket Card */}
+            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200/90 text-left space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    Official Ticket Pass
-                  </p>
-                  <p className="text-lg font-black text-slate-900 font-mono tracking-tight">
-                    {confirmedTicket.ticketId}
-                  </p>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ticket ID</span>
+                  <div className="flex items-center gap-1.5 font-mono font-bold text-sm text-slate-900">
+                    <span>{confirmedTicket.ticketId}</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyTicketCode}
+                      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
+                    >
+                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCopyTicketCode}
-                  className="p-2 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer flex items-center gap-1 text-xs font-bold"
-                  title="Copy Ticket ID"
-                >
-                  {copiedCode ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span className="text-emerald-600">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
+
+                <div className="p-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                  <QRCodeSVG value={confirmedTicket.ticketId} size={48} level="M" />
+                </div>
               </div>
 
-              <div className="h-px bg-slate-200 w-full" />
-
-              <div className="space-y-2.5 text-xs text-slate-700">
-                <div className="flex items-center gap-2.5">
-                  <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-bold">{event.eventDate} at {event.eventTime}</span>
+              {/* Event & Schedule Details */}
+              <div className="space-y-2 text-xs text-slate-700">
+                <div className="font-bold text-sm text-slate-900">
+                  {event.title}
                 </div>
 
-                <div className="flex items-start gap-2.5">
-                  {event.format === 'online' ? (
-                    <>
-                      <Video className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-slate-900">Live Online Session</span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {event.sendMeetingLinkTiming === 'immediately'
-                            ? 'Meeting link sent directly to your WhatsApp'
-                            : 'Meeting link will be shared 1 hour before start'}
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-slate-900">{event.venueCity || 'In-Person Venue'}</span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{event.venueAddress}</p>
-                      </div>
-                    </>
-                  )}
+                <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{confirmedTicket.eventDate}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{confirmedTicket.eventTime}</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 text-slate-500">
-                  <Users className="w-4 h-4 text-slate-400 shrink-0" />
-                  <span>Attendee: <strong className="text-slate-800">{confirmedTicket.customerName}</strong> ({confirmedTicket.customerPhone})</span>
-                </div>
+                {confirmedTicket.timezone && (
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-slate-400" />
+                    <span>Timezone: {confirmedTicket.timezone}</span>
+                  </div>
+                )}
+
+                {event.format === 'online' ? (
+                  <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200/70 text-blue-900 text-xs">
+                    <div className="font-bold flex items-center gap-1 mb-0.5">
+                      <Video className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Online Meeting Access</span>
+                    </div>
+                    <span className="text-[11px] text-blue-800">
+                      {event.meetingUrl ? (
+                        <a href={event.meetingUrl} target="_blank" rel="noopener noreferrer" className="underline font-bold">
+                          {event.meetingUrl}
+                        </a>
+                      ) : (
+                        'Meeting link will be dispatched closer to the session.'
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-900 text-xs">
+                    <div className="font-bold flex items-center gap-1 mb-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Physical Venue</span>
+                    </div>
+                    <span className="text-[11px] text-emerald-800">
+                      {event.venueAddress || 'Venue'}{event.venueCity ? `, ${event.venueCity}` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Quick Actions */}
             <div className="space-y-2.5">
-              {whatsAppUrl ? (
+              {whatsAppUrl && (
                 <a
                   href={whatsAppUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 text-xs"
+                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-md transition flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Open Ticket Confirmation on WhatsApp</span>
+                  <span>Send Ticket Confirmation to WhatsApp</span>
                 </a>
-              ) : null}
+              )}
 
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <a
                   href={buildGoogleCalendarUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5"
+                  className="py-2.5 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs"
                 >
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
                   <span>Add to Calendar</span>
                 </a>
 
                 <button
                   type="button"
                   onClick={handleShareWithFriends}
-                  className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="py-2.5 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                 >
-                  {copiedShare ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-600 font-bold">Link Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Invite Friends</span>
-                    </>
-                  )}
+                  <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{copiedShare ? 'Link Copied!' : 'Share Event'}</span>
                 </button>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2 text-slate-400 hover:text-slate-700 text-xs font-bold transition cursor-pointer"
+                className="w-full py-2.5 text-xs text-slate-500 hover:text-slate-800 font-bold transition cursor-pointer"
               >
-                Close &amp; Return to Store
+                Close Window
               </button>
             </div>
           </div>

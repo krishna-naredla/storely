@@ -558,7 +558,7 @@ async function updateEventTicketPayment(businessId: string, eventId: string, buy
       const eventSnap = await transaction.get(eventRef);
       if (!eventSnap.exists()) throw new Error("Event not found");
       
-      const event = eventSnap.data();
+      const event = eventSnap.data() as any;
       const currentSold = Number(event.ticketsSold) || 0;
       const capacity = Number(event.capacity) || 0;
       let seatsRemaining = event.seatsRemaining !== undefined ? Number(event.seatsRemaining) : capacity - currentSold;
@@ -576,17 +576,48 @@ async function updateEventTicketPayment(businessId: string, eventId: string, buy
         if (!ticketsSnap.empty) return { success: true, alreadyExists: true };
       }
 
+      const selectedDate = buyerDetails.eventDate || event.eventDate;
+      const selectedTime = buyerDetails.eventTime || event.eventTime;
+      const selectedSlotId = buyerDetails.slotId;
+
+      let updatedScheduleDates = event.scheduleDates ? [...event.scheduleDates] : undefined;
+      if (updatedScheduleDates && selectedDate) {
+        const dateIdx = updatedScheduleDates.findIndex((d: any) => d.date === selectedDate);
+        if (dateIdx !== -1 && updatedScheduleDates[dateIdx].slots) {
+          const slots = [...updatedScheduleDates[dateIdx].slots];
+          const slotIdx = slots.findIndex((s: any) => s.id === selectedSlotId || s.startTime === selectedTime || `${s.startTime} - ${s.endTime}` === selectedTime);
+          if (slotIdx !== -1) {
+            const slot = { ...slots[slotIdx] };
+            const slotCap = Number(slot.capacity) || capacity || 1;
+            const slotSold = Number(slot.ticketsSold) || 0;
+            const slotRemaining = slot.seatsRemaining !== undefined ? Number(slot.seatsRemaining) : slotCap - slotSold;
+            if (slotRemaining <= 0 || slotSold >= slotCap) {
+              throw new Error("Selected time slot is sold out");
+            }
+            slot.ticketsSold = slotSold + 1;
+            slot.seatsRemaining = Math.max(0, slotRemaining - 1);
+            slots[slotIdx] = slot;
+            updatedScheduleDates[dateIdx] = { ...updatedScheduleDates[dateIdx], slots };
+          }
+        }
+      }
+
       const nextSold = currentSold + 1;
       const nextSeats = seatsRemaining - 1;
       const nextStatus = nextSeats <= 0 ? "sold_out" : (event.status || "upcoming");
 
       // 1. Update event
-      transaction.update(eventRef, {
+      const eventUpdate: any = {
         ticketsSold: nextSold,
         seatsRemaining: nextSeats,
         status: nextStatus,
         updatedAt: Date.now()
-      });
+      };
+      if (updatedScheduleDates) {
+        eventUpdate.scheduleDates = updatedScheduleDates;
+      }
+
+      transaction.update(eventRef, eventUpdate);
 
       // 2. Create ticket
       const ticketRef = doc(collection(serverDb, "businesses", businessId, "tickets"));
@@ -601,12 +632,17 @@ async function updateEventTicketPayment(businessId: string, eventId: string, buy
         customerPhone: buyerDetails.customerPhone,
         customerEmail: buyerDetails.customerEmail,
         format: event.format,
-        eventDate: event.eventDate,
-        eventTime: event.eventTime,
+        eventDate: selectedDate,
+        eventTime: selectedTime,
+        slotId: selectedSlotId,
+        timezone: buyerDetails.timezone || event.timezone || "Asia/Kolkata",
         price: Number(event.price) || 0,
         paymentStatus: "paid",
         paymentId: buyerDetails.paymentId,
         razorpayOrderId: buyerDetails.razorpayOrderId,
+        meetingUrl: event.meetingUrl,
+        venueAddress: event.venueAddress,
+        venueCity: event.venueCity,
         checkedIn: false,
         createdAt: Date.now(),
         updatedAt: Date.now()
@@ -621,7 +657,7 @@ async function updateEventTicketPayment(businessId: string, eventId: string, buy
       await createServerNotification(businessId, {
         type: "event",
         title: "New Event Ticket Sold",
-        message: `${buyerDetails.customerName} purchased a ticket for "${result.ticket.eventTitle}".`,
+        message: `${buyerDetails.customerName} purchased a ticket for "${result.ticket.eventTitle}" on ${result.ticket.eventDate} (${result.ticket.eventTime}).`,
         link: "/dashboard/events",
         entityType: "event",
         entityId: eventId,
@@ -1811,6 +1847,7 @@ app.post("/api/events/whatsapp-ticket", (req, res) => {
       eventTitle,
       eventDate,
       eventTime,
+      timezone,
       customerName,
       customerPhone,
       price,
@@ -1843,8 +1880,8 @@ app.post("/api/events/whatsapp-ticket", (req, res) => {
         `Your seat for *${eventTitle}* has been successfully reserved with ${merchantName}!\n\n` +
         `🎫 *Ticket ID:* \`${ticketId}\`\n` +
         `📅 *Date:* ${eventDate}\n` +
-        `⏰ *Time:* ${eventTime}\n` +
-        `🏷️ *Format:* ${format === "online" ? "🌐 Online Webinar / Masterclass" : "📍 In-Person Offline"}\n` +
+        `⏰ *Time:* ${eventTime}${timezone ? ` (${timezone})` : ""}\n` +
+        `🏷️ *Format:* ${format === "online" ? "🌐 Online Webinar / Masterclass" : format === "hybrid" ? "🔄 Hybrid" : "📍 In-Person Offline"}\n` +
         accessInfo +
         `💵 *Amount:* ${price && price > 0 ? `₹${price} (Paid)` : "Free Entry"}\n\n` +
         `⚡ Please keep this ticket handy upon joining/arrival.\n` +
@@ -2081,7 +2118,7 @@ app.post("/api/quotes/verify-payment", paymentLimiter, async (req, res) => {
 // 13. Event Razorpay Order Creation
 app.post("/api/events/create-rzp", async (req, res) => {
   try {
-    const { businessId, eventId, customerName, customerPhone } = req.body;
+    const { businessId, eventId, customerName, customerPhone, eventDate, eventTime, slotId, timezone } = req.body;
     if (!businessId || !eventId) {
       return res.status(400).json({ error: "Missing businessId or eventId" });
     }
@@ -2117,6 +2154,10 @@ app.post("/api/events/create-rzp", async (req, res) => {
           eventId,
           customerName: (customerName || "").slice(0, 40),
           customerPhone: (customerPhone || "").slice(0, 15),
+          eventDate: eventDate || eventData.eventDate || "",
+          eventTime: eventTime || eventData.eventTime || "",
+          slotId: slotId || "",
+          timezone: timezone || eventData.timezone || "Asia/Kolkata",
           type: "event_ticket"
         }
       });
@@ -2149,7 +2190,7 @@ app.post("/api/events/create-rzp", async (req, res) => {
 // 14. Event Payment Verification (Authoritative Binding & Atomic Ticket Issuance)
 app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, businessId, eventId, customerName, customerPhone, customerEmail } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, businessId, eventId, customerName, customerPhone, customerEmail, eventDate, eventTime, slotId, timezone } = req.body;
 
     if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
       return res.status(400).json({ error: "Missing event payment verification parameters" });
@@ -2178,6 +2219,10 @@ app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
     let buyerName = customerName;
     let buyerPhone = customerPhone;
     let buyerEmail = customerEmail;
+    let bookedDate = eventDate;
+    let bookedTime = eventTime;
+    let bookedSlotId = slotId;
+    let bookedTimezone = timezone;
 
     try {
       const rzpOrder = await creds.client.orders.fetch(razorpay_order_id);
@@ -2187,6 +2232,10 @@ app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
         if (rzpOrder.notes.customerName && !buyerName) buyerName = rzpOrder.notes.customerName;
         if (rzpOrder.notes.customerPhone && !buyerPhone) buyerPhone = rzpOrder.notes.customerPhone;
         if (rzpOrder.notes.customerEmail && !buyerEmail) buyerEmail = rzpOrder.notes.customerEmail;
+        if (rzpOrder.notes.eventDate && !bookedDate) bookedDate = rzpOrder.notes.eventDate;
+        if (rzpOrder.notes.eventTime && !bookedTime) bookedTime = rzpOrder.notes.eventTime;
+        if (rzpOrder.notes.slotId && !bookedSlotId) bookedSlotId = rzpOrder.notes.slotId;
+        if (rzpOrder.notes.timezone && !bookedTimezone) bookedTimezone = rzpOrder.notes.timezone;
       }
     } catch (orderFetchErr) {
       console.warn("[Razorpay] Could not fetch authoritative event order notes:", orderFetchErr);
@@ -2202,6 +2251,10 @@ app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
       customerName: buyerName || "Guest",
       customerPhone: buyerPhone || "",
       customerEmail: buyerEmail || "",
+      eventDate: bookedDate,
+      eventTime: bookedTime,
+      slotId: bookedSlotId,
+      timezone: bookedTimezone,
       paymentId: razorpay_payment_id,
       razorpayOrderId: razorpay_order_id,
     });
