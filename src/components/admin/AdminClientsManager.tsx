@@ -52,6 +52,7 @@ export const AdminClientsManager: React.FC<AdminClientsManagerProps> = ({ onNoti
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
 
   const [form, setForm] = useState<PlatformClientBrand>({
     id: '',
@@ -66,6 +67,28 @@ export const AdminClientsManager: React.FC<AdminClientsManagerProps> = ({ onNoti
     order: 1,
     createdAt: Date.now(),
   });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be under 5MB.');
+      return;
+    }
+    setUploadingImage(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setForm((prev) => ({ ...prev, logoUrl: event.target!.result as string }));
+      }
+      setUploadingImage(false);
+    };
+    reader.onerror = () => {
+      alert('Failed to read image file.');
+      setUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const notify = (msg: string, type: 'success' | 'info' | 'error' = 'success') => {
     if (onNotify) onNotify(msg, type);
@@ -409,25 +432,46 @@ export const AdminClientsManager: React.FC<AdminClientsManagerProps> = ({ onNoti
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Logo Image URL *</label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={form.logoUrl}
-                    onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="flex-1 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
-                  <img
-                    src={form.logoUrl}
-                    alt="Preview"
-                    referrerPolicy="no-referrer"
-                    className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
-                    onError={(e) => {
-                      (e.target as any).src = PRESET_LOGOS[0].url;
-                    }}
-                  />
+                <label className="block text-xs font-bold text-slate-700 mb-1">Brand Logo / Image *</label>
+                
+                {/* File Upload or URL input */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl transition text-xs font-bold text-slate-700">
+                        <ImageIcon className="w-4 h-4 text-emerald-600" />
+                        <span>{uploadingImage ? 'Reading Image...' : 'Upload Image from Device'}</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <img
+                      src={form.logoUrl}
+                      alt="Preview"
+                      referrerPolicy="no-referrer"
+                      className="w-11 h-11 rounded-xl object-cover border-2 border-slate-200 shrink-0 bg-white"
+                      onError={(e) => {
+                        (e.target as any).src = PRESET_LOGOS[0].url;
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400">or URL:</span>
+                    <input
+                      type="url"
+                      value={form.logoUrl}
+                      onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                      placeholder="https://images.unsplash.com/..."
+                      className="flex-1 text-xs p-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                    />
+                  </div>
                 </div>
 
                 {/* Quick select presets */}
