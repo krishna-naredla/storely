@@ -14,6 +14,9 @@ import { PublicStatusView } from './PublicStatusView';
 import { evaluatePublicAvailability } from '../../utils/publicAvailability';
 import { CanonicalPublicView } from '../../utils/publicRouteResolver';
 import { isCreatorProfile } from '../../utils/profileHelper';
+import { useAuth } from '../../context/AuthContext';
+import { getAppLogo } from '../../utils/branding';
+import { Loader2 } from 'lucide-react';
 
 interface ViewRouterProps {
   viewMode:
@@ -30,13 +33,38 @@ interface ViewRouterProps {
     | 'reviews'
     | 'recommendations'
     | 'affiliate';
-  targetBusiness: BusinessProfile;
+  targetBusiness?: BusinessProfile | null;
   isOwner?: boolean;
   isExplicitPreview?: boolean;
   onBackToDashboard?: () => void;
   onOpenStorefront?: (slug: string, path: string) => void;
   onOpenDigitalCard?: () => void;
+  children?: React.ReactNode;
 }
+
+export const StrictBusinessVerificationGuard: React.FC<{
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}> = ({ children, fallback }) => {
+  const { authLoading, businessLoading, businessesLoaded, currentUser, resolved } = useAuth();
+
+  // Block rendering until auth is initialized and business ownership lookup is completed
+  if (authLoading || (currentUser && businessLoading) || (currentUser && !businessesLoaded) || !resolved) {
+    if (fallback) return <>{fallback}</>;
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 overflow-hidden">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-32 h-32 sm:w-48 sm:h-48 flex items-center justify-center">
+            <img src={getAppLogo()} alt="Storelly" className="w-full h-full object-contain" />
+          </div>
+          <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
 
 export const ViewRouter: React.FC<ViewRouterProps> = ({
   viewMode,
@@ -46,7 +74,34 @@ export const ViewRouter: React.FC<ViewRouterProps> = ({
   onBackToDashboard,
   onOpenStorefront,
   onOpenDigitalCard,
+  children,
 }) => {
+  const { authLoading, businessLoading, currentUser, businessesLoaded, resolved } = useAuth();
+
+  // If in dashboard view or targetBusiness not yet resolved, verify auth state first
+  if (viewMode === 'dashboard') {
+    if (authLoading || (currentUser && businessLoading) || (currentUser && !businessesLoaded) || !resolved) {
+      return (
+        <div className="min-h-screen bg-white flex items-center justify-center p-6 overflow-hidden">
+          <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+            <img src={getAppLogo()} alt="Storelly" className="w-full h-full object-contain" />
+          </div>
+        </div>
+      );
+    }
+    return <>{children}</>;
+  }
+
+  if (!targetBusiness) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6 overflow-hidden">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+          <img src={getAppLogo()} alt="Storelly" className="w-full h-full object-contain" />
+        </div>
+      </div>
+    );
+  }
+
   // Enforce preview separation: owner preview controls ONLY show when isExplicitPreview is true, authenticated owner is verified, and business is not deleted
   const activePreview = Boolean(
     isExplicitPreview &&

@@ -13,6 +13,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { initializeFirestore, getFirestore, doc, getDoc, collection, query, where, getDocs, limit, updateDoc, setDoc, runTransaction } from "firebase/firestore";
 import { initializeApp as initAdminApp, getApps as getAdminApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import appletConfig from "./firebase-applet-config.json";
 
 // Initialize Firebase Client for canonical server-side data verification
@@ -26,12 +27,14 @@ const firebaseApp = !getApps().length
     })
   : getApp();
 
-// Initialize Firebase Admin for token verification
+// Initialize Firebase Admin for token verification and authoritative operations
 if (!getAdminApps().length) {
   initAdminApp({
     projectId: appletConfig.projectId,
   });
 }
+
+const adminDb = getAdminFirestore();
 
 const configWithDb = appletConfig as typeof appletConfig & { firestoreDatabaseId?: string };
 const targetDbId =
@@ -2372,13 +2375,39 @@ app.post("/api/businesses/create", async (req: express.Request, res: express.Res
       updatedAt: now,
     };
 
-    const bizRef = doc(serverDb, "businesses", businessId);
-    await setDoc(bizRef, finalBusiness);
+    const bizRef = adminDb.collection("businesses").doc(businessId);
+    await bizRef.set(finalBusiness);
 
     res.json({ success: true, business: finalBusiness });
   } catch (err: any) {
     console.error("[Backend] Error creating business profile:", err);
     res.status(500).json({ error: err.message || "Failed to create business profile." });
+  }
+});
+
+// 13. Authoritative Fetch of User's Businesses by Owner ID
+app.get("/api/businesses/owner/:ownerId", async (req: express.Request, res: express.Response) => {
+  try {
+    const { ownerId } = req.params;
+    if (!ownerId) {
+      return res.status(400).json({ error: "Missing ownerId parameter." });
+    }
+
+    try {
+      const snap = await adminDb.collection("businesses").where("ownerId", "==", ownerId).get();
+      const businesses = snap.docs
+        .map((d) => ({ ...d.data(), id: d.id }))
+        .filter((b: any) => b.status !== "deleted")
+        .sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      return res.json({ success: true, businesses });
+    } catch (dbErr: any) {
+      console.warn("[Backend] adminDb query notice (fallback to client data):", dbErr?.message);
+      return res.json({ success: true, businesses: [] });
+    }
+  } catch (err: any) {
+    console.error("[Backend] Error in owner businesses endpoint:", err);
+    res.json({ success: true, businesses: [] });
   }
 });
 

@@ -395,7 +395,21 @@ const PlatformMaintenanceView: React.FC<PlatformMaintenanceViewProps> = ({ setti
 
 // Main App Container
 function MainContent() {
-  const { currentUser, logout, loading: authLoading } = useAuth();
+  const {
+    currentUser,
+    logout,
+    loading: authLoading,
+    businessLoading,
+    businessesLoaded,
+    businessError,
+    userBusinesses: businesses,
+    currentBusiness: selectedBusiness,
+    setCurrentBusiness: setSelectedBusiness,
+    setUserBusinesses: setBusinesses,
+    selectBusiness,
+    refreshBusinesses,
+    retryLoadBusinesses,
+  } = useAuth();
 
   // Platform Global Settings & Startup Firestore Sync
   const [platformGlobalSettings, setPlatformGlobalSettings] = useState<PlatformGlobalSettings | null>(null);
@@ -447,11 +461,6 @@ function MainContent() {
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'dashboard' | 'storefront'>('dashboard');
-
-  // Business Data States
-  const [businesses, setBusinesses] = useState<BusinessProfile[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<BusinessProfile | null>(null);
-  const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(true);
 
   // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -535,7 +544,7 @@ function MainContent() {
     currentUser,
     loadingUser: authLoading,
     selectedBusiness,
-    isInitializingBusiness: isLoadingBusinesses,
+    isInitializingBusiness: businessLoading,
     publicBusiness,
     isLoadingPublicStore,
     isPublicRoute: Boolean(publicRouteInfo.isPublicRoute || publicStoreSlug),
@@ -695,54 +704,19 @@ function MainContent() {
     }
   }, [publicRouteInfo.slug, resolvePublicStore]);
 
-  // Load Logged-In User's Businesses
-  const loadUserBusinesses = async () => {
-    if (!currentUser) {
-      setBusinesses([]);
-      setSelectedBusiness(null);
-      setIsLoadingBusinesses(false);
-      return;
-    }
-
-    try {
-      setIsLoadingBusinesses(true);
-      const userBizs = await getUserBusinesses(currentUser.uid);
-      const activeBizs = (userBizs || []).filter((b) => b.status !== 'deleted');
-      setBusinesses(activeBizs);
-
-      if (activeBizs.length > 0) {
-        // Restore last selected or select first
-        const savedId = localStorage.getItem('storelly_active_biz');
-        const found = activeBizs.find((b) => b.id === savedId) || activeBizs[0];
-        setSelectedBusiness(found);
-        localStorage.setItem('storelly_active_biz', found.id);
-      } else {
-        setSelectedBusiness(null);
-        localStorage.removeItem('storelly_active_biz');
-      }
-    } catch (err) {
-      console.error('Error fetching vendor businesses:', err);
-    } finally {
-      setIsLoadingBusinesses(false);
-    }
-  };
-
-  const handleBusinessDeleted = (deletedId: string) => {
+  const handleBusinessDeleted = async (deletedId: string) => {
     if (publicBusiness?.id === deletedId) {
       setPublicBusiness(null);
       setPublicStoreNotFound(true);
     }
-    setBusinesses((prev) => {
-      const remaining = prev.filter((b) => b.id !== deletedId);
-      if (remaining.length > 0) {
-        setSelectedBusiness(remaining[0]);
-        localStorage.setItem('storelly_active_biz', remaining[0].id);
+    const updated = await refreshBusinesses();
+    if (selectedBusiness?.id === deletedId) {
+      if (updated.length > 0) {
+        selectBusiness(updated[0]);
       } else {
         setSelectedBusiness(null);
-        localStorage.removeItem('storelly_active_biz');
       }
-      return remaining;
-    });
+    }
     setActiveTab('overview');
   };
 
@@ -755,13 +729,7 @@ function MainContent() {
     };
     window.addEventListener('storelly_business_deleted', handleBizDeleted);
     return () => window.removeEventListener('storelly_business_deleted', handleBizDeleted);
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading) {
-      loadUserBusinesses();
-    }
-  }, [currentUser, authLoading]);
+  }, [selectedBusiness?.id]);
 
   // Real-time Push Notification Listener strictly scoped to active selectedBusiness and active profile
   useEffect(() => {
@@ -862,18 +830,16 @@ function MainContent() {
 
   // Business Selector Handler
   const handleSelectBusiness = (biz: BusinessProfile) => {
-    setSelectedBusiness(biz);
-    localStorage.setItem('storelly_active_biz', biz.id);
+    selectBusiness(biz);
     // Reset to overview to ensure no cross-profile tab state leaks
     setActiveTab('overview');
   };
 
   // Onboarding Complete Handler
-  const handleOnboardingComplete = (newBiz: BusinessProfile) => {
-    setBusinesses((prev) => [newBiz, ...prev]);
-    setSelectedBusiness(newBiz);
-    localStorage.setItem('storelly_active_biz', newBiz.id);
+  const handleOnboardingComplete = async (newBiz: BusinessProfile) => {
     setIsOnboardingOpen(false);
+    await refreshBusinesses();
+    selectBusiness(newBiz);
     setActiveTab('overview');
   };
 
@@ -1089,7 +1055,7 @@ function MainContent() {
   // ==========================================
   // ROUTE 2: AUTHENTICATION & LOADING GATES
   // ==========================================
-  if (authLoading || (currentUser && isLoadingBusinesses)) {
+  if (authLoading || (currentUser && businessLoading)) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6 overflow-hidden">
         <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
@@ -1098,6 +1064,39 @@ function MainContent() {
             alt="Storelly"
             className="w-full h-full object-contain"
           />
+        </div>
+      </div>
+    );
+  }
+
+  // Business Resolution Error Gate (Network/Firestore error - NEVER send to onboarding on error!)
+  if (currentUser && businessError && businesses.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <AlertCircle className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 font-heading">Unable to Load Workspace</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            {businessError || 'We encountered a problem connecting to your store data. Please check your connection and retry.'}
+          </p>
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => retryLoadBusinesses()}
+              className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1129,8 +1128,8 @@ function MainContent() {
     );
   }
 
-  // Full-page SaaS Setup Experience for creating a new business or when user has no businesses yet
-  if (isOnboardingOpen || (!selectedBusiness && businesses.length === 0)) {
+  // Full-page SaaS Setup Experience for creating a new business or when user genuinely has 0 businesses
+  if (isOnboardingOpen || (businessesLoaded && !businessError && businesses.length === 0)) {
     if (platformGlobalSettings?.allowNewRegistrations === false && !isAuthorizedAdminUser && businesses.length === 0) {
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -1170,7 +1169,6 @@ function MainContent() {
       >
         <OnboardingWizard
           onComplete={(newBiz) => {
-            setIsOnboardingOpen(false);
             handleOnboardingComplete(newBiz);
           }}
           onCancel={businesses.length > 0 ? () => setIsOnboardingOpen(false) : undefined}
@@ -1186,6 +1184,21 @@ function MainContent() {
   // ==========================================
   // ROUTE 3: LOGGED-IN VENDOR DASHBOARD
   // ==========================================
+  if (!selectedBusiness && businesses.length > 0) {
+    selectBusiness(businesses[0]);
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+          <img
+            src={getAppLogo()}
+            alt="Storelly"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (!selectedBusiness) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6">

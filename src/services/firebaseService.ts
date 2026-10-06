@@ -542,28 +542,131 @@ export async function getBusinessBySlug(rawSlug: string): Promise<BusinessProfil
   return null;
 }
 
-export async function getUserBusinesses(ownerId: string): Promise<BusinessProfile[]> {
-  try {
-    const q = query(
-      collection(db, 'businesses'),
-      where('ownerId', '==', ownerId),
-      orderBy('createdAt', 'desc')
-    );
-    const snap = await getDocs(q);
-    const businesses = snap.docs
-      .map((d) => ({ ...d.data(), id: d.id } as BusinessProfile))
-      .filter((b) => b.status !== 'deleted');
-    
-    // Firestore is authoritative: synchronize local cache strictly to existing businesses
-    const localList = getLocalBusinesses();
-    const updatedLocal = localList.filter(b => b.ownerId !== ownerId).concat(businesses);
-    localStorage.setItem(LOCAL_BIZ_KEY, JSON.stringify(updatedLocal));
-    
-    return businesses;
-  } catch (err) {
-    console.warn('Error getting user businesses from Firestore:', err);
-    return [];
+export async function getUserBusinesses(ownerId: string, email?: string): Promise<BusinessProfile[]> {
+  if (!ownerId && !email) return [];
+  const foundMap = new Map<string, BusinessProfile>();
+
+  // 1. Direct Firestore equality query on ownerId (UID)
+  if (ownerId) {
+    try {
+      const q = query(
+        collection(db, 'businesses'),
+        where('ownerId', '==', ownerId)
+      );
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        const data = { ...d.data(), id: d.id } as BusinessProfile;
+        if (data.status !== 'deleted') {
+          foundMap.set(data.id, data);
+        }
+      });
+    } catch (err) {
+      console.warn('Direct Firestore query for user businesses by ownerId failed:', err);
+    }
   }
+
+  // 2. Secondary resolution by email / ownerEmail if provided or from currentUser
+  const userEmail = email || auth.currentUser?.email;
+  if (userEmail && userEmail.trim()) {
+    const cleanEmail = userEmail.trim();
+    const lowerEmail = cleanEmail.toLowerCase();
+
+    // Query by 'email'
+    try {
+      const qEmail = query(
+        collection(db, 'businesses'),
+        where('email', '==', cleanEmail)
+      );
+      const snapEmail = await getDocs(qEmail);
+      snapEmail.docs.forEach((d) => {
+        const data = { ...d.data(), id: d.id } as BusinessProfile;
+        if (data.status !== 'deleted') {
+          foundMap.set(data.id, data);
+        }
+      });
+    } catch (e) {
+      // Non-blocking
+    }
+
+    if (cleanEmail !== lowerEmail) {
+      try {
+        const qEmailLower = query(
+          collection(db, 'businesses'),
+          where('email', '==', lowerEmail)
+        );
+        const snapEmailLower = await getDocs(qEmailLower);
+        snapEmailLower.docs.forEach((d) => {
+          const data = { ...d.data(), id: d.id } as BusinessProfile;
+          if (data.status !== 'deleted') {
+            foundMap.set(data.id, data);
+          }
+        });
+      } catch (e) {
+        // Non-blocking
+      }
+    }
+
+    // Query by 'ownerEmail'
+    try {
+      const qOwnerEmail = query(
+        collection(db, 'businesses'),
+        where('ownerEmail', '==', cleanEmail)
+      );
+      const snapOwnerEmail = await getDocs(qOwnerEmail);
+      snapOwnerEmail.docs.forEach((d) => {
+        const data = { ...d.data(), id: d.id } as BusinessProfile;
+        if (data.status !== 'deleted') {
+          foundMap.set(data.id, data);
+        }
+      });
+    } catch (e) {
+      // Non-blocking
+    }
+
+    // Query by 'ownerId == email' (legacy compatibility)
+    try {
+      const qOwnerAsEmail = query(
+        collection(db, 'businesses'),
+        where('ownerId', '==', cleanEmail)
+      );
+      const snapOwnerAsEmail = await getDocs(qOwnerAsEmail);
+      snapOwnerAsEmail.docs.forEach((d) => {
+        const data = { ...d.data(), id: d.id } as BusinessProfile;
+        if (data.status !== 'deleted') {
+          foundMap.set(data.id, data);
+        }
+      });
+    } catch (e) {
+      // Non-blocking
+    }
+  }
+
+  const businesses = Array.from(foundMap.values()).sort(
+    (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+  );
+
+  if (businesses.length > 0) {
+    const localList = getLocalBusinesses();
+    const updatedLocal = localList
+      .filter((b) => b.ownerId !== ownerId && (!userEmail || (b.email !== userEmail && b.ownerEmail !== userEmail)))
+      .concat(businesses);
+    localStorage.setItem(LOCAL_BIZ_KEY, JSON.stringify(updatedLocal));
+    return businesses;
+  }
+
+  // 3. Fallback to locally cached businesses for this user UID or email
+  const localList = getLocalBusinesses();
+  const userBizs = localList.filter(
+    (b) =>
+      (b.ownerId === ownerId ||
+        (userEmail && (b.email === userEmail || b.ownerEmail === userEmail || b.ownerId === userEmail))) &&
+      b.status !== 'deleted'
+  );
+  if (userBizs.length > 0) {
+    return userBizs;
+  }
+
+  return [];
 }
 
 export async function updateBusiness(businessId: string, data: Partial<BusinessProfile>): Promise<void> {
@@ -730,6 +833,7 @@ export async function createCategory(businessId: string, data: Omit<Category, 'i
     ...data,
     id: catId,
     businessId,
+    ownerId: auth.currentUser?.uid || undefined,
     slug: data.slug || generateSlug(data.name),
     createdAt: now,
     updatedAt: now,
@@ -838,6 +942,7 @@ export async function createCatalogItem(
     ...data,
     id: itemId,
     businessId,
+    ownerId: auth.currentUser?.uid || undefined,
     slug: data.slug || generateSlug(data.name),
     createdAt: now,
     updatedAt: now,

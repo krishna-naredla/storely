@@ -16,10 +16,19 @@ import { getUserBusinesses, createBusiness } from '../services/firebaseService';
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
+  authLoading: boolean;
+  businessLoading: boolean;
+  businessesLoaded: boolean;
+  resolved: boolean;
+  businessError: string | null;
+  hasExistingBusiness: boolean;
   currentBusiness: BusinessProfile | null;
   userBusinesses: BusinessProfile[];
   setCurrentBusiness: (business: BusinessProfile | null) => void;
-  refreshBusinesses: () => Promise<void>;
+  setUserBusinesses: React.Dispatch<React.SetStateAction<BusinessProfile[]>>;
+  selectBusiness: (business: BusinessProfile) => void;
+  refreshBusinesses: () => Promise<BusinessProfile[]>;
+  retryLoadBusinesses: () => Promise<BusinessProfile[]>;
   login: (email: string, pass: string) => Promise<void>;
   signup: (email: string, pass: string, name?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -32,58 +41,91 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [businessLoading, setBusinessLoading] = useState<boolean>(false);
+  const [businessesLoaded, setBusinessesLoaded] = useState<boolean>(false);
+  const [businessError, setBusinessError] = useState<string | null>(null);
   const [currentBusiness, setCurrentBusiness] = useState<BusinessProfile | null>(null);
   const [userBusinesses, setUserBusinesses] = useState<BusinessProfile[]>([]);
 
-  const refreshBusinesses = async () => {
+  // Derived readiness: authentication completed and (either unauthenticated OR businesses fully resolved OR failure recorded)
+  const resolved = !authLoading && (!currentUser || (!businessLoading && (businessesLoaded || Boolean(businessError))));
+  const hasExistingBusiness = businessesLoaded && !businessError && userBusinesses.length > 0;
+
+  const resolveUserBusinesses = async (uid: string, email?: string | null, retryCount = 0): Promise<BusinessProfile[]> => {
+    setBusinessLoading(true);
+    setBusinessError(null);
+    try {
+      // Authoritative Firestore lookup by ownerId & email
+      const allBiz = await getUserBusinesses(uid, email || undefined);
+      const businesses = (allBiz || []).filter((b) => b.status !== 'deleted');
+      setUserBusinesses(businesses);
+
+      if (businesses.length > 0) {
+        // Restore last selected active business if exists in user's owned list, otherwise default to first
+        const savedId = localStorage.getItem('storelly_active_biz');
+        const found = businesses.find((b) => b.id === savedId) || businesses[0];
+        setCurrentBusiness(found);
+        localStorage.setItem('storelly_active_biz', found.id);
+      } else {
+        // Explicitly 0 businesses found in Firestore
+        setCurrentBusiness(null);
+        localStorage.removeItem('storelly_active_biz');
+      }
+
+      setBusinessesLoaded(true);
+      setBusinessError(null);
+      return businesses;
+    } catch (err: any) {
+      console.error('Error fetching businesses in AuthContext:', err);
+      if (retryCount < 2) {
+        await new Promise((r) => setTimeout(r, 600));
+        return resolveUserBusinesses(uid, email, retryCount + 1);
+      }
+      setBusinessError(err?.message || 'Failed to load business profiles from cloud.');
+      setBusinessesLoaded(false); // Strictly keep false on error - do NOT mark as successfully loaded!
+      return [];
+    } finally {
+      setBusinessLoading(false);
+    }
+  };
+
+  const selectBusiness = (business: BusinessProfile) => {
+    setCurrentBusiness(business);
+    localStorage.setItem('storelly_active_biz', business.id);
+  };
+
+  const refreshBusinesses = async (): Promise<BusinessProfile[]> => {
     if (!currentUser) {
       setUserBusinesses([]);
       setCurrentBusiness(null);
-      return;
+      setBusinessesLoaded(false);
+      setBusinessLoading(false);
+      return [];
     }
-    try {
-      const allBiz = await getUserBusinesses(currentUser.uid);
-      const businesses = (allBiz || []).filter((b) => b.status !== 'deleted');
-      setUserBusinesses(businesses);
-      if (businesses.length > 0) {
-        // Keep current selected if valid, otherwise pick first
-        setCurrentBusiness((prev) => {
-          if (prev && businesses.some((b) => b.id === prev.id)) {
-            const updated = businesses.find((b) => b.id === prev.id);
-            return updated || prev;
-          }
-          return businesses[0];
-        });
-      } else {
-        setCurrentBusiness(null);
-      }
-    } catch (err) {
-      console.error('Failed to load user businesses:', err);
-    }
+    return resolveUserBusinesses(currentUser.uid, currentUser.email);
+  };
+
+  const retryLoadBusinesses = async (): Promise<BusinessProfile[]> => {
+    if (!currentUser) return [];
+    return resolveUserBusinesses(currentUser.uid, currentUser.email);
   };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setAuthLoading(false);
+
       if (user) {
-        try {
-          const allBiz = await getUserBusinesses(user.uid);
-          const businesses = (allBiz || []).filter((b) => b.status !== 'deleted');
-          setUserBusinesses(businesses);
-          if (businesses.length > 0) {
-            setCurrentBusiness(businesses[0]);
-          } else {
-            setCurrentBusiness(null);
-          }
-        } catch (e) {
-          console.error('Error fetching businesses on auth change:', e);
-        }
+        await resolveUserBusinesses(user.uid, user.email);
       } else {
         setUserBusinesses([]);
         setCurrentBusiness(null);
+        setBusinessesLoaded(false);
+        setBusinessLoading(false);
+        setBusinessError(null);
+        localStorage.removeItem('storelly_active_biz');
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -106,8 +148,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await signOut(auth);
+    setCurrentUser(null);
     setCurrentBusiness(null);
     setUserBusinesses([]);
+    setBusinessesLoaded(false);
+    setBusinessLoading(false);
+    setBusinessError(null);
+    localStorage.removeItem('storelly_active_biz');
   };
 
   const resetPassword = async (email: string) => {
@@ -123,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ownerId: currentUser.uid,
     });
     await refreshBusinesses();
-    setCurrentBusiness(newBiz);
+    selectBusiness(newBiz);
     return newBiz;
   };
 
@@ -131,11 +178,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         currentUser,
-        loading,
+        loading: authLoading,
+        authLoading,
+        businessLoading,
+        businessesLoaded,
+        resolved,
+        businessError,
+        hasExistingBusiness,
         currentBusiness,
         userBusinesses,
         setCurrentBusiness,
+        setUserBusinesses,
+        selectBusiness,
         refreshBusinesses,
+        retryLoadBusinesses,
         login,
         signup,
         loginWithGoogle,
