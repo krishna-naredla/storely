@@ -86,6 +86,7 @@ import { CustomerOrdersModal } from './CustomerOrdersModal';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
 import { EventsShowcase } from './EventsShowcase';
 import { resolveItemAction } from '../../utils/itemActionResolver';
+import { resolveThemePrimaryColor } from '../../utils/portfolioTheme';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -238,6 +239,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   
 
   const bizMeta = BUSINESS_TYPES[business.type] || BUSINESS_TYPES.retail;
+  const primaryThemeColor = resolveThemePrimaryColor(business);
 
   // Module enablement flags
   const isCreator = isCreatorProfile(business);
@@ -614,11 +616,15 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 pb-28 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Top Admin Control Bar (if viewing from app preview / management) */}
       {onBackToDashboard && (
-        <aside aria-label="Customer preview toolbar" className="sticky top-0 z-40 bg-emerald-600 text-white px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shadow-md border-b border-slate-800">
+        <aside
+          aria-label="Customer preview toolbar"
+          className="sticky top-0 z-40 text-white px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shadow-md border-b border-slate-800"
+          style={{ backgroundColor: primaryThemeColor }}
+        >
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="font-semibold text-slate-200 truncate">Customer Storefront Preview</span>
-            <span className="hidden sm:inline text-slate-400">({bizMeta.label})</span>
+            <span className="w-2 h-2 rounded-full bg-white/80 animate-pulse shrink-0" />
+            <span className="font-semibold text-white truncate">Customer Storefront Preview</span>
+            <span className="hidden sm:inline text-white/70">({bizMeta.label})</span>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -626,7 +632,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenDigitalCard}
-                className="px-2.5 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold transition flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg bg-black/30 hover:bg-black/40 text-white font-bold transition flex items-center gap-1 cursor-pointer border border-white/20"
               >
                 <QrCode className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Visiting Card & QR</span>
@@ -635,7 +641,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             <button
               type="button"
               onClick={onBackToDashboard}
-              className="px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg bg-emerald-700 hover:bg-emerald-500 font-bold text-white transition flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg bg-black/20 hover:bg-black/30 font-bold text-white transition flex items-center gap-1 cursor-pointer border border-white/20"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Dashboard</span>
@@ -704,7 +710,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                       className="w-full h-full object-cover object-center rounded-xl sm:rounded-2xl"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-700 font-black text-2xl sm:text-4xl uppercase font-heading flex items-center justify-center select-none">
+                    <div
+                      className="w-full h-full rounded-xl sm:rounded-2xl font-black text-2xl sm:text-4xl uppercase font-heading flex items-center justify-center select-none shadow-inner"
+                      style={{ backgroundColor: primaryThemeColor, color: '#ffffff' }}
+                    >
                       {business.name.substring(0, 2)}
                     </div>
                   )}
@@ -781,7 +790,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                   href={`https://wa.me/${(business.whatsapp || business.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${business.name}, I'm interested in your offerings.`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 md:flex-none min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 md:flex-none min-h-[44px] px-5 py-2.5 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer hover:opacity-90 active:scale-95"
+                  style={{ backgroundColor: primaryThemeColor }}
                 >
                   <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>WhatsApp Now</span>
@@ -935,9 +945,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     onClick={() => setSelectedCategory('all')}
                     className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all cursor-pointer border-2 ${
                       selectedCategory === 'all'
-                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                        ? 'text-white shadow-lg'
                         : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
                     }`}
+                    style={selectedCategory === 'all' ? { backgroundColor: primaryThemeColor, borderColor: primaryThemeColor } : {}}
                   >
                     All Items
                   </button>
@@ -952,9 +963,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                         onClick={() => setSelectedCategory(cat.id)}
                         className={`min-h-[40px] px-5 py-2.5 rounded-2xl text-xs font-black shrink-0 transition-all flex items-center gap-2 cursor-pointer border-2 ${
                           isSelected
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                            ? 'text-white shadow-lg'
                             : 'bg-white border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-200'
                         }`}
+                        style={isSelected ? { backgroundColor: primaryThemeColor, borderColor: primaryThemeColor } : {}}
                       >
                         <span>{cat.name}</span>
                         <span
@@ -1203,7 +1215,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                e.stopPropagation();
                                handleDigitalPurchase(item);
                             }}
-                            className="min-h-[44px] px-4 py-2.5 ds-btn-primary text-xs font-bold rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2"
+                            className="min-h-[44px] px-4 py-2.5 text-white text-xs font-bold rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2 hover:opacity-90"
+                            style={{ backgroundColor: primaryThemeColor }}
                           >
                             <Download className="w-4 h-4" />
                             <span className="hidden sm:inline">{actionResult.buttonText}</span>
@@ -1215,7 +1228,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               e.stopPropagation();
                               setSelectedItemForBooking(item);
                             }}
-                            className="min-h-[44px] px-4 py-2.5 ds-btn-primary text-xs font-bold rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2"
+                            className="min-h-[44px] px-4 py-2.5 text-white text-xs font-bold rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2 hover:opacity-90"
+                            style={{ backgroundColor: primaryThemeColor }}
                           >
                             <CalendarCheck className="w-4 h-4" />
                             <span className="hidden sm:inline">{actionResult.buttonText}</span>
@@ -1235,8 +1249,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                     ? 'bg-[var(--g100)] text-[var(--t3)] cursor-not-allowed shadow-none'
                                     : totalVariantQty > 0
                                     ? 'bg-[var(--g100)] text-[var(--g700)] border-2 border-[var(--g600)] hover:bg-[var(--g200)]'
-                                    : 'ds-btn-primary'
+                                    : 'text-white hover:opacity-90'
                                 }`}
+                                style={item.inStock !== false && totalVariantQty === 0 ? { backgroundColor: primaryThemeColor } : {}}
                               >
                                 {totalVariantQty > 0 ? (
                                   <span>In Cart ({totalVariantQty})</span>
@@ -1286,8 +1301,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                                 className={`min-h-[44px] px-4 py-2.5 rounded-[var(--r12)] font-bold text-xs shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-2 ${
                                   item.inStock === false
                                     ? 'bg-[var(--g100)] text-[var(--t3)] cursor-not-allowed shadow-none'
-                                    : 'ds-btn-primary'
+                                    : 'text-white hover:opacity-90'
                                 }`}
+                                style={item.inStock !== false ? { backgroundColor: primaryThemeColor } : {}}
                               >
                                 <Plus className="w-4 h-4" />
                                 <span>Add to Cart</span>
@@ -1303,7 +1319,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               const msg = encodeURIComponent(`Hi ${business.name}, I'm interested in "${item.name}" (${business.currencySymbol}${displayPrice}). Please share more details.`);
                               window.open(`https://wa.me/${waPhone}?text=${msg}`, '_blank');
                             }}
-                            className="min-h-[44px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-[var(--r12)] font-bold text-xs shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+                            className="min-h-[44px] px-4 py-2.5 text-white rounded-[var(--r12)] font-bold text-xs shadow-[var(--shadow-xs)] transition active:scale-95 cursor-pointer flex items-center gap-1.5 hover:opacity-90"
+                            style={{ backgroundColor: primaryThemeColor }}
                             title="Inquire on WhatsApp"
                           >
                             <MessageCircle className="w-4 h-4" />
@@ -1585,7 +1602,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             className="w-full p-4 bg-slate-950 text-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 flex items-center justify-between gap-4 group active:scale-95 transition-all"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0 group-hover:rotate-12 transition-transform">
+              <div
+                className="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-sm shrink-0 group-hover:rotate-12 transition-transform shadow-md"
+                style={{ backgroundColor: primaryThemeColor }}
+              >
                 {totalItemsCount}
               </div>
               <div className="text-left">
@@ -1596,7 +1616,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl text-emerald-400 text-xs font-black uppercase tracking-widest group-hover:bg-emerald-500 group-hover:text-slate-950 transition-all">
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+              style={{ backgroundColor: primaryThemeColor }}
+            >
               <span>Checkout</span>
               <ChevronRight className="w-4 h-4" />
             </div>

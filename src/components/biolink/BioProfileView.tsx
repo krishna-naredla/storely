@@ -34,6 +34,7 @@ import {
 } from './SocialBrandIcons';
 import { DEFAULT_BIO_THEME } from './constants';
 import { getBusinessLogo } from '../../utils/branding';
+import { resolveThemePrimaryColor } from '../../utils/portfolioTheme';
 
 interface Props {
   business: BusinessProfile;
@@ -53,6 +54,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
   const businessSlug = business?.slug || '';
   const businessTagline = business?.tagline || '';
   const rawTheme = business?.bioTheme || {};
+  const primaryThemeColor = resolveThemePrimaryColor(business);
 
   const presetKey = rawTheme?.themePreset || rawTheme?.presetId || 'classic_green';
   const preset = (BIO_THEME_PRESETS && BIO_THEME_PRESETS[presetKey]) ? BIO_THEME_PRESETS[presetKey] : (BIO_THEME_PRESETS?.['classic_green'] || DEFAULT_BIO_THEME);
@@ -86,6 +88,7 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
     showStoreLink: rawTheme?.showStoreLink === true || (business as any)?.showStoreOnBio === true,
     showPortfolioLink: rawTheme?.showPortfolioLink === true || (business as any)?.showPortfolioOnBio === true,
     showOfficialLinksBadge: rawTheme?.showOfficialLinksBadge === true || (business as any)?.showOfficialLinksBadge === true,
+    primaryColor: primaryThemeColor,
   };
 
   const canonicalBioUrl = getBioLinkUrl(businessSlug);
@@ -458,8 +461,8 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
               <div
                 className={`w-full h-full flex items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black shadow-inner ${getAvatarRadiusClass()}`}
                 style={{
-                  backgroundColor: theme.buttonColor,
-                  color: theme.buttonTextColor,
+                  backgroundColor: theme.buttonColor && theme.buttonColor !== '#FFFFFF' ? theme.buttonColor : primaryThemeColor,
+                  color: '#ffffff',
                 }}
               >
                 {business.name.charAt(0).toUpperCase()}
@@ -740,17 +743,21 @@ export const BioProfileView: React.FC<Props> = ({ business, onBackToDashboard })
                   tabIndex={0}
                   aria-label={`${link.title}${displaySubtitle ? ` - ${displaySubtitle}` : ''}`}
                   className={`w-full h-full group text-left cursor-pointer flex items-center p-3.5 xs:p-4 sm:p-4.5 md:p-5 min-h-[64px] xs:min-h-[68px] sm:min-h-[76px] md:min-h-[82px] border relative overflow-hidden transition-all duration-200 hover:scale-[1.015] active:scale-[0.985] shadow-xs hover:shadow-md touch-manipulation select-none ${getRadiusClass()} ${getHoverClass()} ${
-                    isHighlight ? 'ring-2 sm:ring-3 ring-emerald-400 shadow-md col-span-full' : ''
+                    isHighlight ? 'ring-2 sm:ring-3 shadow-md col-span-full' : ''
                   }`}
                   style={{
                     backgroundColor: theme.buttonColor,
                     color: theme.buttonTextColor,
-                    borderColor: isHighlight ? '#10B981' : theme.buttonBorderColor,
+                    borderColor: isHighlight ? primaryThemeColor : theme.buttonBorderColor,
+                    ...(isHighlight ? { ringColor: primaryThemeColor } : {}),
                   }}
                 >
                   {/* Highlight Ribbon / Badge */}
                   {isHighlight && (
-                    <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-[10px] sm:text-xs font-black text-white uppercase tracking-wider rounded-bl-xl shadow-xs">
+                    <div
+                      className="absolute top-0 right-0 px-3 py-1 text-[10px] sm:text-xs font-black text-white uppercase tracking-wider rounded-bl-xl shadow-xs"
+                      style={{ backgroundColor: primaryThemeColor }}
+                    >
                       Featured
                     </div>
                   )}

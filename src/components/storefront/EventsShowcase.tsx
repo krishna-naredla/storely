@@ -24,6 +24,7 @@ import {
 import { BusinessProfile, EventItem, EventTicket } from '../../types';
 import { EventCheckoutModal } from './EventCheckoutModal';
 import { cleanupStaleEventHolds } from '../../services/firebaseService';
+import { resolveThemePrimaryColor } from '../../utils/portfolioTheme';
 
 interface EventsShowcaseProps {
   events: EventItem[];
@@ -44,6 +45,7 @@ export const EventsShowcase: React.FC<EventsShowcaseProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [sharingEventId, setSharingEventId] = useState<string | null>(null);
+  const primaryThemeColor = resolveThemePrimaryColor(business);
 
   // Filter out cancelled events on public storefront
   const activeEvents = useMemo(() => {
@@ -530,13 +532,12 @@ export const EventsShowcase: React.FC<EventsShowcaseProps> = ({
                         type="button"
                         onClick={() => handleOpenTicketModal(event)}
                         disabled={isSoldOut}
-                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                           isSoldOut
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                            : event.price === 0
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
-                            : 'bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/20'
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                            : 'text-white hover:opacity-90 active:scale-95'
                         }`}
+                        style={!isSoldOut ? { backgroundColor: primaryThemeColor } : {}}
                       >
                         <Ticket className="w-4 h-4" />
                         <span>{isSoldOut ? 'Sold Out' : event.price === 0 ? 'Register for Free' : `Get Ticket • ₹${event.price}`}</span>

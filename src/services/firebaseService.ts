@@ -2133,7 +2133,7 @@ export async function getCreatorAnalyticsSummary(
     // 2. Consultation Revenue: Authoritative paid/confirmed transactions only
     const filteredBookings = bookings.filter((b) => {
       if (startTime > 0 && (b.createdAt || 0) < startTime) return false;
-      return b.status !== 'cancelled' && b.status !== 'refunded' && b.paymentStatus !== 'refunded';
+      return (b.status as string) !== 'cancelled' && (b.status as string) !== 'refunded' && b.paymentStatus !== 'refunded';
     });
     const pendingBookings = filteredBookings.filter((b) => b.status === 'pending' && b.paymentStatus !== 'paid').length;
     const completedBookings = filteredBookings.filter((b) => b.status === 'completed' || (b.status === 'confirmed' && b.paymentStatus === 'paid')).length;
@@ -3003,13 +3003,18 @@ export async function deleteEvent(
 }
 
 /**
- * Cancel an event and update tickets to refunded
+ * Cancel an event and execute real Razorpay refunds for paid tickets
  */
 export async function cancelEvent(
   businessId: string,
   eventId: string,
   cancellationReason?: string
-): Promise<{ event: EventItem; tickets: EventTicket[] }> {
+): Promise<{
+  event: EventItem;
+  tickets: EventTicket[];
+  refundedCount: number;
+  failedRefundCount: number;
+}> {
   const eventRef = doc(db, 'businesses', businessId, 'events', eventId);
   const eventSnap = await getDoc(eventRef);
   if (!eventSnap.exists()) {
@@ -3025,33 +3030,178 @@ export async function cancelEvent(
     updatedAt: Date.now(),
   });
 
-  // 2. Fetch all tickets for this event and mark as refunded
+  // 2. Fetch all tickets for this event
   const ticketsRef = collection(db, 'businesses', businessId, 'tickets');
   const q = query(ticketsRef, where('eventId', '==', eventId));
   const ticketSnaps = await getDocs(q);
 
-  const batch = writeBatch(db);
   const updatedTickets: EventTicket[] = [];
+  let refundedCount = 0;
+  let failedRefundCount = 0;
 
-  ticketSnaps.docs.forEach((tDoc) => {
+  for (const tDoc of ticketSnaps.docs) {
     const tData = { id: tDoc.id, ...tDoc.data() } as EventTicket;
-    if (tData.paymentStatus !== 'refunded') {
-      batch.update(tDoc.ref, {
+    const ticketDocRef = doc(db, 'businesses', businessId, 'tickets', tData.id);
+
+    // Skip already refunded tickets
+    if (tData.paymentStatus === 'refunded') {
+      updatedTickets.push(tData);
+      continue;
+    }
+
+    // For free tickets or tickets without a payment ID / price 0
+    if (tData.paymentStatus === 'free' || !tData.paymentId || (tData.price || 0) <= 0) {
+      await updateDoc(ticketDocRef, {
         paymentStatus: 'refunded',
+        refundedAt: Date.now(),
         updatedAt: Date.now(),
       });
-      updatedTickets.push({ ...tData, paymentStatus: 'refunded' });
-    } else {
-      updatedTickets.push(tData);
+      updatedTickets.push({ ...tData, paymentStatus: 'refunded', refundedAt: Date.now() });
+      refundedCount++;
+      continue;
     }
-  });
 
-  await batch.commit();
+    // Paid ticket with paymentId: Call server refund endpoint that invokes Razorpay Node SDK
+    try {
+      const response = await fetch('/api/events/refund-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId,
+          ticketId: tData.id,
+          paymentId: tData.paymentId,
+          amount: tData.price,
+          reason: cancellationReason || 'Event cancelled by organizer',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Server confirms Razorpay refund call succeeded
+        const refundId = data.refundId || `refund_${Date.now()}`;
+        await updateDoc(ticketDocRef, {
+          paymentStatus: 'refunded',
+          refundId,
+          refundedAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        updatedTickets.push({
+          ...tData,
+          paymentStatus: 'refunded',
+          refundId,
+          refundedAt: Date.now(),
+        });
+        refundedCount++;
+      } else {
+        // Razorpay refund call failed: leave as refund_failed
+        const errorMsg = data.error || 'Refund rejected by payment provider';
+        console.error(`Razorpay refund failed for ticket ${tData.ticketId}:`, errorMsg);
+        await updateDoc(ticketDocRef, {
+          paymentStatus: 'refund_failed',
+          refundError: errorMsg,
+          refundAttemptedAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        updatedTickets.push({
+          ...tData,
+          paymentStatus: 'refund_failed',
+          refundError: errorMsg,
+          refundAttemptedAt: Date.now(),
+        });
+        failedRefundCount++;
+      }
+    } catch (refundErr: any) {
+      console.error(`Network error refunding ticket ${tData.ticketId}:`, refundErr);
+      const errorMsg = refundErr.message || 'Network error triggering refund';
+      await updateDoc(ticketDocRef, {
+        paymentStatus: 'refund_failed',
+        refundError: errorMsg,
+        refundAttemptedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      updatedTickets.push({
+        ...tData,
+        paymentStatus: 'refund_failed',
+        refundError: errorMsg,
+        refundAttemptedAt: Date.now(),
+      });
+      failedRefundCount++;
+    }
+  }
 
   return {
     event: { ...eventData, status: 'cancelled', cancellationReason },
     tickets: updatedTickets,
+    refundedCount,
+    failedRefundCount,
   };
+}
+
+/**
+ * Manually retry or initiate refund for a single ticket
+ */
+export async function refundSingleTicket(
+  businessId: string,
+  ticketId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const ticketDocRef = doc(db, 'businesses', businessId, 'tickets', ticketId);
+    const snap = await getDoc(ticketDocRef);
+    if (!snap.exists()) {
+      return { success: false, error: 'Ticket not found' };
+    }
+
+    const tData = snap.data() as EventTicket;
+    if (tData.paymentStatus === 'refunded') {
+      return { success: true };
+    }
+
+    if (tData.paymentStatus === 'free' || !tData.paymentId || (tData.price || 0) <= 0) {
+      await updateDoc(ticketDocRef, {
+        paymentStatus: 'refunded',
+        refundedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { success: true };
+    }
+
+    const response = await fetch('/api/events/refund-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId,
+        ticketId: tData.id,
+        paymentId: tData.paymentId,
+        amount: tData.price,
+        reason: reason || 'Manual refund requested by organizer',
+      }),
+    });
+
+    const data = await response.json();
+    if (response.ok && data.success) {
+      const refundId = data.refundId || `refund_${Date.now()}`;
+      await updateDoc(ticketDocRef, {
+        paymentStatus: 'refunded',
+        refundId,
+        refundedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { success: true };
+    } else {
+      const errorMsg = data.error || 'Refund rejected by payment provider';
+      await updateDoc(ticketDocRef, {
+        paymentStatus: 'refund_failed',
+        refundError: errorMsg,
+        refundAttemptedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { success: false, error: errorMsg };
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to process refund' };
+  }
 }
 
 /**

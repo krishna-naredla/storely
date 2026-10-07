@@ -12,14 +12,16 @@ import {
   Ticket,
   Calendar,
   AlertCircle,
+  AlertTriangle,
   Copy,
   Check,
   RefreshCw,
   ExternalLink,
   Armchair,
+  RotateCcw,
 } from 'lucide-react';
 import { EventItem, EventTicket, BusinessProfile } from '../../types';
-import { subscribeToEventTickets, checkInTicket } from '../../services/firebaseService';
+import { subscribeToEventTickets, checkInTicket, refundSingleTicket } from '../../services/firebaseService';
 import { exportEventToGoogleCalendar } from '../../services/googleCalendarService';
 import { auth } from '../../config/firebase';
 
@@ -39,8 +41,9 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
   const [tickets, setTickets] = useState<EventTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'checked_in' | 'pending' | 'refunded'>('all');
+  const [filter, setFilter] = useState<'all' | 'checked_in' | 'pending' | 'refunded' | 'refund_failed'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [retryingRefundId, setRetryingRefundId] = useState<string | null>(null);
   const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
   const [syncingCalendar, setSyncingCalendar] = useState(false);
   const [calendarSyncSuccess, setCalendarSyncSuccess] = useState<{
@@ -48,6 +51,7 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
     attendeesCount: number;
   } | null>(null);
   const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     if (!isOpen || !event?.id || !business?.id || !auth?.currentUser) {
@@ -70,7 +74,8 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
   const totalAttendees = tickets.length;
   const checkedInCount = tickets.filter((t) => t.checkedIn).length;
   const refundedCount = tickets.filter((t) => t.paymentStatus === 'refunded').length;
-  const activeAttendees = tickets.filter((t) => t.paymentStatus !== 'refunded');
+  const refundFailedCount = tickets.filter((t) => t.paymentStatus === 'refund_failed').length;
+  const activeAttendees = tickets.filter((t) => t.paymentStatus !== 'refunded' && t.paymentStatus !== 'refund_failed');
   const checkInRate = activeAttendees.length > 0
     ? Math.round((checkedInCount / activeAttendees.length) * 100)
     : 0;
@@ -102,9 +107,10 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
       return false;
     }
 
-    if (filter === 'checked_in') return ticket.checkedIn && ticket.paymentStatus !== 'refunded';
-    if (filter === 'pending') return !ticket.checkedIn && ticket.paymentStatus !== 'refunded';
+    if (filter === 'checked_in') return ticket.checkedIn && ticket.paymentStatus !== 'refunded' && ticket.paymentStatus !== 'refund_failed';
+    if (filter === 'pending') return !ticket.checkedIn && ticket.paymentStatus !== 'refunded' && ticket.paymentStatus !== 'refund_failed';
     if (filter === 'refunded') return ticket.paymentStatus === 'refunded';
+    if (filter === 'refund_failed') return ticket.paymentStatus === 'refund_failed';
     return true;
   });
 
@@ -116,6 +122,24 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
       console.error('Failed to update check-in status:', err);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleRetryRefund = async (ticket: EventTicket) => {
+    try {
+      setRetryingRefundId(ticket.id);
+      const res = await refundSingleTicket(business.id, ticket.id, 'Retry refund by organizer');
+      if (res.success) {
+        setActionMessage({ text: `Refund successfully processed for ticket ${ticket.ticketId}`, type: 'success' });
+      } else {
+        setActionMessage({ text: res.error || `Refund failed for ticket ${ticket.ticketId}`, type: 'error' });
+      }
+      setTimeout(() => setActionMessage(null), 4000);
+    } catch (err: any) {
+      setActionMessage({ text: err.message || 'Refund attempt failed', type: 'error' });
+      setTimeout(() => setActionMessage(null), 4000);
+    } finally {
+      setRetryingRefundId(null);
     }
   };
 
@@ -292,6 +316,33 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
           </div>
         )}
 
+        {/* Action Message Banner */}
+        {actionMessage && (
+          <div
+            className={`px-5 py-2.5 flex items-center justify-between text-xs font-bold ${
+              actionMessage.type === 'success'
+                ? 'bg-emerald-50 border-b border-emerald-100 text-emerald-800'
+                : 'bg-rose-50 border-b border-rose-100 text-rose-800'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {actionMessage.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              )}
+              <span>{actionMessage.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActionMessage(null)}
+              className="font-bold hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Stats Metrics Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 sm:p-5 bg-white border-b border-slate-100 text-xs">
           <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
@@ -315,12 +366,23 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-100">
-            <span className="text-amber-700 font-semibold block text-[11px]">Seats Remaining</span>
-            <span className="text-lg font-black text-amber-950 font-heading">
-              {event.seatsRemaining ?? Math.max(0, event.capacity - event.ticketsSold)}
-            </span>
-          </div>
+          {refundFailedCount > 0 ? (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200">
+              <span className="text-rose-700 font-bold block text-[11px] flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-rose-600" /> Refund Failed
+              </span>
+              <span className="text-lg font-black text-rose-950 font-heading">
+                {refundFailedCount} <span className="text-xs font-bold text-rose-700">Action Needed</span>
+              </span>
+            </div>
+          ) : (
+            <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-100">
+              <span className="text-amber-700 font-semibold block text-[11px]">Seats Remaining</span>
+              <span className="text-lg font-black text-amber-950 font-heading">
+                {event.seatsRemaining ?? Math.max(0, event.capacity - event.ticketsSold)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Search & Filter Bar */}
@@ -352,20 +414,32 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
               </select>
             )}
 
-            {(['all', 'checked_in', 'pending', 'refunded'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFilter(tab)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer capitalize ${
-                  filter === tab
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {tab.replace('_', ' ')}
-              </button>
-            ))}
+            {(['all', 'checked_in', 'pending', 'refunded', 'refund_failed'] as const).map((tab) => {
+              if (tab === 'refund_failed' && refundFailedCount === 0) return null;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setFilter(tab)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer capitalize flex items-center gap-1 ${
+                    filter === tab
+                      ? tab === 'refund_failed'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-slate-900 text-white shadow-xs'
+                      : tab === 'refund_failed'
+                      ? 'bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{tab === 'refund_failed' ? 'Refund Failed' : tab.replace('_', ' ')}</span>
+                  {tab === 'refund_failed' && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-200 text-rose-900 text-[10px] font-black">
+                      {refundFailedCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -389,7 +463,9 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
           ) : (
             filteredTickets.map((ticket) => {
               const isUpdating = updatingId === ticket.id;
+              const isRetrying = retryingRefundId === ticket.id;
               const isRefunded = ticket.paymentStatus === 'refunded';
+              const isRefundFailed = ticket.paymentStatus === 'refund_failed';
               const ticketDate = ticket.eventDate || event.eventDate;
               const ticketTime = ticket.eventTime || event.eventTime;
 
@@ -397,7 +473,9 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                 <div
                   key={ticket.id}
                   className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    ticket.checkedIn
+                    isRefundFailed
+                      ? 'bg-rose-50/60 border-rose-300 shadow-xs'
+                      : ticket.checkedIn
                       ? 'bg-emerald-50/40 border-emerald-200/80 shadow-xs'
                       : isRefunded
                       ? 'bg-rose-50/30 border-rose-200/60 opacity-75'
@@ -405,7 +483,7 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                   }`}
                 >
                   {/* Left Attendee Info */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-slate-900">
                         {ticket.customerName}
@@ -445,18 +523,27 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
 
                       {/* Payment Status Pill */}
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
                           ticket.paymentStatus === 'paid'
                             ? 'bg-emerald-100 text-emerald-800'
                             : ticket.paymentStatus === 'free'
                             ? 'bg-blue-100 text-blue-800'
+                            : ticket.paymentStatus === 'refund_failed'
+                            ? 'bg-rose-600 text-white font-black animate-pulse'
                             : 'bg-rose-100 text-rose-800'
                         }`}
                       >
-                        {ticket.paymentStatus === 'paid' ? `₹${ticket.price} Paid` : ticket.paymentStatus}
+                        {ticket.paymentStatus === 'refund_failed' && <AlertTriangle className="w-3 h-3" />}
+                        {ticket.paymentStatus === 'paid'
+                          ? `₹${ticket.price} Paid`
+                          : ticket.paymentStatus === 'refund_failed'
+                          ? 'Refund Failed'
+                          : ticket.paymentStatus === 'refunded'
+                          ? 'Refunded'
+                          : ticket.paymentStatus}
                       </span>
 
-                      {ticket.checkedIn && (
+                      {ticket.checkedIn && !isRefunded && !isRefundFailed && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
                           <CheckCircle2 className="w-3 h-3" /> Checked In
                         </span>
@@ -464,7 +551,7 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 font-medium">
                         <Phone className="w-3 h-3 text-slate-400" />
                         {ticket.customerPhone}
                       </span>
@@ -472,25 +559,63 @@ export const EventAttendeesModal: React.FC<EventAttendeesModalProps> = ({
                         <span>• {ticket.customerEmail}</span>
                       )}
                       <span>• Booked {new Date(ticket.createdAt).toLocaleDateString()}</span>
+                      {ticket.paymentId && (
+                        <span className="text-slate-400 font-mono text-[10px]">
+                          • PayID: {ticket.paymentId}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Refund Failure Explanatory Notice */}
+                    {isRefundFailed && (
+                      <div className="mt-1 p-2 bg-rose-100/70 border border-rose-200 rounded-lg text-xs text-rose-900 flex items-start gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-[11px]">
+                            Gateway Error: {ticket.refundError || 'Automatic refund attempt failed.'}
+                          </p>
+                          <p className="text-[10px] text-rose-700 leading-tight">
+                            Please retry the automatic refund or return ₹{ticket.price} manually via your Razorpay Dashboard using Payment ID: <span className="font-mono font-bold">{ticket.paymentId || 'N/A'}</span>.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    {/* WhatsApp Reminder Link */}
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    {/* Retry Refund Button for Failed Tickets */}
+                    {isRefundFailed && (
+                      <button
+                        type="button"
+                        onClick={() => handleRetryRefund(ticket)}
+                        disabled={isRetrying}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs bg-rose-600 hover:bg-rose-700 text-white cursor-pointer disabled:opacity-50"
+                        title="Retry gateway refund call"
+                      >
+                        {isRetrying ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        )}
+                        <span>{isRetrying ? 'Retrying...' : 'Retry Refund'}</span>
+                      </button>
+                    )}
+
+                    {/* WhatsApp Reminder / Contact Link */}
                     <a
                       href={buildWhatsAppReminderUrl(ticket)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-slate-600 transition text-xs font-bold flex items-center gap-1.5 shadow-xs"
-                      title="Send ticket reminder on WhatsApp"
+                      title="Contact attendee on WhatsApp"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                       <span className="hidden sm:inline">WhatsApp</span>
                     </a>
 
-                    {/* Check-In Toggle Button */}
-                    {!isRefunded && (
+                    {/* Check-In Toggle Button (Only active for non-refunded/non-cancelled) */}
+                    {!isRefunded && !isRefundFailed && (
                       <button
                         type="button"
                         onClick={() => handleToggleCheckIn(ticket)}

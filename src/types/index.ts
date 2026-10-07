@@ -1031,9 +1031,13 @@ export interface EventTicket {
   slotId?: string;
   timezone?: string;
   price: number;
-  paymentStatus: 'paid' | 'free' | 'refunded';
+  paymentStatus: 'paid' | 'free' | 'refunded' | 'refund_failed';
   paymentId?: string;
   razorpayOrderId?: string;
+  refundId?: string;
+  refundError?: string;
+  refundedAt?: number;
+  refundAttemptedAt?: number;
   seatNumber?: string;
   seatSection?: string;
   checkedIn: boolean;

@@ -245,6 +245,55 @@ export const BORDER_RADIUS_OPTIONS = [
   { id: 'full', label: 'Pill Rounded' },
 ];
 
+export const COLOR_NAME_TO_HEX: Record<string, string> = {
+  indigo: '#4f46e5',
+  violet: '#7c3aed',
+  purple: '#9333ea',
+  cyan: '#0891b2',
+  emerald: '#059669',
+  green: '#059669',
+  rose: '#e11d48',
+  pink: '#db2777',
+  amber: '#d97706',
+  orange: '#ea580c',
+  blue: '#2563eb',
+  slate: '#334155',
+  dark: '#0f172a',
+  photo: '#0f172a',
+  minimal: '#18181b',
+};
+
+/**
+ * Resolves the primary brand accent color for a business,
+ * supporting hex codes (#...), rgb/hsl, named colors (purple, emerald, etc.),
+ * and settings overrides across Portfolio, Storefront, and Bio Link.
+ */
+export function resolveThemePrimaryColor(business?: BusinessProfile | null, fallback = '#4f46e5'): string {
+  if (!business) return fallback;
+  const settings = business.portfolioSettings;
+  const tc = settings?.themeConfig;
+
+  const rawColor =
+    tc?.primaryColor ||
+    business.themeColor ||
+    business.accentColor ||
+    (settings?.themeColor && COLOR_NAME_TO_HEX[settings.themeColor]) ||
+    fallback;
+
+  if (!rawColor) return fallback;
+
+  if (rawColor.startsWith('#') || rawColor.startsWith('rgb') || rawColor.startsWith('hsl')) {
+    return rawColor;
+  }
+
+  const lower = rawColor.toLowerCase().trim();
+  if (COLOR_NAME_TO_HEX[lower]) {
+    return COLOR_NAME_TO_HEX[lower];
+  }
+
+  return rawColor;
+}
+
 /**
  * Resolves the effective PortfolioThemeConfig for a business,
  * with fallbacks to legacy fields if themeConfig is not fully populated.
@@ -294,7 +343,7 @@ export function getEffectivePortfolioTheme(business: BusinessProfile): Portfolio
       break;
   }
 
-  const primaryColor = tc?.primaryColor || business.themeColor || business.accentColor || palettePrimary;
+  const primaryColor = resolveThemePrimaryColor(business, palettePrimary);
   const fontFamily = tc?.fontFamily || settings?.fontStyle || DEFAULT_PORTFOLIO_THEME.fontFamily;
   const cardStyle = tc?.cardStyle || DEFAULT_PORTFOLIO_THEME.cardStyle;
   const borderRadius = tc?.borderRadius || DEFAULT_PORTFOLIO_THEME.borderRadius;

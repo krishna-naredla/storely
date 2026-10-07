@@ -2271,6 +2271,75 @@ app.post("/api/events/verify-payment", paymentLimiter, async (req, res) => {
   }
 });
 
+// 14b. Event Ticket Real Refund Endpoint (Calls Razorpay Node SDK payments.refund)
+app.post("/api/events/refund-ticket", async (req: express.Request, res: express.Response) => {
+  try {
+    const { businessId, ticketId, paymentId, amount, reason } = req.body;
+    if (!paymentId) {
+      return res.status(400).json({ success: false, error: "Missing required paymentId parameter." });
+    }
+
+    // Resolve Razorpay gateway credentials for business
+    const creds = await resolveRazorpayCredentials(businessId);
+    if (!creds || !creds.client) {
+      return res.status(503).json({
+        success: false,
+        error: "Payment gateway credentials not configured or unavailable on the server.",
+      });
+    }
+
+    const refundPayload: any = {
+      notes: {
+        businessId: businessId || "",
+        ticketId: ticketId || "",
+        reason: (reason || "Event cancelled by organizer").slice(0, 100),
+        type: "event_ticket_refund",
+      },
+    };
+
+    if (typeof amount === "number" && amount > 0) {
+      refundPayload.amount = Math.round(amount * 100); // Amount in paise for Razorpay
+    }
+
+    let refund: any = null;
+    try {
+      refund = await creds.client.payments.refund(paymentId, refundPayload);
+      console.log(`[REFUND SUCCESS] Razorpay refund processed for payment ${paymentId}: refund ID ${refund?.id}`);
+    } catch (rzpErr: any) {
+      const rzpDesc = rzpErr?.error?.description || rzpErr?.message || "Razorpay refund call failed";
+      console.error(`[REFUND ERROR] Razorpay refund failed for payment ${paymentId}:`, rzpDesc);
+
+      // Handle idempotency / already refunded state
+      const lower = rzpDesc.toLowerCase();
+      if (lower.includes("already refunded") || lower.includes("fully refunded") || lower.includes("has already been refunded")) {
+        return res.json({
+          success: true,
+          alreadyRefunded: true,
+          refundId: `refund_prev_${paymentId.slice(-8)}`,
+          message: "Payment was already refunded in gateway.",
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        error: rzpDesc,
+      });
+    }
+
+    return res.json({
+      success: true,
+      refundId: refund?.id || `rfnd_${Date.now()}`,
+      refund,
+    });
+  } catch (err: any) {
+    console.error("[REFUND ERROR] /api/events/refund-ticket failed:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Internal server error during refund execution.",
+    });
+  }
+});
+
 // Secure Customer Order Tracking Endpoint
 app.get("/api/orders/track", async (req, res) => {
   try {

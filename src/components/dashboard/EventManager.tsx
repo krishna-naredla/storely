@@ -38,6 +38,7 @@ import {
 import {
   BusinessProfile,
   EventItem,
+  EventTicket,
   EventFormat,
   EventStatus,
   MeetingPlatform,
@@ -57,6 +58,7 @@ import {
 import { uploadToCloudinary } from '../../services/cloudinary';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { isCreatorProfile } from '../../utils/profileHelper';
+import { auth } from '../../config/firebase';
 import { EventAttendeesModal } from './EventAttendeesModal';
 import { EventCalendarView } from './EventCalendarView';
 import { ModuleQrModal } from '../common/ModuleQrModal';
@@ -104,7 +106,12 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
   const [selectedEventForAttendees, setSelectedEventForAttendees] = useState<EventItem | null>(null);
   const [cancellingEvent, setCancellingEvent] = useState<EventItem | null>(null);
   const [cancellationReason, setCancellationReason] = useState('');
-  const [cancelledResult, setCancelledResult] = useState<{ event: EventItem; tickets: any[] } | null>(null);
+  const [cancelledResult, setCancelledResult] = useState<{
+    event: EventItem;
+    tickets: (EventTicket & { cancellationWhatsAppUrl?: string })[];
+    refundedCount: number;
+    failedRefundCount: number;
+  } | null>(null);
 
   // Core Form State
   const [formTitle, setFormTitle] = useState('');
@@ -574,9 +581,69 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
       setFormSubmitting(true);
       const res = await cancelEvent(business.id, cancellingEvent.id, cancellationReason);
       setCancellingEvent(null);
+      const reasonUsed = cancellationReason || 'Unforeseen circumstances';
       setCancellationReason('');
-      setCancelledResult(res);
-      showToast('Event cancelled successfully.', 'success');
+
+      // PHASE 2: Dispatch cancellation notices to all attendee ticket holders via /api/events/cancellation-notice
+      const ticketsWithNotices: (EventTicket & { cancellationWhatsAppUrl?: string })[] = [];
+      let token = '';
+      try {
+        if (auth?.currentUser) {
+          token = await auth.currentUser.getIdToken();
+        }
+      } catch (tokenErr) {
+        console.warn('Could not get auth token for cancellation notices:', tokenErr);
+      }
+
+      for (const ticket of res.tickets) {
+        if (!ticket.customerPhone) {
+          ticketsWithNotices.push(ticket);
+          continue;
+        }
+
+        try {
+          const noticeRes = await fetch('/api/events/cancellation-notice', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              businessId: business.id,
+              eventTitle: res.event.title,
+              customerName: ticket.customerName,
+              customerPhone: ticket.customerPhone,
+              reason: reasonUsed,
+              merchantName: business.name || 'Organizer',
+            }),
+          });
+
+          if (noticeRes.ok) {
+            const noticeData = await noticeRes.json();
+            ticketsWithNotices.push({
+              ...ticket,
+              cancellationWhatsAppUrl: noticeData.whatsAppUrl,
+            });
+            console.log(`[CANCELLATION NOTICE] Successfully built and dispatched cancellation notice for ticket ${ticket.ticketId} to ${ticket.customerPhone}`);
+          } else {
+            ticketsWithNotices.push(ticket);
+          }
+        } catch (noticeErr) {
+          console.error(`Error sending cancellation notice for ticket ${ticket.ticketId}:`, noticeErr);
+          ticketsWithNotices.push(ticket);
+        }
+      }
+
+      setCancelledResult({
+        ...res,
+        tickets: ticketsWithNotices,
+      });
+
+      if (res.failedRefundCount > 0) {
+        showToast(`Event cancelled & notices prepared. ${res.refundedCount} tickets refunded, ${res.failedRefundCount} refunds require manual follow up.`, 'error');
+      } else {
+        showToast(`Event cancelled successfully. All attendees notified & ${res.refundedCount} tickets refunded.`, 'success');
+      }
     } catch (err: any) {
       console.error('Error cancelling event:', err);
       showToast(err.message || 'Failed to cancel event', 'error');
@@ -1887,6 +1954,187 @@ export const EventManager: React.FC<EventManagerProps> = ({ business, onOpenStor
               >
                 {formSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 <span>Confirm Cancellation</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CANCELLATION & REFUND POST-ACTION SUMMARY MODAL */}
+      {cancelledResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  cancelledResult.failedRefundCount > 0
+                    ? 'bg-amber-100 text-amber-600'
+                    : 'bg-emerald-100 text-emerald-600'
+                }`}>
+                  {cancelledResult.failedRefundCount > 0 ? (
+                    <AlertTriangle className="w-6 h-6" />
+                  ) : (
+                    <CheckCircle2 className="w-6 h-6" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 font-heading">
+                    Cancellation & Refund Summary
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    "{cancelledResult.event.title}"
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCancelledResult(null)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Metrics Breakdown */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+                <span className="text-emerald-700 font-bold block text-[11px]">Successfully Refunded</span>
+                <span className="text-lg font-black text-emerald-950 font-heading">
+                  {cancelledResult.refundedCount} <span className="text-xs font-normal text-emerald-700">ticket(s)</span>
+                </span>
+              </div>
+
+              <div className={`p-3 rounded-2xl border ${
+                cancelledResult.failedRefundCount > 0
+                  ? 'bg-rose-50 border-rose-200 text-rose-950'
+                  : 'bg-slate-50 border-slate-200 text-slate-900'
+              }`}>
+                <span className={`font-bold block text-[11px] ${
+                  cancelledResult.failedRefundCount > 0 ? 'text-rose-700' : 'text-slate-500'
+                }`}>
+                  Failed Refunds (Manual Action)
+                </span>
+                <span className={`text-lg font-black font-heading ${
+                  cancelledResult.failedRefundCount > 0 ? 'text-rose-950' : 'text-slate-900'
+                }`}>
+                  {cancelledResult.failedRefundCount} <span className="text-xs font-normal">ticket(s)</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Failed Refunds Detailed List */}
+            {cancelledResult.failedRefundCount > 0 ? (
+              <div className="space-y-2.5">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed text-[11px]">
+                    Automatic Razorpay refund failed for <strong>{cancelledResult.failedRefundCount}</strong> ticket(s). These tickets are marked as <strong>Refund Failed</strong> so you can follow up manually.
+                  </p>
+                </div>
+
+                <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                  {cancelledResult.tickets
+                    .filter((t) => t.paymentStatus === 'refund_failed')
+                    .map((t) => (
+                      <div
+                        key={t.id}
+                        className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl text-xs flex items-center justify-between gap-2"
+                      >
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-900">
+                            {t.customerName} <span className="text-slate-500 font-mono text-[10px]">({t.ticketId})</span>
+                          </p>
+                          <p className="text-[11px] text-slate-600">
+                            {t.customerPhone} • ₹{t.price}
+                          </p>
+                          {t.refundError && (
+                            <p className="text-[10px] text-rose-700 font-medium">
+                              Error: {t.refundError}
+                            </p>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md bg-rose-200 text-rose-900 text-[10px] font-black uppercase tracking-wider shrink-0">
+                          Action Required
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <p className="leading-relaxed text-[11px]">
+                  All paid ticket funds have been successfully returned via Razorpay's refund API.
+                </p>
+              </div>
+            )}
+
+            {/* All Notified Attendees List with WhatsApp link */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Attendee Cancellation Notices ({cancelledResult.tickets.length})</span>
+                </span>
+                <span className="text-[11px] text-emerald-700 font-medium">WhatsApp links prepared</span>
+              </div>
+
+              <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                {cancelledResult.tickets.map((t) => (
+                  <div
+                    key={t.id}
+                    className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs flex items-center justify-between gap-2"
+                  >
+                    <div className="space-y-0.5 truncate">
+                      <p className="font-bold text-slate-900 truncate">
+                        {t.customerName}
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        {t.customerPhone} • {t.ticketId}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {t.cancellationWhatsAppUrl ? (
+                        <a
+                          href={t.cancellationWhatsAppUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex items-center gap-1 transition"
+                          title="Open WhatsApp message for attendee"
+                        >
+                          <MessageSquare className="w-3 h-3 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">No Phone</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              {cancelledResult.failedRefundCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedEventForAttendees(cancelledResult.event);
+                    setCancelledResult(null);
+                  }}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Open Roster & Follow Up
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setCancelledResult(null)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Done
               </button>
             </div>
           </div>
