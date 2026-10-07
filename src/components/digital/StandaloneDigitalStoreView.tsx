@@ -17,6 +17,7 @@ import { BusinessProfile, CatalogItem } from '../../types';
 import { getCatalogItems, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
 import { DigitalCheckoutModal } from '../storefront/DigitalCheckoutModal';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 
 interface StandaloneDigitalStoreViewProps {
   business: BusinessProfile;
@@ -183,8 +184,9 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {items.map((item) => {
-                const price = item.salePrice ?? item.price ?? 0;
-                const isFree = price === 0;
+                const pricing = resolveProductPricing(item);
+                const price = pricing.sellingPrice;
+                const isFree = pricing.isFree;
                 const badge = getFormatBadge(item);
                 const BadgeIcon = badge.icon;
 
@@ -236,9 +238,16 @@ export const StandaloneDigitalStoreView: React.FC<StandaloneDigitalStoreViewProp
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                             Price
                           </span>
-                          <span className="text-base font-black text-slate-900">
-                            {isFree ? 'Free' : `${currencySymbol}${price}`}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base font-black text-slate-900">
+                              {isFree ? 'Free' : `${currencySymbol}${price}`}
+                            </span>
+                            {!isFree && pricing.hasDiscount && pricing.originalPrice && (
+                              <span className="text-xs text-slate-400 line-through">
+                                {currencySymbol}{pricing.originalPrice}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <button

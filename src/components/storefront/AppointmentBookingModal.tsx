@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, CatalogItem, Booking } from '../../types';
 import { createBooking } from '../../services/firebaseService';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 
 interface AppointmentBookingModalProps {
   business: BusinessProfile;
@@ -41,10 +43,8 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
 
   if (!isOpen || !item) return null;
 
-  const totalAmount =
-    typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
-      ? item.salePrice
-      : (item.price ?? 0);
+  const pricing = resolveProductPricing(item);
+  const totalAmount = pricing.sellingPrice;
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,9 +144,16 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                 <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Service Appointment</span>
               </div>
               <h2 className="text-xl font-bold text-slate-900 font-heading">{item.name}</h2>
-              <p className="text-xs text-slate-500">
-                {business.currencySymbol}{item.salePrice || item.price}
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">
+                  {business.currencySymbol}{pricing.sellingPrice}
+                </span>
+                {pricing.hasDiscount && pricing.originalPrice && (
+                  <span className="text-xs text-slate-400 line-through">
+                    {business.currencySymbol}{pricing.originalPrice}
+                  </span>
+                )}
+              </div>
             </div>
 
             {error && (
@@ -203,10 +210,11 @@ export const AppointmentBookingModal: React.FC<AppointmentBookingModalProps> = (
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
                   <input
                     type="tel"
+                    inputMode="numeric"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
                     placeholder="WhatsApp Number *"
-                    className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
                     required
                   />
                 </div>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, CatalogItem } from '../../types';
 import { getProductDeepUrl, getStorefrontUrl } from '../../services/firebaseService';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 import { SafeImage } from './SafeImage';
 
 interface ProductShareModalProps {
@@ -40,15 +41,17 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
   const productUrl = getProductDeepUrl(business, item.id);
   const storeUrl = getStorefrontUrl(business);
   const currency = business.currencySymbol || '₹';
-  const priceDisplay = item.isFree || item.price === 0 ? 'FREE' : `${currency}${item.salePrice || item.price}`;
+  const pricing = resolveProductPricing(item);
+  const priceDisplay = pricing.isFree ? 'FREE' : `${currency}${pricing.sellingPrice}`;
 
   const isDigital = item.productType === 'digital_file';
   const isConsultation = item.productType === 'consultation_slot';
 
+  const strikeText = pricing.hasDiscount && pricing.originalPrice ? ` ~(was ${currency}${pricing.originalPrice})~` : '';
   const sharePitchText =
     `✨ *${item.name.toUpperCase()}*\n` +
     `🏪 *${business.name}*\n\n` +
-    `💰 Price: *${priceDisplay}*${item.salePrice && item.salePrice < item.price ? ` ~(was ${currency}${item.price})~` : ''}\n` +
+    `💰 Price: *${priceDisplay}*${strikeText}\n` +
     `${item.shortDescription ? `📝 ${item.shortDescription}\n\n` : '\n'}` +
     `🛒 *BUY & ORDER INSTANTLY HERE:*\n` +
     `👉 ${productUrl}\n\n` +

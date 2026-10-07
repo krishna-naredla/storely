@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { BusinessProfile, CatalogItem, Booking } from '../../types';
 import { createBooking } from '../../services/firebaseService';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 
 interface ConsultationBookingModalProps {
   business: BusinessProfile;
@@ -99,10 +101,7 @@ export const ConsultationBookingModal: React.FC<ConsultationBookingModalProps> =
         bookingDate,
         bookingTimeSlot,
         timezone,
-        totalAmount:
-          typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
-            ? item.salePrice
-            : (item.price ?? 0),
+        totalAmount: resolveProductPricing(item).sellingPrice,
         status: 'pending' as const,
         notes: notes.trim() || undefined,
         meetingMethod: item.meetingPlatform || 'google_meet',
@@ -184,9 +183,16 @@ export const ConsultationBookingModal: React.FC<ConsultationBookingModalProps> =
                 <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">1:1 Consultation</span>
               </div>
               <h2 className="text-xl font-bold text-slate-900 font-heading">{item.name}</h2>
-              <p className="text-xs text-slate-500">
-                Duration: {item.duration || 60} mins • {business.currencySymbol}{item.salePrice || item.price}
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">
+                  Duration: {item.duration || 60} mins • {business.currencySymbol}{resolveProductPricing(item).sellingPrice}
+                </span>
+                {resolveProductPricing(item).hasDiscount && resolveProductPricing(item).originalPrice && (
+                  <span className="text-xs text-slate-400 line-through">
+                    {business.currencySymbol}{resolveProductPricing(item).originalPrice}
+                  </span>
+                )}
+              </div>
             </div>
 
             {error && (
@@ -235,7 +241,7 @@ export const ConsultationBookingModal: React.FC<ConsultationBookingModalProps> =
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                  <Globe className="w-3 h-3" /> Your Timezone
+                  <Globe className="w-3 solid" /> Your Timezone
                 </label>
                 <input
                   type="text"
@@ -261,10 +267,11 @@ export const ConsultationBookingModal: React.FC<ConsultationBookingModalProps> =
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
                   <input
                     type="tel"
+                    inputMode="numeric"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
                     placeholder="WhatsApp Number *"
-                    className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
                     required
                   />
                 </div>
@@ -273,9 +280,16 @@ export const ConsultationBookingModal: React.FC<ConsultationBookingModalProps> =
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-slate-500 block uppercase font-bold">Price</span>
-                  <span className="text-base font-extrabold text-slate-900 font-heading">
-                    {business.currencySymbol}{item.salePrice || item.price}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-extrabold text-slate-900 font-heading">
+                      {business.currencySymbol}{resolveProductPricing(item).sellingPrice}
+                    </span>
+                    {resolveProductPricing(item).hasDiscount && resolveProductPricing(item).originalPrice && (
+                      <span className="text-xs text-slate-400 line-through">
+                        {business.currencySymbol}{resolveProductPricing(item).originalPrice}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span className="text-[10px] text-emerald-700 font-bold uppercase bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Booking Only

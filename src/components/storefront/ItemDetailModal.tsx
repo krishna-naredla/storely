@@ -18,6 +18,7 @@ import { SafeImage } from '../common/SafeImage';
 import { CatalogItem, CatalogItemVariant, CatalogItemAddon, BusinessProfile } from '../../types';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
 import { resolveItemAction } from '../../utils/itemActionResolver';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 
 interface ItemDetailModalProps {
 
@@ -48,12 +49,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   if (!isOpen || !item) return null;
 
   const images = item.images && item.images.length > 0 ? item.images : [];
+  const pricing = resolveProductPricing(item);
   const basePrice =
     typeof selectedVariant?.price === 'number'
       ? selectedVariant.price
-      : (typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
-          ? item.salePrice
-          : (item.price ?? 0));
+      : pricing.sellingPrice;
   const currentPrice = basePrice;
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   const unitPrice = currentPrice + addonsTotal;
@@ -181,7 +181,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   <div className="text-3xl font-black text-emerald-700 font-heading tracking-tight">
                     {business.currencySymbol}{currentPrice}
                     {item.unit && (
@@ -191,9 +191,14 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
                     )}
                   </div>
 
-                  {item.salePrice && item.salePrice < item.price && (
-                    <div className="text-base font-bold text-slate-300 line-through">
-                      {business.currencySymbol}{item.price}
+                  {!selectedVariant && pricing.hasDiscount && pricing.originalPrice && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-bold text-slate-400 line-through">
+                        {business.currencySymbol}{pricing.originalPrice}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold">
+                        {pricing.discountPercent}% OFF
+                      </span>
                     </div>
                   )}
 

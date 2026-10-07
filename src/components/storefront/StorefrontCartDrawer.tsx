@@ -27,6 +27,8 @@ import { BusinessProfile, Offer, Order } from '../../types';
 import { useStorefrontCart } from '../../context/StorefrontCartContext';
 import { createOrder, getOffers, updateOrderStatus } from '../../services/firebaseService';
 import { initiateRazorpayCheckout } from '../../services/razorpayService';
+import { sanitizePhoneNumberInput, getWhatsAppCleanNumber } from '../../utils/phoneHelper';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 
 interface StorefrontCartDrawerProps {
   business: BusinessProfile;
@@ -200,12 +202,11 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
         orderType,
         tableNumber: tableNumber.trim() || undefined,
         items: items.map((cartItem) => {
+          const itemPricing = resolveProductPricing(cartItem.catalogItem);
           const basePrice =
             typeof cartItem.selectedVariant?.price === 'number'
               ? cartItem.selectedVariant.price
-              : (typeof cartItem.catalogItem.salePrice === 'number' && cartItem.catalogItem.salePrice >= 0 && cartItem.catalogItem.salePrice < cartItem.catalogItem.price
-                  ? cartItem.catalogItem.salePrice
-                  : (cartItem.catalogItem.price ?? 0));
+              : itemPricing.sellingPrice;
           const addons = cartItem.selectedAddons?.map((a) => ({
             name: a.name,
             price: Number(a.price) || 0,
@@ -320,28 +321,69 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
   const sendWhatsAppReceipt = (order: Order) => {
     const itemsListText = items
       .map((it, idx) => {
-        let line = `${idx + 1}. *${it.catalogItem.name}* x ${it.quantity} = ${business.currencySymbol}${
-          (it.selectedVariant?.price ?? it.catalogItem.price) * it.quantity
-        }`;
-        if (it.selectedVariant) line += ` (${it.selectedVariant.name})`;
-        return line;
+        const itemPricing = resolveProductPricing(it.catalogItem);
+        const unitPrice = it.selectedVariant?.price ?? itemPricing.sellingPrice;
+        const addons = it.selectedAddons || [];
+        const addonsPrice = addons.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+        const itemTotal = (unitPrice + addonsPrice) * it.quantity;
+        const unitSuffix = it.catalogItem.unit ? ` ${it.catalogItem.unit}` : '';
+        const variantSuffix = it.selectedVariant ? ` [${it.selectedVariant.name}]` : '';
+        const addonsSuffix = addons.length > 0 ? ` (+${addons.map(a => a.name).join(', ')})` : '';
+
+        return `${idx + 1}. *${it.catalogItem.name}*${variantSuffix}${addonsSuffix}\n   Qty: *${it.quantity}${unitSuffix}* = *${business.currencySymbol}${itemTotal}*`;
       })
-      .join('\n');
+      .join('\n\n');
+
+    let extraDetails = '';
+    if (orderType === 'delivery') {
+      extraDetails += `\n📍 *Delivery Address:* ${customerAddress.trim()}${customerPincode.trim() ? ` - PIN: ${customerPincode.trim()}` : ''}`;
+    } else if (orderType === 'dine_in') {
+      extraDetails += `\n🍽️ *Table Reference:* ${tableNumber.trim()}`;
+    }
+
+    if (customerEmail.trim()) {
+      extraDetails += `\n✉️ *Email:* ${customerEmail.trim()}`;
+    }
+
+    if (orderNotes.trim()) {
+      extraDetails += `\n📝 *Special Instructions / Order Notes:*\n"${orderNotes.trim()}"`;
+    }
+
+    let billBreakdown = `\n💵 *Subtotal:* ${business.currencySymbol}${subtotal}`;
+    if (discount > 0) {
+      billBreakdown += `\n🏷️ *Promo Discount:* -${business.currencySymbol}${discount}`;
+    }
+    if (deliveryFee > 0) {
+      billBreakdown += `\n🚚 *Delivery Fee:* +${business.currencySymbol}${deliveryFee}`;
+    }
+    if (tax > 0) {
+      billBreakdown += `\n🧾 *Taxes:* +${business.currencySymbol}${tax}`;
+    }
 
     const whatsappText = encodeURIComponent(
       `🛍️ *NEW STORE ORDER*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━\n` +
       `Order ID: *#${order.orderNumber}*\n` +
-      `Store: *${business.name}*\n\n` +
-      `👤 *Customer:* ${customerName}\n` +
-      `📦 *Type:* ${orderType.toUpperCase()}\n` +
-      `\n🛒 *Items:*\n${itemsListText}\n\n` +
-      `*Total:* *${business.currencySymbol}${total}*\n` +
-      `💳 *Payment:* ${order.paymentMethod.toUpperCase()} (${order.paymentStatus.toUpperCase()})\n\n` +
-      `Please confirm this order. Thank you!`
+      `Store: *${business.name}*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `👤 *Customer Name:* ${customerName.trim()}\n` +
+      `📱 *Customer Phone:* ${customerPhone.trim()}\n` +
+      `📦 *Order Type:* ${orderType.toUpperCase()}` +
+      extraDetails + `\n\n` +
+      `🛒 *Ordered Items:*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━\n` +
+      `${itemsListText}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━` +
+      billBreakdown + `\n` +
+      `*GRAND TOTAL:* *${business.currencySymbol}${total}*\n` +
+      `💳 *Payment Method:* ${order.paymentMethod.toUpperCase()} (${order.paymentStatus.toUpperCase()})\n\n` +
+      `Please confirm and prepare my order. Thank you!`
     );
 
-    const merchantPhone = (business.whatsapp || business.phone).replace(/\D/g, '');
-    window.open(`https://wa.me/${merchantPhone}?text=${whatsappText}`, '_blank');
+    const merchantPhone = getWhatsAppCleanNumber(business.whatsapp || business.phone || '');
+    if (merchantPhone) {
+      window.open(`https://wa.me/${merchantPhone}?text=${whatsappText}`, '_blank');
+    }
   };
 
   return (
@@ -522,11 +564,13 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
 
                     <div className="space-y-3">
                       {items.map((item) => {
+                        const itemPricing = resolveProductPricing(item.catalogItem);
                         const unitPrice =
-                          item.selectedVariant?.price ??
-                          (item.catalogItem.salePrice || item.catalogItem.price);
+                          typeof item.selectedVariant?.price === 'number'
+                            ? item.selectedVariant.price
+                            : itemPricing.sellingPrice;
                         const addonsPrice = (item.selectedAddons || []).reduce(
-                          (sum, a) => sum + a.price,
+                          (sum, a) => sum + (Number(a.price) || 0),
                           0
                         );
                         const itemTotal = (unitPrice + addonsPrice) * item.quantity;
@@ -554,10 +598,15 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                               <h4 className="text-sm font-black text-slate-900 truncate">
                                 {item.catalogItem.name}
                               </h4>
-                              <div className="flex flex-wrap gap-1.5">
+                              <div className="flex flex-wrap gap-1.5 items-center">
                                 {item.selectedVariant && (
                                   <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
                                     {item.selectedVariant.name}
+                                  </span>
+                                )}
+                                {item.catalogItem.unit && (
+                                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                                    per {item.catalogItem.unit}
                                   </span>
                                 )}
                                 {item.selectedAddons && item.selectedAddons.length > 0 && (
@@ -566,8 +615,20 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                                   </span>
                                 )}
                               </div>
-                              <div className="text-sm font-black text-emerald-700">
-                                {business.currencySymbol}{itemTotal}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-black text-emerald-700">
+                                  {business.currencySymbol}{itemTotal}
+                                </span>
+                                {item.quantity > 1 && (
+                                  <span className="text-[10px] font-medium text-slate-400">
+                                    ({business.currencySymbol}{unitPrice + addonsPrice} each)
+                                  </span>
+                                )}
+                                {!item.selectedVariant && itemPricing.hasDiscount && itemPricing.originalPrice && (
+                                  <span className="text-[10px] font-bold text-slate-400 line-through">
+                                    {business.currencySymbol}{itemPricing.originalPrice * item.quantity}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -668,10 +729,11 @@ export const StorefrontCartDrawer: React.FC<StorefrontCartDrawerProps> = ({
                           </label>
                           <input
                             type="tel"
+                            inputMode="numeric"
                             value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
-                            placeholder="Mobile number"
-                            className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-none transition-all text-sm font-bold text-slate-900"
+                            onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
+                            placeholder="+91 98765 43210"
+                            className="w-full h-12 px-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:outline-none transition-all text-sm font-bold text-slate-900 font-mono"
                           />
                         </div>
                       </div>

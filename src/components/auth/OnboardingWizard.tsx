@@ -19,6 +19,8 @@ import {
   Ticket,
   Instagram,
   Globe,
+  Youtube,
+  Twitter,
   ShoppingCart,
   UtensilsCrossed,
   Cake,
@@ -55,6 +57,7 @@ import {
 import { generateSlug, createCategory, createCatalogItem, createBioLink } from '../../services/firebaseService';
 import { ImageUploadInput } from '../common/ImageUploadInput';
 import { getAppLogo } from '../../utils/branding';
+import { sanitizePhoneNumberInput, isValidPhoneNumber } from '../../utils/phoneHelper';
 
 interface OnboardingWizardProps {
   onComplete: (business: BusinessProfile) => void;
@@ -252,6 +255,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [twitterHandle, setTwitterHandle] = useState('');
 
   // Auto-slug generator
   const handleNameChange = (val: string) => {
@@ -438,6 +442,43 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         }
       }
 
+      const rawInsta = instagramHandle.trim();
+      const cleanInstagram = rawInsta
+        ? (rawInsta.startsWith('http://') || rawInsta.startsWith('https://') ? rawInsta : `https://instagram.com/${rawInsta.replace(/^@/, '').trim()}`)
+        : '';
+      const rawWeb = websiteUrl.trim();
+      const cleanWebsite = rawWeb
+        ? (rawWeb.startsWith('http://') || rawWeb.startsWith('https://') ? rawWeb : `https://${rawWeb.trim()}`)
+        : '';
+      const rawYT = youtubeUrl.trim();
+      const cleanYouTube = rawYT
+        ? (rawYT.startsWith('http://') || rawYT.startsWith('https://') ? rawYT : (rawYT.startsWith('@') ? `https://youtube.com/${rawYT}` : `https://youtube.com/@${rawYT}`))
+        : '';
+      const rawTwit = twitterHandle.trim();
+      const cleanTwitter = rawTwit
+        ? (rawTwit.startsWith('http://') || rawTwit.startsWith('https://') ? rawTwit : `https://x.com/${rawTwit.replace(/^@/, '').trim()}`)
+        : '';
+      const rawLinkedIn = linkedinUrl.trim();
+      const cleanLinkedIn = rawLinkedIn
+        ? (rawLinkedIn.startsWith('http://') || rawLinkedIn.startsWith('https://') ? rawLinkedIn : `https://${rawLinkedIn.trim()}`)
+        : '';
+
+      const socialLinksDict: Record<string, string> = {
+        ...(cleanInstagram ? { instagram: cleanInstagram } : {}),
+        ...(cleanWebsite ? { website: cleanWebsite } : {}),
+        ...(cleanYouTube ? { youtube: cleanYouTube } : {}),
+        ...(cleanTwitter ? { twitter: cleanTwitter } : {}),
+        ...(cleanLinkedIn ? { linkedin: cleanLinkedIn } : {}),
+        ...(cleanWhatsApp ? { whatsapp: cleanWhatsApp } : {}),
+      };
+
+      const hasSocials = Boolean(cleanInstagram || cleanWebsite || cleanYouTube || cleanTwitter || cleanLinkedIn || cleanWhatsApp);
+
+      const updatedCreatorModules = {
+        ...creatorModules,
+        ...(hasSocials && isCreator ? { universal_links: true } : {}),
+      };
+
       const businessData: Omit<BusinessProfile, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'> = {
         name: name.trim(),
         username: username.trim() || generateSlug(name),
@@ -465,31 +506,33 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         creatorModulesConfig,
         moduleStates: creatorModulesConfig,
         primaryDestination: isCreator
-          ? (creatorModules.work_portfolio || creatorModules.portfolio
+          ? (updatedCreatorModules.work_portfolio || updatedCreatorModules.portfolio
               ? 'portfolio'
-              : creatorModules.universal_links
+              : updatedCreatorModules.universal_links
               ? 'biolink'
-              : creatorModules.digital_products
+              : updatedCreatorModules.digital_products
               ? 'store'
-              : creatorModules.booking_appointments
+              : updatedCreatorModules.booking_appointments
               ? 'consultations'
-              : creatorModules.events_tickets
+              : updatedCreatorModules.events_tickets
               ? 'events'
-              : creatorModules.custom_quotes
+              : updatedCreatorModules.custom_quotes
               ? 'quotes'
-              : creatorModules.reviews
+              : updatedCreatorModules.reviews
               ? 'reviews'
-              : creatorModules.affiliate_products
+              : updatedCreatorModules.affiliate_products
               ? 'recommendations'
               : 'biolink')
           : undefined,
         status: 'active',
         socials: {
-          instagram: instagramHandle ? `https://instagram.com/${instagramHandle.replace('@', '')}` : '',
-          youtube: youtubeUrl,
-          website: websiteUrl,
-          linkedin: linkedinUrl,
+          instagram: cleanInstagram || undefined,
+          youtube: cleanYouTube || undefined,
+          website: cleanWebsite || undefined,
+          linkedin: cleanLinkedIn || undefined,
+          twitter: cleanTwitter || undefined,
         },
+        socialLinks: socialLinksDict,
         portfolioSettings: isCreator
           ? {
               profession: 'custom',
@@ -560,8 +603,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         }
       }
 
-      // If creator added Instagram or WhatsApp, create initial Bio Links
-      if (isCreator && creatorModules.universal_links) {
+      // If user added Instagram, Website, YouTube, Twitter or WhatsApp, create initial Bio Links
+      if (hasSocials) {
         try {
           if (cleanWhatsApp) {
             await createBioLink(newBiz.id, {
@@ -573,12 +616,52 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               clicks: 0,
             });
           }
-          if (instagramHandle) {
+          if (cleanInstagram) {
             await createBioLink(newBiz.id, {
               businessId: newBiz.id,
               type: 'instagram',
               title: 'Follow on Instagram',
-              url: `https://instagram.com/${instagramHandle.replace('@', '')}`,
+              url: cleanInstagram,
+              enabled: true,
+              clicks: 0,
+            });
+          }
+          if (cleanWebsite) {
+            await createBioLink(newBiz.id, {
+              businessId: newBiz.id,
+              type: 'website',
+              title: 'Official Website',
+              url: cleanWebsite,
+              enabled: true,
+              clicks: 0,
+            });
+          }
+          if (cleanYouTube) {
+            await createBioLink(newBiz.id, {
+              businessId: newBiz.id,
+              type: 'youtube',
+              title: 'YouTube Channel',
+              url: cleanYouTube,
+              enabled: true,
+              clicks: 0,
+            });
+          }
+          if (cleanTwitter) {
+            await createBioLink(newBiz.id, {
+              businessId: newBiz.id,
+              type: 'twitter',
+              title: 'Follow on X',
+              url: cleanTwitter,
+              enabled: true,
+              clicks: 0,
+            });
+          }
+          if (cleanLinkedIn) {
+            await createBioLink(newBiz.id, {
+              businessId: newBiz.id,
+              type: 'custom',
+              title: 'LinkedIn Profile',
+              url: cleanLinkedIn,
               enabled: true,
               clicks: 0,
             });
@@ -1131,13 +1214,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           <MessageCircle className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
                           <input
                             type="tel"
+                            inputMode="numeric"
                             value={whatsapp}
                             onChange={(e) => {
-                              setWhatsapp(e.target.value);
-                              if (!phone) setPhone(e.target.value);
+                              const sanitized = sanitizePhoneNumberInput(e.target.value);
+                              setWhatsapp(sanitized);
+                              if (!phone) setPhone(sanitized);
                             }}
                             placeholder="e.g. +91 9876543210"
-                            className="w-full pl-10 pr-4 py-3 text-sm font-semibold text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition"
+                            className="w-full pl-10 pr-4 py-3 text-sm font-semibold text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition font-mono"
                             required
                           />
                         </div>
@@ -1154,10 +1239,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                           <input
                             type="tel"
+                            inputMode="numeric"
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            onChange={(e) => setPhone(sanitizePhoneNumberInput(e.target.value))}
                             placeholder="e.g. +91 9876543210"
-                            className="w-full pl-10 pr-4 py-3 text-sm font-semibold text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition"
+                            className="w-full pl-10 pr-4 py-3 text-sm font-semibold text-slate-900 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition font-mono"
                           />
                         </div>
                       </div>
@@ -1285,6 +1371,41 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                       suggestedPresetType="banner"
                       helperText="16:9 banner displayed across the top of your digital store"
                     />
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Connect Social Channels (Optional)
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+                          <Instagram className="w-3.5 h-3.5 text-pink-600" />
+                          Instagram Handle
+                        </label>
+                        <input
+                          type="text"
+                          value={instagramHandle}
+                          onChange={(e) => setInstagramHandle(e.target.value)}
+                          placeholder="@username"
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+                          <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                          Website URL
+                        </label>
+                        <input
+                          type="text"
+                          value={websiteUrl}
+                          onChange={(e) => setWebsiteUrl(e.target.value)}
+                          placeholder="https://mywebsite.com"
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-5 border-t border-slate-100">
@@ -1558,13 +1679,15 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           <MessageCircle className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-600" />
                           <input
                             type="tel"
+                            inputMode="numeric"
                             value={whatsapp}
                             onChange={(e) => {
-                              setWhatsapp(e.target.value);
-                              if (!phone) setPhone(e.target.value);
+                              const sanitized = sanitizePhoneNumberInput(e.target.value);
+                              setWhatsapp(sanitized);
+                              if (!phone) setPhone(sanitized);
                             }}
                             placeholder="e.g. +91 9876543210"
-                            className="w-full pl-10 pr-4 py-3 text-sm font-semibold border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            className="w-full pl-10 pr-4 py-3 text-sm font-semibold border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono"
                             required
                           />
                         </div>
@@ -2014,6 +2137,34 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                           value={websiteUrl}
                           onChange={(e) => setWebsiteUrl(e.target.value)}
                           placeholder="https://mywebsite.com"
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+                          <Youtube className="w-3.5 h-3.5 text-red-600" />
+                          YouTube Channel (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={youtubeUrl}
+                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                          placeholder="https://youtube.com/@channel"
+                          className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+                          <Twitter className="w-3.5 h-3.5 text-slate-900" />
+                          Twitter / X Handle (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={twitterHandle}
+                          onChange={(e) => setTwitterHandle(e.target.value)}
+                          placeholder="@handle"
                           className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>

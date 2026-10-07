@@ -13,6 +13,7 @@ import {
   getBioLinks,
   getPortfolioItems,
   getTestimonials,
+  getAffiliateProducts,
   recordAnalyticsEvent,
   incrementShareCount,
 } from '../../services/firebaseService';
@@ -23,6 +24,7 @@ import {
   Offer,
   Review,
   EventItem,
+  AffiliateProductItem,
 } from '../../types/index';
 import { BUSINESS_TYPES } from '../../services/businessConfig';
 import {
@@ -71,6 +73,7 @@ import {
   Filter,
   ShieldCheck,
   Award,
+  Youtube,
 } from 'lucide-react';
 
 // Modals
@@ -85,8 +88,11 @@ import { ReviewSubmitModal } from './ReviewSubmitModal';
 import { CustomerOrdersModal } from './CustomerOrdersModal';
 import { CustomQuoteRequestModal } from './CustomQuoteRequestModal';
 import { EventsShowcase } from './EventsShowcase';
+import { AffiliateProductsShowcase } from './AffiliateProductsShowcase';
 import { resolveItemAction } from '../../utils/itemActionResolver';
 import { resolveThemePrimaryColor } from '../../utils/portfolioTheme';
+import { normalizeSocialLinksToObject } from '../../utils/profileHelper';
+import { resolveProductPricing } from '../../utils/pricingHelper';
 
 interface StorefrontViewProps {
   business: BusinessProfile;
@@ -211,6 +217,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   const [bioLinks, setBioLinks] = useState<any[]>([]);
   const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
   const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [affiliateProducts, setAffiliateProducts] = useState<AffiliateProductItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter & Search states
@@ -412,7 +419,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         fetchedEvents,
         fetchedBioLinks,
         fetchedPortfolioItems,
-        fetchedTestimonials
+        fetchedTestimonials,
+        fetchedAffiliates,
       ] = await Promise.all([
         getCatalogItems(business.id, true),
         getCategories(business.id),
@@ -422,12 +430,14 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         getBioLinks(business.id) as Promise<any[]>,
         isPortfolioEnabled ? getPortfolioItems(business.id, true) : Promise.resolve([]),
         getTestimonials(business.id, true),
+        getAffiliateProducts(business.id),
       ]);
 
       const activeCategories = fetchedCategories.filter((c) => c.isActive !== false);
       const activeOffers = fetchedOffers.filter((o) => o.isActive);
       const publishedReviews = fetchedReviews.filter((r) => r.status === 'published');
       const activeEvents = fetchedEvents.filter((e) => e.status !== 'cancelled');
+      const activeAffiliates = (fetchedAffiliates || []).filter((a) => a.status !== 'archived');
 
       // Filter catalog items according to currently active modules
       const visibleItems = filterCatalogItemsByModules(fetchedItems);
@@ -440,6 +450,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       setBioLinks(fetchedBioLinks.filter(l => l.enabled).sort((a,b) => (a.order || 0) - (b.order || 0)));
       setPortfolioItems(isPortfolioEnabled ? fetchedPortfolioItems : []);
       setTestimonials(fetchedTestimonials);
+      setAffiliateProducts(activeAffiliates);
 
       // Save raw items to cache so when modules are toggled back on, items reappear instantly
       localStorage.setItem(
@@ -563,8 +574,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
       return true;
     })
     .sort((a, b) => {
-      const priceA = a.salePrice || a.price;
-      const priceB = b.salePrice || b.price;
+      const priceA = resolveProductPricing(a).sellingPrice;
+      const priceB = resolveProductPricing(b).sellingPrice;
       if (sortBy === 'price_asc') return priceA - priceB;
       if (sortBy === 'price_desc') return priceB - priceA;
       return (b.createdAt || 0) - (a.createdAt || 0);
@@ -1056,12 +1067,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                 const isDigital = actionResult.isDigital;
                 const isCartable = actionResult.isCartable && business.modules?.cart_ordering !== false;
 
-                const displayPrice =
-                  typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price
-                    ? item.salePrice
-                    : (item.price ?? 0);
-                const hasDiscount =
-                  typeof item.salePrice === 'number' && item.salePrice >= 0 && item.salePrice < item.price;
+                const pricing = resolveProductPricing(item);
+                const displayPrice = pricing.sellingPrice;
+                const hasDiscount = pricing.hasDiscount;
+                const originalPrice = pricing.originalPrice;
                 const inCart = cartItems.find((c) => c.catalogItem.id === item.id);
                 const hasVariants = Boolean(item.variants && item.variants.length > 0);
                 const variantItemsInCart = hasVariants ? cartItems.filter((c) => c.catalogItem.id === item.id) : [];
@@ -1098,7 +1107,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                             Digital
                           </span>
                         )}
-                        {item.isOffer && (
+                        {hasDiscount && (
+                          <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[9px] font-black uppercase tracking-widest shadow-md">
+                            {pricing.discountPercent}% OFF
+                          </span>
+                        )}
+                        {item.isOffer && !hasDiscount && (
                           <span className="px-2.5 py-1 rounded-lg bg-rose-600/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest shadow-lg">
                             {item.offerText || 'Offer'}
                           </span>
@@ -1200,9 +1214,9 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                               </span>
                             )}
                           </div>
-                          {hasDiscount && (
+                          {hasDiscount && originalPrice && (
                             <div className="text-[11px] text-slate-400 font-bold line-through">
-                              {business.currencySymbol}{item.price}
+                              {business.currencySymbol}{originalPrice}
                             </div>
                           )}
                         </div>
@@ -1340,6 +1354,13 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         {Boolean((business.modules?.events_tickets || business.modules?.events_ticketing) && events.length > 0) && (
           <div id="events-section">
             <EventsShowcase events={events} business={business} />
+          </div>
+        )}
+
+        {/* Affiliate & Recommended Products Showcase */}
+        {affiliateProducts.length > 0 && (
+          <div id="recommendations-section">
+            <AffiliateProductsShowcase items={affiliateProducts} business={business} />
           </div>
         )}
 
@@ -1643,9 +1664,77 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                </p>
             </div>
 
-            <div className="flex flex-col items-center md:items-end gap-1.5">
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">© {new Date().getFullYear()} {business.name}</p>
-              <p className="text-[9px] text-slate-400">All rights reserved</p>
+            <div className="flex flex-col items-center md:items-end gap-3">
+              {/* Connected Social Channels */}
+              {(() => {
+                const socialsObj = normalizeSocialLinksToObject(business.socialLinks, business.socials);
+                const hasSocials = Object.keys(socialsObj).length > 0 || Boolean(business.whatsapp);
+                if (!hasSocials) return null;
+                return (
+                  <div className="flex items-center gap-2">
+                    {socialsObj.instagram && (
+                      <a
+                        href={socialsObj.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-pink-50 text-slate-600 hover:text-pink-600 flex items-center justify-center transition shadow-2xs"
+                        title="Instagram"
+                      >
+                        <Instagram className="w-4 h-4" />
+                      </a>
+                    )}
+                    {socialsObj.website && (
+                      <a
+                        href={socialsObj.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 flex items-center justify-center transition shadow-2xs"
+                        title="Website"
+                      >
+                        <Globe className="w-4 h-4" />
+                      </a>
+                    )}
+                    {socialsObj.youtube && (
+                      <a
+                        href={socialsObj.youtube}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 flex items-center justify-center transition shadow-2xs"
+                        title="YouTube"
+                      >
+                        <Youtube className="w-4 h-4" />
+                      </a>
+                    )}
+                    {socialsObj.twitter && (
+                      <a
+                        href={socialsObj.twitter}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-950 flex items-center justify-center transition shadow-2xs"
+                        title="Twitter / X"
+                      >
+                        <Twitter className="w-4 h-4" />
+                      </a>
+                    )}
+                    {business.whatsapp && (
+                      <a
+                        href={`https://wa.me/${business.whatsapp.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 flex items-center justify-center transition shadow-2xs"
+                        title="WhatsApp"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="text-center md:text-right space-y-0.5">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">© {new Date().getFullYear()} {business.name}</p>
+                <p className="text-[9px] text-slate-400">All rights reserved</p>
+              </div>
             </div>
           </div>
         </div>

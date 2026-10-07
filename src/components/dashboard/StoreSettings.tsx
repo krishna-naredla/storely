@@ -26,6 +26,7 @@ import { deleteImageFromStorage } from '../../services/cloudinary';
 import { requestFcmNotificationPermission, showMerchantNotification } from '../../services/fcmPushService';
 import { SeoManager } from './SeoManager';
 import { normalizeSocialLinksToArray as normalizeHelperToArray, normalizeSocialLinksToObject } from '../../utils/profileHelper';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
 
 const normalizeSocialLinksToArray = (raw: any): { platform: string; url: string }[] => {
   if (!raw) return [];
@@ -642,10 +643,11 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
                 Phone Number *
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                onChange={(e) => setPhone(sanitizePhoneNumberInput(e.target.value))}
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-mono"
                 required
               />
             </div>
@@ -655,11 +657,12 @@ export const StoreSettings: React.FC<StoreSettingsProps> = ({
                 WhatsApp Number *
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
+                onChange={(e) => setWhatsapp(sanitizePhoneNumberInput(e.target.value))}
                 placeholder="Include country code, e.g. +91 9876543210"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-mono"
                 required
               />
             </div>

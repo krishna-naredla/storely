@@ -2536,49 +2536,217 @@ export const CatalogManager: React.FC<CatalogManagerProps> = ({ business }) => {
 
               {/* PHYSICAL ITEM CONFIGURATION */}
               {productType === 'physical' && (
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-slate-600" />
-                    Physical Item Inventory & Stock
-                  </h4>
-                  <div className="grid grid-cols-3 gap-3">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Physical Item Inventory, Units &amp; Variants</span>
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-medium">All verticals &amp; modules supported</span>
+                  </div>
+
+                  {/* Stock, Unit & SKU row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                        Stock Quantity
+                        Stock Quantity (In Stock)
                       </label>
                       <input
                         type="number"
                         min="0"
                         value={stockQuantity !== undefined ? stockQuantity : ''}
                         onChange={e => setStockQuantity(e.target.value ? Number(e.target.value) : undefined)}
-                        placeholder="50"
-                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white"
+                        placeholder="e.g. 50"
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                        Unit
+                        Unit / Measurement
                       </label>
                       <input
                         type="text"
                         value={unit}
                         onChange={e => setUnit(e.target.value)}
-                        placeholder="pcs, kg, pack"
-                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white"
+                        placeholder="pcs, kg, pack, etc."
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                        SKU (Code)
+                        SKU / Product Code (Optional)
                       </label>
                       <input
                         type="text"
                         value={sku}
                         onChange={e => setSku(e.target.value)}
                         placeholder="PROD-001"
-                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white"
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
+                  </div>
+
+                  {/* Quick Unit Presets */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                      Quick Unit Select:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['pcs', 'kg', 'gm', 'litre', 'ml', 'box', 'pack', 'meter', 'dozen', 'pair', 'set', 'portion', 'plate', 'day', 'night', 'session'].map((u) => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => setUnit(u)}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition cursor-pointer ${
+                            unit.toLowerCase() === u
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {u}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sizes & Variants Section */}
+                  <div className="pt-3 border-t border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-800 uppercase flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Product Sizes &amp; Variants ({variants.length})</span>
+                      </label>
+                      <span className="text-[10px] text-slate-400">e.g. M, L, XL or 500g, 1kg</span>
+                    </div>
+
+                    {/* Quick Size / Weight Presets */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold text-slate-500">Quick Size Presets:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Free Size'].map((sz) => (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => {
+                                if (!variants.some(v => v.name === `Size: ${sz}`)) {
+                                  setVariants(prev => [
+                                    ...prev,
+                                    {
+                                      id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                                      name: `Size: ${sz}`,
+                                      price: price > 0 ? price : 0,
+                                    }
+                                  ]);
+                                }
+                              }}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition cursor-pointer"
+                            >
+                              + {sz}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold text-slate-500">Quick Weight Presets:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {['100g', '250g', '500g', '1kg', '2kg', '5kg'].map((wt) => (
+                            <button
+                              key={wt}
+                              type="button"
+                              onClick={() => {
+                                if (!variants.some(v => v.name === wt)) {
+                                  setVariants(prev => [
+                                    ...prev,
+                                    {
+                                      id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                                      name: wt,
+                                      price: price > 0 ? price : 0,
+                                    }
+                                  ]);
+                                }
+                              }}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition cursor-pointer"
+                            >
+                              + {wt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Add Custom Variant Row */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newVarName}
+                        onChange={(e) => setNewVarName(e.target.value)}
+                        placeholder="Variant name (e.g. Size XL or 1 Litre)"
+                        className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white"
+                      />
+                      <div className="relative w-28">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                          {business.currencySymbol || '₹'}
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={newVarPrice || ''}
+                          onChange={(e) => setNewVarPrice(Number(e.target.value))}
+                          placeholder="Price"
+                          className="w-full pl-6 pr-2 py-2 text-xs border border-slate-200 rounded-xl bg-white font-semibold"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newVarName.trim()) {
+                            setVariants(prev => [
+                              ...prev,
+                              {
+                                id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                                name: newVarName.trim(),
+                                price: newVarPrice > 0 ? newVarPrice : (price || 0),
+                              }
+                            ]);
+                            setNewVarName('');
+                            setNewVarPrice(0);
+                          }
+                        }}
+                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add</span>
+                      </button>
+                    </div>
+
+                    {/* Active Variants List */}
+                    {variants.length > 0 && (
+                      <div className="space-y-1.5 mt-2">
+                        {variants.map((v, idx) => (
+                          <div
+                            key={v.id || idx}
+                            className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs shadow-2xs"
+                          >
+                            <span className="font-bold text-slate-800">{v.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-indigo-700">
+                                {business.currencySymbol || '₹'}{v.price}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setVariants(prev => prev.filter((_, i) => i !== idx))}
+                                className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                                title="Remove Variant"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

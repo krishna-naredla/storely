@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { BusinessProfile, EventItem, EventTicket, EventScheduleDate, EventTimeSlot } from '../../types';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
 import { purchaseEventTicketTransaction, reserveEventSeat, releaseEventSeat } from '../../services/firebaseService';
 import { loadRazorpayScript } from '../../services/razorpayService';
 
@@ -872,11 +873,12 @@ export const EventCheckoutModal: React.FC<EventCheckoutModalProps> = ({
                   <div>
                     <input
                       type="tel"
+                      inputMode="numeric"
                       required
                       placeholder="WhatsApp Mobile Number *"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
                     />
                     <p className="text-[10px] text-slate-400 mt-0.5">Ticket &amp; QR delivered via WhatsApp</p>
                   </div>

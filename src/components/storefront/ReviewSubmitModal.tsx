@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { BusinessProfile } from '../../types';
 import { createReview } from '../../services/firebaseService';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
 
 interface ReviewSubmitModalProps {
   business: BusinessProfile;
@@ -169,10 +170,11 @@ export const ReviewSubmitModal: React.FC<ReviewSubmitModalProps> = ({
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="tel"
+                  inputMode="numeric"
                   value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
                   placeholder="Phone number"
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
                 />
               </div>
 

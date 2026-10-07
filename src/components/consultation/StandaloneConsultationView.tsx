@@ -21,6 +21,8 @@ import {
 import { BusinessProfile, CatalogItem, Booking } from '../../types';
 import { getCatalogItems, createBooking, getBookedSlotsForDate, recordAnalyticsEvent } from '../../services/firebaseService';
 import { SafeImage } from '../common/SafeImage';
+import { resolveProductPricing } from '../../utils/pricingHelper';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
 
 interface StandaloneConsultationViewProps {
   business: BusinessProfile;
@@ -161,7 +163,8 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
     try {
       setIsSubmitting(true);
       const serviceName = selectedService?.name || '1:1 Consultation';
-      const servicePrice = selectedService?.salePrice || selectedService?.price || 0;
+      const servicePricing = selectedService ? resolveProductPricing(selectedService) : null;
+      const servicePrice = servicePricing ? servicePricing.sellingPrice : 0;
 
       const bookingData = {
         bookingType: 'appointment' as const,
@@ -366,7 +369,8 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
                 <div className="space-y-3">
                   {services.map((item) => {
                     const isSelected = selectedService?.id === item.id;
-                    const price = item.salePrice || item.price || 0;
+                    const pricing = resolveProductPricing(item);
+                    const price = pricing.sellingPrice;
                     const duration = item.consultationDuration || 30;
 
                     return (
@@ -389,9 +393,16 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
                               </p>
                             </div>
                             <div className="text-right shrink-0">
-                              <span className="text-sm font-extrabold text-slate-900">
-                                {price > 0 ? `${cleanCurrency}${price}` : 'Free'}
-                              </span>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span className="text-sm font-extrabold text-slate-900">
+                                  {pricing.isFree ? 'Free' : `${cleanCurrency}${price}`}
+                                </span>
+                                {!pricing.isFree && pricing.hasDiscount && pricing.originalPrice && (
+                                  <span className="text-xs text-slate-400 line-through">
+                                    {cleanCurrency}{pricing.originalPrice}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -538,10 +549,11 @@ export const StandaloneConsultationView: React.FC<StandaloneConsultationViewProp
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                         <input
                           type="tel"
+                          inputMode="numeric"
                           value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
                           placeholder="e.g. +91 9876543210"
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-mono"
                           required
                         />
                       </div>

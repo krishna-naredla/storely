@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  Star,
 } from 'lucide-react';
 import { BusinessProfile, AffiliateProductItem } from '../../types';
 import {
@@ -27,11 +28,11 @@ import {
   createAffiliateProduct,
   updateAffiliateProduct,
   deleteAffiliateProduct,
-  uploadFileToStorage,
 } from '../../services/firebaseService';
 import { getCreatorModulePublicUrl, getCreatorModuleDisplayPath } from '../../utils/creatorModuleManager';
 import { ModuleQrModal } from '../common/ModuleQrModal';
 import { ConfirmActionModal } from '../common/ConfirmActionModal';
+import { ImageUploadInput } from '../common/ImageUploadInput';
 
 interface AffiliateManagerProps {
   business: BusinessProfile;
@@ -67,7 +68,6 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
   const [itemToDelete, setItemToDelete] = useState<AffiliateProductItem | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Form fields
   const [formTitle, setFormTitle] = useState('');
@@ -81,6 +81,8 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
   const [formDiscountCode, setFormDiscountCode] = useState('');
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState<'upload' | 'url' | 'presets'>('upload');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToAffiliateProducts(business.id, (fetched) => {
@@ -158,19 +160,28 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
     setIsEditModalOpen(true);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingImage(true);
+  const handleToggleStatus = async (item: AffiliateProductItem, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
-      const url = await uploadFileToStorage(file, 'affiliate');
-      setFormImageUrl(url);
+      const nextStatus = item.status === 'archived' ? 'active' : 'archived';
+      await updateAffiliateProduct(business.id, item.id, {
+        status: nextStatus,
+        updatedAt: Date.now(),
+      });
     } catch (err) {
-      console.error('Image upload failed:', err);
-      setFormError('Failed to upload image. Please try again.');
-    } finally {
-      setUploadingImage(false);
+      console.error('Failed to toggle status:', err);
+    }
+  };
+
+  const handleToggleFeatured = async (item: AffiliateProductItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await updateAffiliateProduct(business.id, item.id, {
+        featured: !item.featured,
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      console.error('Failed to toggle featured:', err);
     }
   };
 
@@ -430,11 +441,16 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
             >
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--bg)] border border-[var(--border)] shrink-0 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-[var(--bg)] border border-[var(--border)] shrink-0 flex items-center justify-center relative">
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
                     ) : (
                       <Tag className="w-6 h-6 text-teal-500" />
+                    )}
+                    {item.featured && (
+                      <div className="absolute top-1 left-1 p-0.5 bg-amber-400 text-slate-950 rounded-md shadow-xs" title="Featured">
+                        <Star className="w-3 h-3 fill-current" />
+                      </div>
                     )}
                   </div>
 
@@ -448,6 +464,18 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
                           {item.badgeText}
                         </span>
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleStatus(item, e)}
+                        className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider cursor-pointer transition ${
+                          item.status === 'archived'
+                            ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                        title="Click to toggle Active / Archived"
+                      >
+                        {item.status === 'archived' ? 'Archived' : 'Active'}
+                      </button>
                     </div>
                     <h4 className="text-sm font-bold text-[var(--t1)] truncate mt-1">{item.title}</h4>
                     {item.priceDisplay && (
@@ -662,46 +690,58 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
                 />
               </div>
 
-              {/* Image upload */}
-              <div>
-                <label className="block text-xs font-bold text-[var(--t2)] uppercase tracking-wider mb-1">
-                  Product Image
-                </label>
-                <div className="flex items-center gap-3">
-                  {formImageUrl ? (
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--border)] shrink-0">
-                      <img src={formImageUrl} alt="Preview" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setFormImageUrl('')}
-                        className="absolute top-0 right-0 p-1 bg-black/70 text-white hover:bg-rose-600 transition"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <label className="flex-1 flex items-center justify-center gap-2 p-3 bg-[var(--bg)] border border-dashed border-[var(--border)] rounded-[var(--r12)] text-xs font-bold text-[var(--t2)] hover:text-teal-600 hover:border-teal-500 transition cursor-pointer">
-                    {uploadingImage ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-                        <span>Uploading image...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4" />
-                        <span>Upload Product Photo</span>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={uploadingImage}
-                      className="hidden"
-                    />
+              {/* Image upload & direct URL input with live preview */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[var(--t2)] uppercase tracking-wider">
+                    Product / Gear Photo (Optional)
                   </label>
+                  {formImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setFormImageUrl('')}
+                      className="text-[11px] text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>Remove Photo</span>
+                    </button>
+                  )}
                 </div>
+
+                <ImageUploadInput
+                  label=""
+                  value={formImageUrl}
+                  onChange={(url) => {
+                    setFormImageUrl(url);
+                    setFormError(null);
+                  }}
+                  aspectRatio="square"
+                  suggestedPresetType="item"
+                  placeholder="Paste direct HTTPS image URL or upload image file..."
+                  helperText="Supports device upload (JPG/PNG/WEBP) or direct image URL (Amazon, Unsplash, etc.)"
+                />
+
+                {formImageUrl && (
+                  <div className="p-3 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r12)] flex items-center gap-3">
+                    <img
+                      src={formImageUrl}
+                      alt="Preview"
+                      className="w-12 h-12 rounded-lg object-cover border border-[var(--border)] shrink-0 bg-white"
+                      onError={(e) => {
+                        (e.target as HTMLElement).classList.add('opacity-40');
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[var(--t1)] flex items-center gap-1.5 truncate">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Image Ready</span>
+                      </p>
+                      <p className="text-[10px] text-[var(--t3)] truncate font-mono mt-0.5">
+                        {formImageUrl.startsWith('data:') ? 'Local Compressed Image' : formImageUrl}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {formError && (
@@ -715,15 +755,15 @@ export const AffiliateManager: React.FC<AffiliateManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  disabled={saving}
-                  className="ds-btn-secondary px-4 py-2 text-xs font-bold"
+                  disabled={saving || isProcessingImage}
+                  className="ds-btn-secondary px-4 py-2 text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || uploadingImage}
-                  className="ds-btn-primary px-5 py-2 text-xs font-bold flex items-center gap-1.5"
+                  disabled={saving || isProcessingImage}
+                  className="ds-btn-primary px-5 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
                   {saving ? (
                     <>

@@ -24,6 +24,7 @@ import { BusinessProfile, CatalogItem, Order } from '../../types';
 import { resolveItemAction } from '../../utils/itemActionResolver';
 import { SafeImage } from '../common/SafeImage';
 import { createOrder } from '../../services/firebaseService';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
 
 interface DigitalCheckoutModalProps {
   item: CatalogItem | null;
@@ -616,12 +617,12 @@ export const DigitalCheckoutModal: React.FC<DigitalCheckoutModalProps> = ({
                   <Smartphone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type="tel"
+                    inputMode="numeric"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="10-digit mobile number"
-                    maxLength={10}
+                    onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
+                    placeholder="+91 9876543210"
                     required
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition"
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10 transition font-mono"
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">

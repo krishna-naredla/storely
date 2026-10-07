@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { CartItem, CatalogItem, CatalogItemVariant, CatalogItemAddon } from '../types';
 import { resolveItemAction, getCartItemId } from '../utils/itemActionResolver';
+import { resolveProductPricing } from '../utils/pricingHelper';
 
 interface StorefrontCartContextType {
   businessId: string | null;
@@ -159,12 +160,11 @@ export const StorefrontCartProvider: React.FC<{ children: React.ReactNode }> = (
   const subtotal = items
     .filter((item) => resolveItemAction(item.catalogItem).isCartable)
     .reduce((sum, item) => {
+      const pricing = resolveProductPricing(item.catalogItem);
       const basePrice =
         typeof item.selectedVariant?.price === 'number'
           ? item.selectedVariant.price
-          : (typeof item.catalogItem.salePrice === 'number' && item.catalogItem.salePrice >= 0 && item.catalogItem.salePrice < item.catalogItem.price
-              ? item.catalogItem.salePrice
-              : (item.catalogItem.price ?? 0));
+          : pricing.sellingPrice;
       const addonsPrice = item.selectedAddons?.reduce((aSum, a) => aSum + (Number(a.price) || 0), 0) || 0;
       const unitPrice = basePrice + addonsPrice;
       return sum + unitPrice * item.quantity;

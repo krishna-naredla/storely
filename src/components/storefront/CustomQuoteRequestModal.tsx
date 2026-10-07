@@ -18,6 +18,7 @@ import {
 import { BusinessProfile, CustomQuoteRequest } from '../../types';
 import { submitCustomQuoteRequest } from '../../services/firebaseService';
 import { uploadToCloudinary } from '../../services/cloudinary';
+import { sanitizePhoneNumberInput } from '../../utils/phoneHelper';
 
 interface CustomQuoteRequestModalProps {
   business: BusinessProfile;
@@ -197,11 +198,12 @@ export const CustomQuoteRequestModal: React.FC<CustomQuoteRequestModalProps> = (
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">+91</span>
                     <input
                       type="tel"
+                      inputMode="numeric"
                       required
                       placeholder="9876543210"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full pl-12 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                      onChange={(e) => setCustomerPhone(sanitizePhoneNumberInput(e.target.value))}
+                      className="w-full pl-12 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-mono"
                     />
                   </div>
                 </div>
