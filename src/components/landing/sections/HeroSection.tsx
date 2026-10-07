@@ -60,15 +60,6 @@ export const HeroSection: React.FC<Props> = ({ onOpenAuth }) => {
           
           {/* Left Text Content */}
           <div className="lg:col-span-7 space-y-7">
-            {/* Pre-Headline Kicker */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm font-bold uppercase tracking-wider shadow-sm">
-              <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              Go From Offline to Online in 3 Simple Steps
-            </div>
-
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-black text-[var(--t1)] leading-[1.12] tracking-tight">
               {heroConfig.headline && heroConfig.headline.includes('Storelly') ? (
                 <>

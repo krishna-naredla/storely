@@ -11,6 +11,7 @@ import {
   Gift,
   ArrowUpRight,
   ShieldCheck,
+  CheckCircle2,
   ShoppingBag,
 } from 'lucide-react';
 import { BusinessProfile, AffiliateProductItem } from '../../types';
@@ -28,15 +29,15 @@ interface AffiliateProductsShowcaseProps {
 export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps> = ({
   items,
   business,
-  title = 'Recommended Tools & Curated Gear',
-  subtitle = 'Personally tested & recommended products, gear setups, and exclusive subscriber deals.',
+  title = 'Recommended Gear & Curated Tools',
+  subtitle = 'Personally tested gear, software stack, and exclusive subscriber deals curated by creator.',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
 
-  const primaryThemeColor = resolveThemePrimaryColor(business);
+  const primaryThemeColor = resolveThemePrimaryColor(business, '#2d8a45');
 
   // Filter only active items for storefront
   const activeItems = useMemo(() => {
@@ -111,27 +112,29 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
   }
 
   return (
-    <section id="recommendations-section" className="space-y-6 pt-4 pb-8">
+    <section
+      id="recommendations-section"
+      className="rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] p-6 sm:p-8 shadow-[var(--shadow-xs)] space-y-6"
+    >
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white shadow-xs"
-              style={{ backgroundColor: primaryThemeColor }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[var(--r8)] text-[11px] font-black uppercase tracking-wider text-[var(--g800)] bg-[var(--g100)] border border-[var(--g200)] shadow-2xs"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-[var(--g600)]" />
               <span>Curated Recommendations</span>
             </span>
-            <span className="text-xs text-slate-400 font-semibold">
+            <span className="text-xs text-[var(--t2)] font-semibold">
               {activeItems.length} Handpicked {activeItems.length === 1 ? 'Item' : 'Items'}
             </span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black text-[var(--t1)] font-heading tracking-tight">
             {title}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-[var(--t2)] max-w-2xl leading-relaxed">
             {subtitle}
           </p>
         </div>
@@ -139,16 +142,16 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
         <button
           type="button"
           onClick={handleShareSection}
-          className="self-start md:self-auto px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+          className="self-start sm:self-auto min-h-[44px] px-4 py-2.5 rounded-[var(--r12)] bg-[var(--bg)] hover:bg-[var(--card)] border border-[var(--border)] hover:border-[var(--g300)] text-[var(--t1)] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
         >
           {copiedShareLink ? (
             <>
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span className="text-emerald-700">Link Copied!</span>
+              <Check className="w-4 h-4 text-[var(--g600)]" />
+              <span className="text-[var(--g700)]">Link Copied!</span>
             </>
           ) : (
             <>
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-4 h-4 text-[var(--t2)]" />
               <span>Share Deals</span>
             </>
           )}
@@ -156,17 +159,16 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
         {/* Search */}
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t3)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search gear, software, tools..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 shadow-xs transition"
-            style={{ ringColor: primaryThemeColor }}
+            className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r12)] text-xs text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-hidden focus:border-[var(--g500)] shadow-2xs transition"
           />
         </div>
 
@@ -176,10 +178,10 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
             <button
               type="button"
               onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
+              className={`px-4 py-2 rounded-[var(--r12)] text-xs font-bold shrink-0 transition-all cursor-pointer border ${
                 selectedCategory === 'all'
-                  ? 'text-white shadow-md'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  ? 'text-white shadow-xs'
+                  : 'bg-[var(--bg)] text-[var(--t2)] border-[var(--border)] hover:border-[var(--g300)] hover:text-[var(--t1)]'
               }`}
               style={selectedCategory === 'all' ? { backgroundColor: primaryThemeColor, borderColor: primaryThemeColor } : {}}
             >
@@ -193,10 +195,10 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
+                  className={`px-4 py-2 rounded-[var(--r12)] text-xs font-bold shrink-0 transition-all cursor-pointer border ${
                     isSelected
-                      ? 'text-white shadow-md'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                      ? 'text-white shadow-xs'
+                      : 'bg-[var(--bg)] text-[var(--t2)] border-[var(--border)] hover:border-[var(--g300)] hover:text-[var(--t1)]'
                   }`}
                   style={isSelected ? { backgroundColor: primaryThemeColor, borderColor: primaryThemeColor } : {}}
                 >
@@ -210,10 +212,10 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
 
       {/* Grid of Items */}
       {filteredItems.length === 0 ? (
-        <div className="p-8 text-center bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-2">
-          <Tag className="w-8 h-8 text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-700">No matching recommendations found</p>
-          <p className="text-xs text-slate-400">Try clearing your search query or selecting another category.</p>
+        <div className="p-8 text-center bg-[var(--bg)] rounded-[var(--r16)] border border-[var(--border)] shadow-2xs space-y-2">
+          <Tag className="w-8 h-8 text-[var(--t3)] mx-auto" />
+          <p className="text-sm font-bold text-[var(--t1)]">No matching recommendations found</p>
+          <p className="text-xs text-[var(--t2)]">Try clearing your search query or selecting another category.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -225,11 +227,11 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
               <div
                 key={item.id}
                 onClick={() => handleOpenAffiliateLink(item)}
-                className="group relative bg-white rounded-3xl border border-slate-200/90 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer hover:-translate-y-1"
+                className="group relative bg-[var(--card)] rounded-[var(--r20)] border border-[var(--border)] hover:border-[var(--g400)] shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)] transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer hover:-translate-y-1"
               >
                 <div>
                   {/* Image Container */}
-                  <div className="relative h-48 sm:h-52 w-full bg-slate-100 overflow-hidden">
+                  <div className="relative h-48 sm:h-52 w-full bg-[var(--bg)] overflow-hidden">
                     {item.imageUrl ? (
                       <SafeImage
                         src={item.imageUrl}
@@ -238,7 +240,7 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-[var(--t3)] bg-[var(--bg)]">
                         <Tag className="w-12 h-12" />
                       </div>
                     )}
@@ -247,13 +249,13 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
 
                     {/* Top Badges */}
                     <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
-                      <span className="px-2.5 py-1 rounded-xl bg-white/95 backdrop-blur-md text-slate-900 text-[10px] font-black uppercase tracking-wider shadow-sm border border-slate-100">
+                      <span className="px-2.5 py-1 rounded-[var(--r8)] bg-white/95 backdrop-blur-md text-[var(--t1)] text-[10px] font-black uppercase tracking-wider shadow-xs border border-white/60">
                         {item.category}
                       </span>
 
                       {item.badgeText && (
                         <span
-                          className="px-2.5 py-1 rounded-xl text-white text-[10px] font-black uppercase tracking-wider shadow-md"
+                          className="px-2.5 py-1 rounded-[var(--r8)] text-white text-[10px] font-black uppercase tracking-wider shadow-xs"
                           style={{ backgroundColor: primaryThemeColor }}
                         >
                           {item.badgeText}
@@ -264,12 +266,12 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
                     {/* Platform Tag & Price */}
                     <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs font-bold z-10">
                       {item.platform && (
-                        <span className="px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 text-[11px] font-semibold">
+                        <span className="px-2 py-0.5 rounded-[var(--r8)] bg-black/60 backdrop-blur-md border border-white/20 text-[11px] font-semibold">
                           {item.platform}
                         </span>
                       )}
                       {item.priceDisplay && (
-                        <span className="px-2.5 py-1 rounded-xl bg-slate-950/90 backdrop-blur-md text-white font-mono font-bold text-xs shadow-md border border-white/10 ml-auto">
+                        <span className="px-2.5 py-1 rounded-[var(--r8)] bg-[var(--g900)]/90 backdrop-blur-md text-white font-mono font-bold text-xs shadow-xs border border-white/20 ml-auto">
                           {item.priceDisplay}
                         </span>
                       )}
@@ -279,11 +281,11 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
                   {/* Body Content */}
                   <div className="p-4 sm:p-5 space-y-3">
                     <div className="space-y-1">
-                      <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                      <h3 className="font-bold text-[var(--t1)] text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-[var(--g700)] transition-colors font-heading">
                         {item.title}
                       </h3>
                       {item.description && (
-                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
+                        <p className="text-xs text-[var(--t2)] line-clamp-2 leading-relaxed font-normal">
                           {item.description}
                         </p>
                       )}
@@ -293,18 +295,18 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
                     {hasPromo && (
                       <div
                         onClick={(e) => handleCopyCode(item.id, item.discountCode!, e)}
-                        className="p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between text-xs hover:bg-amber-100 transition cursor-pointer"
+                        className="p-2.5 rounded-[var(--r12)] bg-[var(--g100)]/80 border border-[var(--g200)] flex items-center justify-between text-xs hover:bg-[var(--g100)] transition cursor-pointer"
                         title="Click to copy promo code"
                       >
-                        <div className="flex items-center gap-1.5 font-mono font-bold text-amber-950">
-                          <Gift className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-[var(--g900)]">
+                          <Gift className="w-3.5 h-3.5 text-[var(--g600)] shrink-0" />
                           <span>Code: {item.discountCode}</span>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-[var(--g700)] flex items-center gap-1">
                           {isCodeCopied ? (
                             <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              <span className="text-emerald-700 font-bold">Copied!</span>
+                              <Check className="w-3.5 h-3.5 text-[var(--g600)]" />
+                              <span className="text-[var(--g700)] font-bold">Copied!</span>
                             </>
                           ) : (
                             <>
@@ -326,7 +328,7 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
                       e.stopPropagation();
                       handleOpenAffiliateLink(item);
                     }}
-                    className="w-full py-3 px-4 rounded-2xl text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 group-hover:opacity-90 active:scale-95 cursor-pointer"
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-[var(--r12)] text-white font-bold text-xs shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-1.5 group-hover:opacity-90 active:scale-95 cursor-pointer"
                     style={{ backgroundColor: primaryThemeColor }}
                   >
                     <span>Get Deal on {item.platform || 'Partner Store'}</span>
@@ -338,6 +340,22 @@ export const AffiliateProductsShowcase: React.FC<AffiliateProductsShowcaseProps>
           })}
         </div>
       )}
+
+      {/* Verified Guarantee & Trust Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-[var(--r16)] bg-[var(--bg)] border border-[var(--border)] shadow-[var(--shadow-xs)] text-xs">
+        <div className="flex items-center gap-2 text-[var(--t1)]">
+          <ShieldCheck className="w-4 h-4 text-[var(--g600)] shrink-0" />
+          <span className="font-semibold">Curated &amp; Tested Gear</span>
+        </div>
+        <div className="flex items-center gap-2 text-[var(--t1)]">
+          <CheckCircle2 className="w-4 h-4 text-[var(--g600)] shrink-0" />
+          <span className="font-semibold">Direct Official Partner Links</span>
+        </div>
+        <div className="flex items-center gap-2 text-[var(--t1)]">
+          <Sparkles className="w-4 h-4 text-[var(--g600)] shrink-0" />
+          <span className="font-semibold">Exclusive Subscriber Deals</span>
+        </div>
+      </div>
     </section>
   );
 };

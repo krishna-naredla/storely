@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ShieldCheck, Sparkles, TrendingUp, ExternalLink, Store } from 'lucide-react';
+import { Star, ShieldCheck, Sparkles, TrendingUp, ExternalLink, Store, Zap } from 'lucide-react';
 import { PlatformClientBrand } from '../../types/admin';
 import { adminGetHappyClients, DEFAULT_HAPPY_CLIENTS } from '../../services/adminService';
 
@@ -42,7 +42,7 @@ export const HappyClientsMarquee: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center relative z-10">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--g100)] border border-[var(--g200)] text-[var(--g800)] text-xs sm:text-sm font-extrabold tracking-wide uppercase shadow-xs mb-4">
-          <Sparkles className="w-4 h-4 text-[var(--g600)]" />
+          <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
           Powering Digital Stores & Creators Across India
         </div>
 

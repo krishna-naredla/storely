@@ -1359,9 +1359,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
         {/* Affiliate & Recommended Products Showcase */}
         {affiliateProducts.length > 0 && (
-          <div id="recommendations-section">
-            <AffiliateProductsShowcase items={affiliateProducts} business={business} />
-          </div>
+          <AffiliateProductsShowcase items={affiliateProducts} business={business} />
         )}
 
         {/* Customer Reviews & Trust Section (strictly gated by reviews module) */}

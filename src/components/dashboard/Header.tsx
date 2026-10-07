@@ -22,7 +22,6 @@ import { BusinessProfile, Notification } from '../../types';
 import { getStorefrontUrl, subscribeToNotifications } from '../../services/firebaseService';
 import { auth } from '../../config/firebase';
 import { requestFcmNotificationPermission } from '../../services/fcmPushService';
-import { LanguageSwitcher } from '../common/LanguageSwitcher';
 import { useLanguage } from '../../context/LanguageContext';
 import { isCreatorProfile, getPrimaryPublicUrl, getProfileTypeLabel } from '../../utils/profileHelper';
 import { SafeImage } from '../common/SafeImage';
@@ -415,8 +414,6 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
 
-        <LanguageSwitcher />
-
         {/* Notifications */}
         <button
           type="button"
@@ -441,32 +438,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {business && (
           <>
-            {/* Copy Store URL Button (Accessible on desktop and mobile) */}
-            <button
-              type="button"
-              onClick={(e) => handleCopy(e)}
-              aria-label="Copy Store URL"
-              title={isCreator ? "Copy live portfolio URL" : "Copy public store URL"}
-              className={`touch-target-accessible min-h-[44px] px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-[var(--r8)] border transition shadow-[var(--shadow-xs)] flex items-center gap-1.5 cursor-pointer ${
-                copied
-                  ? 'bg-[var(--g100)] text-[var(--g700)] border-[var(--g400)] ring-2 ring-[var(--g400)]/20'
-                  : 'bg-[var(--card)] hover:bg-[var(--bg)] text-[var(--t1)] border-[var(--border)]'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-[var(--g600)] shrink-0" />
-                  <span className="text-[var(--g700)] font-bold">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-[var(--t3)] shrink-0" />
-                  <span className="hidden sm:inline">Copy Store URL</span>
-                  <span className="sm:hidden">Copy URL</span>
-                </>
-              )}
-            </button>
-
             {/* Share & QR Code Button */}
             <button
               type="button"

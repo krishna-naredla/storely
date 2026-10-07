@@ -151,9 +151,9 @@ export function getDefaultPortfolioBlocks(business?: BusinessProfile): Portfolio
 }
 
 export const DEFAULT_PORTFOLIO_THEME: PortfolioThemeConfig = {
-  primaryColor: '#4f46e5', // Modern Indigo
-  accentColor: '#06b6d4',
-  backgroundColor: '#ffffff',
+  primaryColor: '#2d8a45', // Storelly Signature Emerald
+  accentColor: '#059669',
+  backgroundColor: '#f2f7f3',
   fontFamily: 'sans',
   cardStyle: 'bordered',
   borderRadius: 'xl',
@@ -161,10 +161,10 @@ export const DEFAULT_PORTFOLIO_THEME: PortfolioThemeConfig = {
 };
 
 export const PRESET_PRIMARY_COLORS = [
+  { name: 'Emerald (Default)', value: '#2d8a45' },
   { name: 'Indigo', value: '#4f46e5' },
   { name: 'Violet', value: '#7c3aed' },
   { name: 'Cyan', value: '#0891b2' },
-  { name: 'Emerald', value: '#059669' },
   { name: 'Rose', value: '#e11d48' },
   { name: 'Amber', value: '#d97706' },
   { name: 'Slate', value: '#334155' },
@@ -177,12 +177,12 @@ export const PORTFOLIO_THEME_PALETTES: Array<{
   primary: string;
   bg: string;
 }> = [
-  { id: 'default', name: 'Creator Indigo', primary: '#4f46e5', bg: '#F8FAFC' },
+  { id: 'default', name: 'Storelly Emerald', primary: '#2d8a45', bg: '#f2f7f3' },
+  { id: 'emerald', name: 'Growth Green', primary: '#059669', bg: '#F0FDF4' },
   { id: 'minimal', name: 'Warm Ivory', primary: '#18181b', bg: '#F9F9F8' },
   { id: 'dark', name: 'Modern Dark', primary: '#38bdf8', bg: '#0b0f17' },
   { id: 'photo', name: 'Studio Pure', primary: '#0f172a', bg: '#ffffff' },
   { id: 'rose', name: 'Chic Rose', primary: '#e11d48', bg: '#FFF7F7' },
-  { id: 'emerald', name: 'Growth Green', primary: '#059669', bg: '#F0FDF4' },
   { id: 'amber', name: 'Editorial Amber', primary: '#d97706', bg: '#FFFBEB' },
   { id: 'indigo', name: 'Vibrant Violet', primary: '#7c3aed', bg: '#F5F3FF' },
 ];
@@ -268,7 +268,7 @@ export const COLOR_NAME_TO_HEX: Record<string, string> = {
  * supporting hex codes (#...), rgb/hsl, named colors (purple, emerald, etc.),
  * and settings overrides across Portfolio, Storefront, and Bio Link.
  */
-export function resolveThemePrimaryColor(business?: BusinessProfile | null, fallback = '#4f46e5'): string {
+export function resolveThemePrimaryColor(business?: BusinessProfile | null, fallback = '#2d8a45'): string {
   if (!business) return fallback;
   const settings = business.portfolioSettings;
   const tc = settings?.themeConfig;
@@ -303,8 +303,8 @@ export function getEffectivePortfolioTheme(business: BusinessProfile): Portfolio
   const tc = settings?.themeConfig;
 
   // Derive palette default background and primary color
-  let paletteBg = '#ffffff';
-  let palettePrimary = '#4f46e5';
+  let paletteBg = '#f2f7f3';
+  let palettePrimary = '#2d8a45';
   const themeColor = settings?.themeColor || 'default';
 
   switch (themeColor) {
@@ -322,7 +322,7 @@ export function getEffectivePortfolioTheme(business: BusinessProfile): Portfolio
       break;
     case 'indigo':
       paletteBg = '#F5F3FF';
-      palettePrimary = '#4f46e5';
+      palettePrimary = '#7c3aed';
       break;
     case 'emerald':
       paletteBg = '#F0FDF4';
@@ -338,8 +338,8 @@ export function getEffectivePortfolioTheme(business: BusinessProfile): Portfolio
       break;
     case 'default':
     default:
-      paletteBg = '#f8fafc';
-      palettePrimary = '#4f46e5';
+      paletteBg = '#f2f7f3';
+      palettePrimary = '#2d8a45';
       break;
   }
 

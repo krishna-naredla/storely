@@ -40,7 +40,7 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
 
-  const primaryThemeColor = resolveThemePrimaryColor(business);
+  const primaryThemeColor = resolveThemePrimaryColor(business, '#2d8a45');
 
   useEffect(() => {
     recordAnalyticsEvent(business.id, 'affiliate_impression', { slug: business.slug }).catch(() => {});
@@ -119,13 +119,13 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
   const creatorAvatar =
     business.profileImage ||
     business.logo ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(business.name)}&background=0d9488&color=fff&size=200`;
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(business.name)}&background=2d8a45&color=fff&size=200`;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-teal-500 selection:text-white pb-24">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--t1)] font-sans selection:bg-emerald-100 selection:text-emerald-900 pb-24">
       {/* Top Banner (If owner preview mode) */}
       {isOwner && (
-        <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 text-center text-xs font-bold text-slate-300 flex items-center justify-between shadow-md">
+        <div className="bg-[var(--card)] border-b border-[var(--border)] px-4 py-2 text-center text-xs font-bold text-[var(--t2)] flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-2 mx-auto sm:mx-0">
             <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: primaryThemeColor }} />
             <span>Owner Preview Mode — Recommendations &amp; Affiliate Store</span>
@@ -133,7 +133,7 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
           {onBackToDashboard && (
             <button
               onClick={onBackToDashboard}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[var(--bg)] hover:bg-[var(--card)] text-[var(--t1)] rounded-[var(--r8)] text-xs font-semibold border border-[var(--border)] transition cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to Dashboard</span>
@@ -143,14 +143,14 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
       )}
 
       {/* Header Section */}
-      <header className="relative border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl">
+      <header className="relative border-b border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-xs)]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
             <div className="relative shrink-0">
               <img
                 src={creatorAvatar}
                 alt={business.name}
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover ring-4 shadow-2xl bg-slate-800"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover ring-4 shadow-xl bg-[var(--bg)]"
                 style={{ ringColor: `${primaryThemeColor}40` }}
               />
               <div
@@ -169,16 +169,16 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                 >
                   Curated Recommendations
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-[var(--t2)]">
                   {items.length} {items.length === 1 ? 'Recommendation' : 'Recommendations'}
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight font-heading">
+              <h1 className="text-2xl sm:text-4xl font-black text-[var(--t1)] tracking-tight font-heading">
                 {business.name}
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
+              <p className="text-sm sm:text-base text-[var(--t2)] max-w-2xl leading-relaxed">
                 {business.tagline ||
                   business.bio ||
                   business.description ||
@@ -189,16 +189,16 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                 <button
                   type="button"
                   onClick={handleSharePage}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700/80 transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                  className="min-h-[44px] px-4 py-2 bg-[var(--bg)] hover:bg-[var(--card)] text-[var(--t1)] text-xs font-bold rounded-[var(--r12)] border border-[var(--border)] hover:border-[var(--g300)] transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
                 >
                   {copiedShareLink ? (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-400">Link Copied!</span>
+                      <CheckCircle2 className="w-4 h-4 text-[var(--g600)]" />
+                      <span className="text-[var(--g700)]">Link Copied!</span>
                     </>
                   ) : (
                     <>
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-4 h-4 text-[var(--t2)]" />
                       <span>Share Recommendations</span>
                     </>
                   )}
@@ -208,22 +208,21 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80 space-y-4">
+          <div className="mt-8 pt-6 border-t border-[var(--border)] space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[var(--t3)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search gear, software, books, promo codes..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 outline-none transition focus:ring-2"
-                  style={{ ringColor: primaryThemeColor }}
+                  className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-[var(--r12)] text-sm text-[var(--t1)] placeholder:text-[var(--t3)] outline-hidden transition focus:border-[var(--g500)] shadow-2xs"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--t3)] hover:text-[var(--t1)] cursor-pointer"
                   >
                     Clear
                   </button>
@@ -237,10 +236,10 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-[var(--r12)] text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                     selectedCategory === 'all'
-                      ? 'text-white shadow-md font-black'
-                      : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                      ? 'text-white shadow-xs font-black'
+                      : 'bg-[var(--card)] text-[var(--t2)] hover:text-[var(--t1)] border border-[var(--border)] hover:bg-[var(--bg)]'
                   }`}
                   style={selectedCategory === 'all' ? { backgroundColor: primaryThemeColor } : {}}
                 >
@@ -254,10 +253,10 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                      className={`px-3.5 py-1.5 rounded-[var(--r12)] text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                         isActive
-                          ? 'text-white shadow-md font-black'
-                          : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                          ? 'text-white shadow-xs font-black'
+                          : 'bg-[var(--card)] text-[var(--t2)] hover:text-[var(--t1)] border border-[var(--border)] hover:bg-[var(--bg)]'
                       }`}
                       style={isActive ? { backgroundColor: primaryThemeColor } : {}}
                     >
@@ -279,16 +278,16 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
               className="w-10 h-10 border-3 border-t-transparent rounded-full animate-spin mx-auto"
               style={{ borderColor: primaryThemeColor, borderTopColor: 'transparent' }}
             />
-            <p className="text-xs text-slate-400 font-medium">Loading recommendations...</p>
+            <p className="text-xs text-[var(--t2)] font-medium">Loading recommendations...</p>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="py-20 text-center space-y-4 max-w-md mx-auto">
-            <div className="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
+            <div className="w-16 h-16 rounded-3xl bg-[var(--card)] border border-[var(--border)] flex items-center justify-center mx-auto text-[var(--t3)] shadow-2xs">
               <Compass className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">No recommendations found</h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <h3 className="text-lg font-bold text-[var(--t1)] font-heading">No recommendations found</h3>
+              <p className="text-xs text-[var(--t2)] mt-1">
                 {searchQuery || selectedCategory !== 'all'
                   ? 'Try searching with different keywords or selecting "All Items".'
                   : 'The creator has not added any recommended tools yet. Please check back shortly!'}
@@ -300,7 +299,7 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                   setSearchQuery('');
                   setSelectedCategory('all');
                 }}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-xs font-bold rounded-xl border border-slate-800 transition cursor-pointer"
+                className="px-4 py-2 bg-[var(--card)] hover:bg-[var(--bg)] text-xs font-bold rounded-[var(--r12)] border border-[var(--border)] transition cursor-pointer shadow-2xs"
                 style={{ color: primaryThemeColor }}
               >
                 Reset Filters
@@ -312,11 +311,11 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
             {filteredItems.map((item) => (
               <div
                 key={item.id}
-                className="group rounded-3xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700 transition-all duration-200 p-5 flex flex-col justify-between shadow-lg shadow-black/40 hover:-translate-y-0.5"
+                className="group rounded-[var(--r24)] bg-[var(--card)] border border-[var(--border)] hover:border-[var(--g400)] transition-all duration-300 p-5 flex flex-col justify-between shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-sm)] hover:-translate-y-1"
               >
                 <div className="space-y-3.5">
                   {/* Image or Icon Container */}
-                  <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-950 border border-slate-800/80 flex items-center justify-center">
+                  <div className="relative rounded-[var(--r16)] overflow-hidden aspect-video bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -327,7 +326,7 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                         }}
                       />
                     ) : (
-                      <div className="p-6 text-slate-600">
+                      <div className="p-6 text-[var(--t3)]">
                         <Tag className="w-12 h-12" />
                       </div>
                     )}
@@ -335,7 +334,7 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                     {/* Badge */}
                     {item.badgeText && (
                       <span
-                        className="absolute top-3 left-3 px-2.5 py-1 text-white text-[10px] font-black tracking-wider uppercase rounded-lg shadow-md"
+                        className="absolute top-3 left-3 px-2.5 py-1 text-white text-[10px] font-black tracking-wider uppercase rounded-[var(--r8)] shadow-md"
                         style={{ backgroundColor: primaryThemeColor }}
                       >
                         {item.badgeText}
@@ -343,7 +342,7 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                     )}
 
                     {item.platform && (
-                      <span className="absolute bottom-3 right-3 px-2 py-0.5 bg-slate-950/80 backdrop-blur-md text-slate-300 text-[10px] font-bold rounded-md border border-slate-700/60">
+                      <span className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-md border border-white/20">
                         {item.platform}
                       </span>
                     )}
@@ -353,50 +352,49 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <span
-                        className="text-[11px] font-bold uppercase tracking-wider"
-                        style={{ color: primaryThemeColor }}
+                        className="text-[11px] font-black uppercase tracking-wider text-[var(--g700)]"
                       >
                         {item.category}
                       </span>
                       {item.priceDisplay && (
-                        <span className="text-xs font-black text-slate-200 font-mono">
+                        <span className="text-xs font-black text-[var(--t1)] font-mono">
                           {item.priceDisplay}
                         </span>
                       )}
                     </div>
-                    <h3 className="text-base font-bold text-white group-hover:text-slate-100 transition line-clamp-1">
+                    <h3 className="text-base font-bold text-[var(--t1)] group-hover:text-[var(--g700)] transition line-clamp-1 font-heading">
                       {item.title}
                     </h3>
                   </div>
 
                   {/* Description */}
                   {item.description && (
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-[var(--t2)] line-clamp-2 leading-relaxed">
                       {item.description}
                     </p>
                   )}
 
                   {/* Discount Code Box */}
                   {item.discountCode && (
-                    <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs text-amber-300 font-bold">
-                        <Gift className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <div className="p-2.5 rounded-[var(--r12)] bg-[var(--g100)]/80 border border-[var(--g200)] flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--g900)] font-bold">
+                        <Gift className="w-3.5 h-3.5 text-[var(--g600)] shrink-0" />
                         <span className="font-mono text-[11px]">{item.discountCode}</span>
                       </div>
                       <button
                         type="button"
                         onClick={(e) => handleCopyCode(item.id, item.discountCode!, e)}
-                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 bg-white hover:bg-[var(--g100)] text-[var(--g700)] rounded-[var(--r8)] text-[10px] font-bold border border-[var(--g200)] transition flex items-center gap-1 cursor-pointer shadow-2xs"
                       >
                         {copiedCodeId === item.id ? (
                           <>
-                            <Check className="w-3 h-3 text-emerald-400" />
+                            <Check className="w-3 h-3 text-[var(--g600)]" />
                             <span>Copied</span>
                           </>
                         ) : (
                           <>
                             <Copy className="w-3 h-3" />
-                            <span>Copy Code</span>
+                            <span>Copy</span>
                           </>
                         )}
                       </button>
@@ -405,11 +403,11 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
                 </div>
 
                 {/* Direct Action Button */}
-                <div className="pt-4 mt-2 border-t border-slate-800/80">
+                <div className="pt-4 mt-3 border-t border-[var(--border)]">
                   <button
                     type="button"
                     onClick={() => handleOpenAffiliateLink(item)}
-                    className="w-full py-2.5 px-4 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer group/btn active:scale-95"
+                    className="w-full min-h-[44px] py-2.5 px-4 text-white font-bold text-xs rounded-[var(--r12)] shadow-[var(--shadow-xs)] transition flex items-center justify-center gap-2 cursor-pointer group/btn active:scale-95 hover:opacity-90"
                     style={{ backgroundColor: primaryThemeColor }}
                   >
                     <span>Get Deal &amp; Visit Link</span>
@@ -423,12 +421,12 @@ export const StandaloneAffiliateView: React.FC<StandaloneAffiliateViewProps> = (
       </main>
 
       {/* Affiliate Transparency Footer */}
-      <footer className="max-w-5xl mx-auto px-4 sm:px-6 pt-12 text-center text-xs text-slate-500 space-y-2 border-t border-slate-900">
+      <footer className="max-w-5xl mx-auto px-4 sm:px-6 pt-12 text-center text-xs text-[var(--t2)] space-y-2 border-t border-[var(--border)]">
         <p className="flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+          <ShieldCheck className="w-4 h-4 text-[var(--g600)] shrink-0" />
           <span>Transparency Notice: Some links on this page may be affiliate links. Purchasing through them directly supports {business.name} at no extra cost to you.</span>
         </p>
-        <p className="text-[11px] text-slate-600">
+        <p className="text-[11px] text-[var(--t3)]">
           Powered by Storelly Creator Platform
         </p>
       </footer>
